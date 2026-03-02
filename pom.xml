@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>org.hyland.sdk</groupId>
+  <artifactId>cic-java-sdk</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+
+  <name>Hyland CIC Java SDK</name>
+  <description>Java SDK for CIC integrations</description>
+  <url>https://github.com/nuxeo/cic-java-sdk</url>
+  <inceptionYear>2026</inceptionYear>
+  <organization>
+    <name>Hyland</name>
+    <url>https://www.hyland.com/</url>
+  </organization>
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+    </license>
+  </licenses>
+
+  <modules>
+    <module>cic-http-client</module>
+    <module>cic-http-client-jackson2</module>
+    <module>cic-ingest</module>
+  </modules>
+
+  <scm>
+    <connection>scm:git:git://github.com/nuxeo/cic-java-sdk.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com:nuxeo/cic-java-sdk.git</developerConnection>
+    <url>https://github.com/nuxeo/cic-java-sdk</url>
+  </scm>
+
+  <distributionManagement>
+    <repository>
+      <id>github</id>
+      <name>GitHub Packages</name>
+      <url>https://maven.pkg.github.com/nuxeo/cic-java-sdk</url>
+    </repository>
+    <snapshotRepository>
+      <id>github</id>
+      <name>GitHub Packages</name>
+      <url>https://maven.pkg.github.com/nuxeo/cic-java-sdk</url>
+    </snapshotRepository>
+  </distributionManagement>
+
+  <properties>
+    <dependencies.junit-bom.version>6.0.3</dependencies.junit-bom.version>
+    <maven.compiler.release>17</maven.compiler.release>
+    <maven-plugin.spotless.version>3.2.1</maven-plugin.spotless.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- Self dependencies -->
+      <dependency>
+        <groupId>org.hyland.sdk</groupId>
+        <artifactId>cic-http-client</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.hyland.sdk</groupId>
+        <artifactId>cic-http-client-jackson2</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.hyland.sdk</groupId>
+        <artifactId>cic-ingest</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <!-- External dependencies - POM imports -->
+      <dependency>
+        <groupId>org.junit</groupId>
+        <artifactId>junit-bom</artifactId>
+        <version>${dependencies.junit-bom.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <!-- External dependencies - libraries -->
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>com.diffplug.spotless</groupId>
+          <artifactId>spotless-maven-plugin</artifactId>
+          <version>${maven-plugin.spotless.version}</version>
+          <configuration>
+            <java>
+              <includes>
+                <include>src/*/java/**/*.java</include>
+              </includes>
+              <eclipse>
+                <file>sdk-formatter.xml</file>
+              </eclipse>
+              <importOrder>
+                <file>sdk.importorder</file>
+              </importOrder>
+              <endWithNewline/>
+              <indent>
+                <spaces>true</spaces>
+                <spacesPerTab>4</spacesPerTab>
+              </indent>
+              <removeUnusedImports/>
+              <forbidWildcardImports/>
+              <formatAnnotations/>
+            </java>
+            <pom>
+              <!-- will sort following https://maven.apache.org/developers/conventions/code.html#pom-code-convention -->
+              <sortPom>
+                <expandEmptyElements>false</expandEmptyElements>
+              </sortPom>
+            </pom>
+          </configuration>
+          <executions>
+            <execution>
+              <goals>
+                <goal>check</goal>
+              </goals>
+              <phase>validate</phase>
+            </execution>
+          </executions>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+
+</project>
