@@ -24,13 +24,13 @@ jobs:
           distribution: temurin
           java-version: 17
           cache: maven
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Compile
         run: mvn --batch-mode -nsu install
 
       - name: Deploy to GitHub Packages
         if: github.event_name == 'push'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mvn --batch-mode -nsu source:jar javadoc:jar deploy
