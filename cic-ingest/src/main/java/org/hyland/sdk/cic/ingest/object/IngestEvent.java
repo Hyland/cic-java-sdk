@@ -19,8 +19,10 @@
 package org.hyland.sdk.cic.ingest.object;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Optional;
 
+import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 
 /**
@@ -30,9 +32,9 @@ public class IngestEvent {
 
     protected final Type type;
 
-    protected final Instant date;
-
     protected final String objectId;
+
+    protected Instant date;
 
     protected String sourceId;
 
@@ -42,8 +44,12 @@ public class IngestEvent {
         this.type = type;
         this.date = Instant.now();
         this.objectId = objectId;
-        this.sourceId = null; // TODO check if needed, default to null in Nuxeo
+        this.sourceId = null;
         this.properties = CICObject.create();
+    }
+
+    public static Builder builder(Type type, String objectId) {
+        return new Builder(type, objectId);
     }
 
     public Type type() {
@@ -66,6 +72,64 @@ public class IngestEvent {
         return properties;
     }
 
+    public static class Builder {
+
+        private final IngestEvent event;
+
+        private Builder(Type type, String objectId) {
+            this.event = new IngestEvent(type, objectId);
+        }
+
+        public Builder sourceId(String sourceId) {
+            event.sourceId = sourceId;
+            return this;
+        }
+
+        public Builder date(Instant date) {
+            event.date = date;
+            return this;
+        }
+
+        public Builder properties(CICObject properties) {
+            event.properties = properties != null ? properties : CICObject.create();
+            return this;
+        }
+
+        public Builder putProperty(String key, String value) {
+            event.properties.putString(key, value);
+            return this;
+        }
+
+        public Builder putProperty(String key, int value) {
+            event.properties.putInt(key, value);
+            return this;
+        }
+
+        public Builder putProperty(String key, long value) {
+            event.properties.putLong(key, value);
+            return this;
+        }
+
+        public Builder putProperty(String key, boolean value) {
+            event.properties.putBoolean(key, value);
+            return this;
+        }
+
+        public Builder putProperty(String key, CICArray value) {
+            event.properties.putArray(key, value);
+            return this;
+        }
+
+        public Builder putProperty(String key, CICObject value) {
+            event.properties.putObject(key, value);
+            return this;
+        }
+
+        public IngestEvent build() {
+            return event;
+        }
+    }
+
     public enum Type {
         CREATE("create"), //
         CREATE_OR_UPDATE("createOrUpdate"), //
@@ -80,6 +144,15 @@ public class IngestEvent {
 
         public String label() {
             return label;
+        }
+    }
+
+    public static class List extends ArrayList<IngestEvent> {
+
+        public static List of(IngestEvent... events) {
+            var list = new List();
+            java.util.Collections.addAll(list, events);
+            return list;
         }
     }
 }

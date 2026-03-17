@@ -19,6 +19,8 @@
 package org.hyland.sdk.cic.ingest.mapper;
 
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
+import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
+import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 import org.hyland.sdk.cic.ingest.object.IngestEvent;
 
@@ -36,5 +38,19 @@ class IngestEventMapper implements CICMapper<IngestEvent> {
         event.sourceId().ifPresent(sourceId -> cicObject.putString("sourceId", sourceId));
         cicObject.putObject("properties", event.properties());
         return cicObject;
+    }
+
+    static class ListMapper implements CICMapper<IngestEvent.List> {
+
+        protected final IngestEventMapper innerMapper = new IngestEventMapper();
+
+        @Override
+        public CICNode toCICNode(IngestEvent.List events) {
+            var cicArray = CICArray.create();
+            for (IngestEvent event : events) {
+                cicArray.addObject(innerMapper.toCICNode(event));
+            }
+            return cicArray;
+        }
     }
 }

@@ -51,6 +51,7 @@
     <dependencies.junit-bom.version>6.0.3</dependencies.junit-bom.version>
     <maven.compiler.release>17</maven.compiler.release>
     <maven-plugin.spotless.version>3.2.1</maven-plugin.spotless.version>
+    <dependencies.jsonassert.version>1.5.3</dependencies.jsonassert.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
@@ -88,6 +89,13 @@
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.skyscreamer</groupId>
+      <artifactId>jsonassert</artifactId>
+      <version>${dependencies.jsonassert.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

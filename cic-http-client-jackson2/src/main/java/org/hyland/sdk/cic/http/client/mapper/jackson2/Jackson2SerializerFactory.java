@@ -22,10 +22,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 
 import org.hyland.sdk.cic.http.client.mapper.MapperService.SerializerFactory;
+import org.hyland.sdk.cic.http.client.mapper.jackson2.serializer.CICArrayDeserializer;
+import org.hyland.sdk.cic.http.client.mapper.jackson2.serializer.CICArraySerializer;
 import org.hyland.sdk.cic.http.client.mapper.jackson2.serializer.CICNodeDeserializer;
 import org.hyland.sdk.cic.http.client.mapper.jackson2.serializer.CICObjectDeserializer;
+import org.hyland.sdk.cic.http.client.mapper.jackson2.serializer.CICObjectSerializer;
+import org.hyland.sdk.cic.http.client.mapper.jackson2.serializer.CICPrimitiveSerializer;
+import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
+import org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive;
 
 /**
  * @since 1.0.0
@@ -38,6 +44,15 @@ public class Jackson2SerializerFactory implements SerializerFactory {
         var module = new SimpleModule();
         module.addDeserializer(CICNode.class, new CICNodeDeserializer());
         module.addDeserializer(CICObject.class, new CICObjectDeserializer());
+        module.addDeserializer(CICArray.class, new CICArrayDeserializer());
+        module.addSerializer(CICObject.class, new CICObjectSerializer());
+        module.addSerializer(CICArray.class, new CICArraySerializer());
+        module.addSerializer(CICPrimitive.CICBoolean.class, new CICPrimitiveSerializer());
+        module.addSerializer(CICPrimitive.CICInt.class, new CICPrimitiveSerializer());
+        module.addSerializer(CICPrimitive.CICLong.class, new CICPrimitiveSerializer());
+        module.addSerializer(CICPrimitive.CICString.class, new CICPrimitiveSerializer());
+        module.addSerializer(CICPrimitive.CICDouble.class, new CICPrimitiveSerializer());
+        module.addSerializer(CICPrimitive.CICNull.class, new CICPrimitiveSerializer());
 
         var objectMapper = new ObjectMapper();
         objectMapper.registerModule(module);

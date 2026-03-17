@@ -46,12 +46,24 @@ import org.hyland.sdk.cic.ingest.object.PreSignedUrl;
  */
 public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
 
+    private final String ingestionEventsPath;
+
+    private final String presignedUrlsPath;
+
+    private final String checkDigestPath;
+
+    private final int presignedUrlsCount;
+
     // ---------------
     // Instantiation
     // ---------------
 
     protected IngestHttpClient(Builder builder) {
         super(builder);
+        this.ingestionEventsPath = builder.ingestionEventsPath;
+        this.presignedUrlsPath = builder.presignedUrlsPath;
+        this.checkDigestPath = builder.checkDigestPath;
+        this.presignedUrlsCount = builder.presignedUrlsCount;
     }
 
     public static Builder from() {
@@ -80,9 +92,7 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
      * @throws CICSdkException if the request fails or returns an unexpected status code
      */
     public boolean checkDigest(String documentId, String digest) {
-        var request = this.requestBuilder(GET, "/v1/check-digest/" + documentId)
-                          .queryParameter("digest", digest)
-                          .build();
+        var request = this.requestBuilder(GET, checkDigestPath + documentId).queryParameter("digest", digest).build();
 
         var response = sendThenReadAsString(request);
         if (ErrorUtils.isUnexpectedStatusCode(response.statusCode())) {
@@ -100,9 +110,9 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
      * @throws CICSdkException if the request fails or returns a non-202 status code
      */
     public void ingest(IngestEvent event) {
-        var request = this.requestBuilder(POST, "/v2/ingestion-events")
+        var request = this.requestBuilder(POST, ingestionEventsPath)
                           .header("Content-Type", "application/json")
-                          .entity(new CICEntity(event))
+                          .entity(new CICEntity(IngestEvent.List.of(event)))
                           .build();
 
         var response = sendThenReadAsString(request);
@@ -119,8 +129,8 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
      * @return a list of {@link PreSignedUrl}
      */
     public List<PreSignedUrl> retrievePreSignedUrls() {
-        var request = this.requestBuilder(POST, "/v1/presigned-urls")
-                          .queryParameter("count", "100") // TODO make it configurable
+        var request = this.requestBuilder(POST, presignedUrlsPath)
+                          .queryParameter("count", String.valueOf(presignedUrlsCount))
                           .build();
         return sendThenMapAs(request, PreSignedUrl.List.class);
     }
@@ -136,7 +146,7 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
         try {
             // presigned url could be anywhere, so build a request from the ground
             var jdkRequest = HttpRequest.newBuilder(URI.create(preSignedUrl))
-                                        .POST(HttpRequest.BodyPublishers.ofInputStream(blob::getInputStream))
+                                        .PUT(HttpRequest.BodyPublishers.ofInputStream(blob::getInputStream))
                                         .build();
             var jdkResponse = client.send(jdkRequest, HttpResponse.BodyHandlers.ofString());
             if (jdkResponse.statusCode() != 200) {
@@ -152,6 +162,14 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
     }
 
     public static class Builder extends AbstractAuthenticatedHttpClientBuilder<Builder, IngestHttpClient> {
+
+        private String ingestionEventsPath = "/v2/ingestion-events";
+
+        private String presignedUrlsPath = "/v1/presigned-urls";
+
+        private String checkDigestPath = "/v1/check-digest/";
+
+        private int presignedUrlsCount = 100;
 
         /**
          * Creates a builder for IngestHttpClient.
@@ -172,6 +190,60 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
          */
         public Builder hxpEnvironment(String environment) {
             return header("hxp-environment", environment);
+        }
+
+        /**
+         * Sets the User-Agent header.
+         *
+         * @param userAgent the user agent value
+         * @return this builder
+         */
+        public Builder userAgent(String userAgent) {
+            return header("User-Agent", userAgent);
+        }
+
+        /**
+         * Sets the ingestion events endpoint path.
+         *
+         * @param ingestionEventsPath the path for ingestion events endpoint
+         * @return this builder
+         */
+        public Builder ingestionEventsPath(String ingestionEventsPath) {
+            this.ingestionEventsPath = ingestionEventsPath;
+            return this;
+        }
+
+        /**
+         * Sets the presigned URLs endpoint path.
+         *
+         * @param presignedUrlsPath the path for presigned URLs endpoint
+         * @return this builder
+         */
+        public Builder presignedUrlsPath(String presignedUrlsPath) {
+            this.presignedUrlsPath = presignedUrlsPath;
+            return this;
+        }
+
+        /**
+         * Sets the check digest endpoint path.
+         *
+         * @param checkDigestPath the path for check digest endpoint (should end with /)
+         * @return this builder
+         */
+        public Builder checkDigestPath(String checkDigestPath) {
+            this.checkDigestPath = checkDigestPath;
+            return this;
+        }
+
+        /**
+         * Sets the number of pre-signed URLs to retrieve in a single request.
+         *
+         * @param count
+         * @return
+         */
+        public Builder presignedUrlsCount(int count) {
+            this.presignedUrlsCount = count;
+            return this;
         }
 
         @Override

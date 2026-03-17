@@ -19,9 +19,11 @@
 package org.hyland.sdk.cic.ingest;
 
 import java.util.Deque;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 import org.hyland.sdk.cic.http.client.mapper.object.CICBlob;
+import org.hyland.sdk.cic.ingest.object.IngestEvent;
 import org.hyland.sdk.cic.ingest.object.PreSignedUrl;
 
 /**
@@ -37,13 +39,18 @@ public class IngestService {
         this.httpClient = httpClient;
     }
 
-    public void uploadBlobIfNeeded(String documentId, CICBlob blob) {
+    public Optional<PreSignedUrl> uploadBlobIfNeeded(String documentId, CICBlob blob) {
         if (blob.getDigest().isPresent() && httpClient.checkDigest(documentId, blob.getDigest().get())) {
             // document already have the blob, no need to upload it again
-            return;
+            return Optional.empty();
         }
         var preSignedUrl = getPreSignedUrl();
         httpClient.upload(preSignedUrl.url(), blob);
+        return Optional.of(preSignedUrl);
+    }
+
+    public void ingest(IngestEvent event) {
+        httpClient.ingest(event);
     }
 
     protected PreSignedUrl getPreSignedUrl() {

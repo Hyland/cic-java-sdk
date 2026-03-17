@@ -38,6 +38,8 @@ public interface CICArray extends CICNode {
 
     String getString(int index);
 
+    double getDouble(int index);
+
     void addArray(CICArray value);
 
     void addBoolean(boolean value);
@@ -50,7 +52,11 @@ public interface CICArray extends CICNode {
 
     void addString(String value);
 
+    void addDouble(double value);
+
     List<CICObject> toListObject();
+
+    List<CICNode> getElements();
 
     static CICArray create() {
         var array = new ArrayList<CICNode>();
@@ -117,9 +123,24 @@ public interface CICArray extends CICNode {
             }
 
             @Override
+            public double getDouble(int index) {
+                return ((CICPrimitive.CICDouble) array.get(index)).value();
+            }
+
+            @Override
+            public void addDouble(double value) {
+                array.add(new CICPrimitive.CICDouble(value));
+            }
+
+            @Override
             @SuppressWarnings("unchecked")
             public List<CICObject> toListObject() {
                 return (List<CICObject>) ((List<?>) array);
+            }
+
+            @Override
+            public List<CICNode> getElements() {
+                return array;
             }
         };
     }

@@ -48,7 +48,7 @@ public class Jackson2Serializer implements CICSerializer {
     @Override
     public String writeAsString(CICNode node) {
         try {
-            return objectMapper.writerFor(CICNode.class).writeValueAsString(node);
+            return objectMapper.writeValueAsString(node);
         } catch (JsonProcessingException e) {
             throw new CICSdkException("Unable to write json", e);
         }
