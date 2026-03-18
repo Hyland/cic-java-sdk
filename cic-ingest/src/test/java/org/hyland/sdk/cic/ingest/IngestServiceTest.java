@@ -67,30 +67,33 @@ class IngestServiceTest {
 
     @Test
     void testUploadBlobIfNeededWithDigestExists() {
-        String documentId = "doc123";
+        String sourceId = "source-1";
+        String objectId = "doc123";
         String digest = "sha256:abc123";
         CICBlob blob = createTestBlob(digest);
 
         httpClient.digestCheckResult = true;
 
-        service.uploadBlobIfNeeded(documentId, blob);
+        service.uploadBlobIfNeeded(sourceId, objectId, blob);
 
         assertEquals(1, httpClient.checkDigestCalls.size());
-        assertEquals(documentId, httpClient.checkDigestCalls.get(0).documentId());
+        assertEquals(sourceId, httpClient.checkDigestCalls.get(0).sourceId());
+        assertEquals(objectId, httpClient.checkDigestCalls.get(0).objectId());
         assertEquals(digest, httpClient.checkDigestCalls.get(0).digest());
         assertTrue(httpClient.uploadCalls.isEmpty(), "Upload should not be called when digest exists");
     }
 
     @Test
     void testUploadBlobIfNeededWithDigestNotExists() {
-        String documentId = "doc123";
+        String sourceId = "source-1";
+        String objectId = "doc123";
         String digest = "sha256:xyz789";
         CICBlob blob = createTestBlob(digest);
 
         httpClient.digestCheckResult = false;
         httpClient.preSignedUrls.add(new PreSignedUrl("url-1", "https://acme.com/upload1"));
 
-        service.uploadBlobIfNeeded(documentId, blob);
+        service.uploadBlobIfNeeded(sourceId, objectId, blob);
 
         assertEquals(1, httpClient.checkDigestCalls.size());
         assertEquals(1, httpClient.uploadCalls.size());
@@ -100,12 +103,13 @@ class IngestServiceTest {
 
     @Test
     void testUploadBlobIfNeededWithoutDigest() {
-        String documentId = "doc123";
+        String sourceId = "source-1";
+        String objectId = "doc123";
         CICBlob blob = createTestBlob(null);
 
         httpClient.preSignedUrls.add(new PreSignedUrl("url-1", "https://acme.com/upload1"));
 
-        service.uploadBlobIfNeeded(documentId, blob);
+        service.uploadBlobIfNeeded(sourceId, objectId, blob);
 
         assertTrue(httpClient.checkDigestCalls.isEmpty(), "Digest check should not be called without digest");
         assertEquals(1, httpClient.uploadCalls.size());
@@ -120,8 +124,8 @@ class IngestServiceTest {
         CICBlob blob1 = createTestBlob(null);
         CICBlob blob2 = createTestBlob(null);
 
-        service.uploadBlobIfNeeded("doc1", blob1);
-        service.uploadBlobIfNeeded("doc2", blob2);
+        service.uploadBlobIfNeeded("source-1", "doc1", blob1);
+        service.uploadBlobIfNeeded("source-1", "doc2", blob2);
 
         assertEquals(1, httpClient.retrievePreSignedUrlsCalls, "Should only fetch pre-signed URLs once");
         assertEquals(2, httpClient.uploadCalls.size());
@@ -136,11 +140,11 @@ class IngestServiceTest {
         CICBlob blob1 = createTestBlob(null);
         CICBlob blob2 = createTestBlob(null);
 
-        service.uploadBlobIfNeeded("doc1", blob1);
+        service.uploadBlobIfNeeded("source-1", "doc1", blob1);
 
         httpClient.preSignedUrls.add(new PreSignedUrl("url-2", "https://acme.com/upload2"));
 
-        service.uploadBlobIfNeeded("doc2", blob2);
+        service.uploadBlobIfNeeded("source-1", "doc2", blob2);
 
         assertEquals(2, httpClient.retrievePreSignedUrlsCalls, "Should fetch pre-signed URLs again when exhausted");
     }
@@ -159,7 +163,7 @@ class IngestServiceTest {
         };
     }
 
-    private record CheckDigestCall(String documentId, String digest) {
+    private record CheckDigestCall(String sourceId, String objectId, String digest) {
     }
 
     private record UploadCall(String url, CICBlob blob) {
@@ -190,8 +194,8 @@ class IngestServiceTest {
         }
 
         @Override
-        public boolean checkDigest(String documentId, String digest) {
-            checkDigestCalls.add(new CheckDigestCall(documentId, digest));
+        public boolean checkDigest(String sourceId, String objectId, String digest) {
+            checkDigestCalls.add(new CheckDigestCall(sourceId, objectId, digest));
             return digestCheckResult;
         }
 

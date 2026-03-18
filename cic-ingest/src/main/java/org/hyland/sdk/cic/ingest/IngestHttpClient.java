@@ -86,20 +86,31 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
     /**
      * Checks if a document already contains a blob with the given digest.
      *
-     * @param documentId the document identifier
+     * @param sourceId the content source identifier
+     * @param objectId the content identifier in the source repository
      * @param digest the blob digest
-     * @return true if the blob exists, false otherwise
-     * @throws CICSdkException if the request fails or returns an unexpected status code
+     * @return true if the blob exists, false if not found (404) or exists=false in response
+     * @throws CICSdkException if the request fails or returns an unexpected status code (400, 401, 403, 500)
      */
-    public boolean checkDigest(String documentId, String digest) {
-        var request = this.requestBuilder(GET, checkDigestPath + documentId).queryParameter("digest", digest).build();
+    public boolean checkDigest(String sourceId, String objectId, String digest) {
+        var request = this.requestBuilder(GET, checkDigestPath + sourceId + "/" + objectId)
+                          .queryParameter("digest", digest)
+                          .build();
 
         var response = sendThenReadAsString(request);
-        if (ErrorUtils.isUnexpectedStatusCode(response.statusCode())) {
-            return false;
-        } else {
+        int statusCode = response.statusCode();
+
+        if (statusCode == 200) {
             var cicObject = MapperService.read(response.body(), CICObject.class);
             return cicObject.getBoolean("exists", false);
+        } else if (statusCode == 404) {
+            return false;
+        } else if (ErrorUtils.isUnexpectedStatusCode(statusCode)) {
+            ErrorUtils.throwException(response,
+                    "Failed to check digest, HTTP response returned with status code: " + statusCode);
+            return false;
+        } else {
+            return false;
         }
     }
 

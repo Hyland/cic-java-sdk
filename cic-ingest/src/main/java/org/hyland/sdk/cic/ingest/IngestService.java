@@ -39,8 +39,8 @@ public class IngestService {
         this.httpClient = httpClient;
     }
 
-    public Optional<PreSignedUrl> uploadBlobIfNeeded(String documentId, CICBlob blob) {
-        if (blob.getDigest().isPresent() && httpClient.checkDigest(documentId, blob.getDigest().get())) {
+    public Optional<PreSignedUrl> uploadBlobIfNeeded(String sourceId, String objectId, CICBlob blob) {
+        if (blob.getDigest().isPresent() && httpClient.checkDigest(sourceId, objectId, blob.getDigest().get())) {
             // document already have the blob, no need to upload it again
             return Optional.empty();
         }
