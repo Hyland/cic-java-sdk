@@ -20,7 +20,7 @@ package org.hyland.sdk.cic.ingest.object;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Optional;
+import java.util.Objects;
 
 import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
@@ -28,105 +28,120 @@ import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 /**
  * @since 1.0.0
  */
-public class IngestEvent {
+public record IngestEvent(Type type, String objectId, Instant date, String sourceId, CICObject properties) {
 
-    protected final Type type;
+    public IngestEvent {
+        Objects.requireNonNull(type, "type cannot be null");
+        Objects.requireNonNull(objectId, "objectId cannot be null");
+        if (objectId.isBlank()) {
+            throw new IllegalArgumentException("objectId cannot be blank");
+        }
+        Objects.requireNonNull(date, "date cannot be null");
+        Objects.requireNonNull(properties, "properties cannot be null");
 
-    protected final String objectId;
+        var defensiveCopy = CICObject.create();
+        properties.getProperties().forEach(defensiveCopy.getProperties()::put);
+        properties = defensiveCopy;
+    }
 
-    protected Instant date;
-
-    protected String sourceId;
-
-    protected CICObject properties;
-
-    public IngestEvent(Type type, String objectId) {
-        this.type = type;
-        this.date = Instant.now();
-        this.objectId = objectId;
-        this.sourceId = null;
-        this.properties = CICObject.create();
+    public CICObject properties() {
+        var copy = CICObject.create();
+        properties.getProperties().forEach(copy.getProperties()::put);
+        return copy;
     }
 
     public static Builder builder(Type type, String objectId) {
         return new Builder(type, objectId);
     }
 
-    public Type type() {
-        return type;
-    }
+    public static final class Builder {
 
-    public Instant date() {
-        return date;
-    }
+        private final Type type;
 
-    public String objectId() {
-        return objectId;
-    }
+        private final String objectId;
 
-    public Optional<String> sourceId() {
-        return Optional.ofNullable(sourceId);
-    }
+        private Instant date;
 
-    public CICObject properties() {
-        return properties;
-    }
+        private String sourceId;
 
-    public static class Builder {
-
-        private final IngestEvent event;
+        private CICObject properties;
 
         private Builder(Type type, String objectId) {
-            this.event = new IngestEvent(type, objectId);
+            this.type = Objects.requireNonNull(type, "type cannot be null");
+            this.objectId = Objects.requireNonNull(objectId, "objectId cannot be null");
+            this.date = Instant.now();
+            this.sourceId = null;
+            this.properties = CICObject.create();
         }
 
         public Builder sourceId(String sourceId) {
-            event.sourceId = sourceId;
+            this.sourceId = sourceId;
             return this;
         }
 
         public Builder date(Instant date) {
-            event.date = date;
+            this.date = Objects.requireNonNull(date, "date cannot be null");
             return this;
         }
 
         public Builder properties(CICObject properties) {
-            event.properties = properties != null ? properties : CICObject.create();
+            if (properties == null) {
+                this.properties = CICObject.create();
+            } else {
+                var copy = CICObject.create();
+                properties.getProperties().forEach(copy.getProperties()::put);
+                this.properties = copy;
+            }
             return this;
         }
 
         public Builder putProperty(String key, String value) {
-            event.properties.putString(key, value);
+            Objects.requireNonNull(key, "property key cannot be null");
+            Objects.requireNonNull(value, "property value cannot be null");
+            this.properties.putString(key, value);
             return this;
         }
 
         public Builder putProperty(String key, int value) {
-            event.properties.putInt(key, value);
+            Objects.requireNonNull(key, "property key cannot be null");
+            this.properties.putInt(key, value);
             return this;
         }
 
         public Builder putProperty(String key, long value) {
-            event.properties.putLong(key, value);
+            Objects.requireNonNull(key, "property key cannot be null");
+            this.properties.putLong(key, value);
+            return this;
+        }
+
+        public Builder putProperty(String key, double value) {
+            Objects.requireNonNull(key, "property key cannot be null");
+            this.properties.putDouble(key, value);
             return this;
         }
 
         public Builder putProperty(String key, boolean value) {
-            event.properties.putBoolean(key, value);
+            Objects.requireNonNull(key, "property key cannot be null");
+            this.properties.putBoolean(key, value);
             return this;
         }
 
         public Builder putProperty(String key, CICArray value) {
-            event.properties.putArray(key, value);
+            Objects.requireNonNull(key, "property key cannot be null");
+            Objects.requireNonNull(value, "property value cannot be null");
+            this.properties.putArray(key, value);
             return this;
         }
 
         public Builder putProperty(String key, CICObject value) {
-            event.properties.putObject(key, value);
+            Objects.requireNonNull(key, "property key cannot be null");
+            Objects.requireNonNull(value, "property value cannot be null");
+            this.properties.putObject(key, value);
             return this;
         }
 
         public IngestEvent build() {
-            return event;
+            return new IngestEvent(type, objectId, date, sourceId, properties);
         }
     }
 
