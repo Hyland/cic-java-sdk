@@ -50,7 +50,7 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
 
     private static final String PRESIGNED_URLS_PATH = "/v1/presigned-urls";
 
-    private static final String CHECK_DIGEST_PATH = "/v1/check-digest/";
+    private static final String CHECK_DIGEST_PATH = "/v1/check-digest";
 
     private final int presignedUrlsCount;
 
@@ -90,7 +90,7 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
      * @throws CICSdkException if the request fails or returns an unexpected status code (400, 401, 403, 500)
      */
     public boolean checkDigest(String sourceId, String objectId, String digest) {
-        var request = this.requestBuilder(GET, CHECK_DIGEST_PATH + sourceId + "/" + objectId)
+        var request = this.requestBuilder(GET, CHECK_DIGEST_PATH + "/" + sourceId + "/" + objectId)
                           .queryParameter("digest", digest)
                           .build();
 
