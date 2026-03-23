@@ -53,8 +53,7 @@ class IngestServiceTest {
 
     @Test
     void testIngest() {
-        var event = IngestEvent.builder(IngestEvent.Type.CREATE, "doc123")
-                               .sourceId("source-1")
+        var event = IngestEvent.builder(IngestEvent.Type.CREATE, "source-1", "doc123")
                                .date(Instant.ofEpochMilli(1609459200000L))
                                .putProperty("title", "Test Document")
                                .build();

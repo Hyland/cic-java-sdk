@@ -39,6 +39,10 @@ public class IngestService {
         this.httpClient = httpClient;
     }
 
+    public Optional<PreSignedUrl> uploadBlobIfNeeded(IngestEvent event, CICBlob blob) {
+        return uploadBlobIfNeeded(event.sourceId(), event.objectId(), blob);
+    }
+
     public Optional<PreSignedUrl> uploadBlobIfNeeded(String sourceId, String objectId, CICBlob blob) {
         if (blob.getDigest().isPresent() && httpClient.checkDigest(sourceId, objectId, blob.getDigest().get())) {
             // document already have the blob, no need to upload it again

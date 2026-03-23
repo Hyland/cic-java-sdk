@@ -80,7 +80,7 @@ public interface CICObject extends CICNode {
 
             @Override
             public Map<String, CICNode> getProperties() {
-                return properties;
+                return Map.copyOf(properties);
             }
 
             @Override

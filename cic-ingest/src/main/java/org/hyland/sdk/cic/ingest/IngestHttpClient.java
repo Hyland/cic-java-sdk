@@ -46,11 +46,11 @@ import org.hyland.sdk.cic.ingest.object.PreSignedUrl;
  */
 public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
 
-    private final String ingestionEventsPath;
+    private static final String INGESTION_EVENTS_PATH = "/v2/ingestion-events";
 
-    private final String presignedUrlsPath;
+    private static final String PRESIGNED_URLS_PATH = "/v1/presigned-urls";
 
-    private final String checkDigestPath;
+    private static final String CHECK_DIGEST_PATH = "/v1/check-digest/";
 
     private final int presignedUrlsCount;
 
@@ -60,9 +60,6 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
 
     protected IngestHttpClient(Builder builder) {
         super(builder);
-        this.ingestionEventsPath = builder.ingestionEventsPath;
-        this.presignedUrlsPath = builder.presignedUrlsPath;
-        this.checkDigestPath = builder.checkDigestPath;
         this.presignedUrlsCount = builder.presignedUrlsCount;
     }
 
@@ -93,7 +90,7 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
      * @throws CICSdkException if the request fails or returns an unexpected status code (400, 401, 403, 500)
      */
     public boolean checkDigest(String sourceId, String objectId, String digest) {
-        var request = this.requestBuilder(GET, checkDigestPath + sourceId + "/" + objectId)
+        var request = this.requestBuilder(GET, CHECK_DIGEST_PATH + sourceId + "/" + objectId)
                           .queryParameter("digest", digest)
                           .build();
 
@@ -121,7 +118,7 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
      * @throws CICSdkException if the request fails or returns a non-202 status code
      */
     public void ingest(IngestEvent event) {
-        var request = this.requestBuilder(POST, ingestionEventsPath)
+        var request = this.requestBuilder(POST, INGESTION_EVENTS_PATH)
                           .header("Content-Type", "application/json")
                           .entity(new CICEntity(IngestEvent.List.of(event)))
                           .build();
@@ -140,7 +137,7 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
      * @return a list of {@link PreSignedUrl}
      */
     public List<PreSignedUrl> retrievePreSignedUrls() {
-        var request = this.requestBuilder(POST, presignedUrlsPath)
+        var request = this.requestBuilder(POST, PRESIGNED_URLS_PATH)
                           .queryParameter("count", String.valueOf(presignedUrlsCount))
                           .build();
         return sendThenMapAs(request, PreSignedUrl.List.class);
@@ -174,12 +171,6 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
 
     public static class Builder extends AbstractAuthenticatedHttpClientBuilder<Builder, IngestHttpClient> {
 
-        private String ingestionEventsPath = "/v2/ingestion-events";
-
-        private String presignedUrlsPath = "/v1/presigned-urls";
-
-        private String checkDigestPath = "/v1/check-digest/";
-
         private int presignedUrlsCount = 100;
 
         /**
@@ -201,49 +192,6 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
          */
         public Builder hxpEnvironment(String environment) {
             return header("hxp-environment", environment);
-        }
-
-        /**
-         * Sets the User-Agent header.
-         *
-         * @param userAgent the user agent value
-         * @return this builder
-         */
-        public Builder userAgent(String userAgent) {
-            return header("User-Agent", userAgent);
-        }
-
-        /**
-         * Sets the ingestion events endpoint path.
-         *
-         * @param ingestionEventsPath the path for ingestion events endpoint
-         * @return this builder
-         */
-        public Builder ingestionEventsPath(String ingestionEventsPath) {
-            this.ingestionEventsPath = ingestionEventsPath;
-            return this;
-        }
-
-        /**
-         * Sets the presigned URLs endpoint path.
-         *
-         * @param presignedUrlsPath the path for presigned URLs endpoint
-         * @return this builder
-         */
-        public Builder presignedUrlsPath(String presignedUrlsPath) {
-            this.presignedUrlsPath = presignedUrlsPath;
-            return this;
-        }
-
-        /**
-         * Sets the check digest endpoint path.
-         *
-         * @param checkDigestPath the path for check digest endpoint (should end with /)
-         * @return this builder
-         */
-        public Builder checkDigestPath(String checkDigestPath) {
-            this.checkDigestPath = checkDigestPath;
-            return this;
         }
 
         /**

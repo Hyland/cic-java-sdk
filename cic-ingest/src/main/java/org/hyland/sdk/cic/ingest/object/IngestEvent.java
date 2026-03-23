@@ -20,6 +20,7 @@ package org.hyland.sdk.cic.ingest.object;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Objects;
 
 import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
@@ -28,55 +29,44 @@ import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 /**
  * @since 1.0.0
  */
-public record IngestEvent(Type type, String objectId, Instant date, String sourceId, CICObject properties) {
+public record IngestEvent(Type type, String sourceId, String objectId, Instant date, CICObject properties) {
 
     public IngestEvent {
         Objects.requireNonNull(type, "type cannot be null");
+        Objects.requireNonNull(sourceId, "sourceId cannot be null");
+        if (sourceId.isBlank()) {
+            throw new IllegalArgumentException("sourceId cannot be blank");
+        }
         Objects.requireNonNull(objectId, "objectId cannot be null");
         if (objectId.isBlank()) {
             throw new IllegalArgumentException("objectId cannot be blank");
         }
         Objects.requireNonNull(date, "date cannot be null");
         Objects.requireNonNull(properties, "properties cannot be null");
-
-        var defensiveCopy = CICObject.create();
-        properties.getProperties().forEach(defensiveCopy.getProperties()::put);
-        properties = defensiveCopy;
     }
 
-    public CICObject properties() {
-        var copy = CICObject.create();
-        properties.getProperties().forEach(copy.getProperties()::put);
-        return copy;
-    }
-
-    public static Builder builder(Type type, String objectId) {
-        return new Builder(type, objectId);
+    public static Builder builder(Type type, String sourceId, String objectId) {
+        return new Builder(type, sourceId, objectId);
     }
 
     public static final class Builder {
 
         private final Type type;
 
+        private final String sourceId;
+
         private final String objectId;
 
         private Instant date;
 
-        private String sourceId;
-
         private CICObject properties;
 
-        private Builder(Type type, String objectId) {
+        private Builder(Type type, String sourceId, String objectId) {
             this.type = Objects.requireNonNull(type, "type cannot be null");
+            this.sourceId = Objects.requireNonNull(sourceId, "sourceId cannot be null");
             this.objectId = Objects.requireNonNull(objectId, "objectId cannot be null");
             this.date = Instant.now();
-            this.sourceId = null;
             this.properties = CICObject.create();
-        }
-
-        public Builder sourceId(String sourceId) {
-            this.sourceId = sourceId;
-            return this;
         }
 
         public Builder date(Instant date) {
@@ -84,14 +74,12 @@ public record IngestEvent(Type type, String objectId, Instant date, String sourc
             return this;
         }
 
+        /**
+         * <b>Note:</b> This API directly exposes internal CIC object types and is considered beta.
+         * Avoid building deep dependencies on it as the property format may evolve with future CIC REST API changes.
+         */
         public Builder properties(CICObject properties) {
-            if (properties == null) {
-                this.properties = CICObject.create();
-            } else {
-                var copy = CICObject.create();
-                properties.getProperties().forEach(copy.getProperties()::put);
-                this.properties = copy;
-            }
+            this.properties = Objects.requireNonNullElseGet(properties, CICObject::create);
             return this;
         }
 
@@ -126,6 +114,10 @@ public record IngestEvent(Type type, String objectId, Instant date, String sourc
             return this;
         }
 
+        /**
+         * <b>Note:</b> This API directly exposes internal CIC object types and is considered beta.
+         * Avoid building deep dependencies on it as the property format may evolve with future CIC REST API changes.
+         */
         public Builder putProperty(String key, CICArray value) {
             Objects.requireNonNull(key, "property key cannot be null");
             Objects.requireNonNull(value, "property value cannot be null");
@@ -133,6 +125,10 @@ public record IngestEvent(Type type, String objectId, Instant date, String sourc
             return this;
         }
 
+        /**
+         * <b>Note:</b> This API directly exposes internal CIC object types and is considered beta.
+         * Avoid building deep dependencies on it as the property format may evolve with future CIC REST API changes.
+         */
         public Builder putProperty(String key, CICObject value) {
             Objects.requireNonNull(key, "property key cannot be null");
             Objects.requireNonNull(value, "property value cannot be null");
@@ -141,7 +137,7 @@ public record IngestEvent(Type type, String objectId, Instant date, String sourc
         }
 
         public IngestEvent build() {
-            return new IngestEvent(type, objectId, date, sourceId, properties);
+            return new IngestEvent(type, sourceId, objectId, date, properties);
         }
     }
 
@@ -166,7 +162,7 @@ public record IngestEvent(Type type, String objectId, Instant date, String sourc
 
         public static List of(IngestEvent... events) {
             var list = new List();
-            java.util.Collections.addAll(list, events);
+            Collections.addAll(list, events);
             return list;
         }
     }

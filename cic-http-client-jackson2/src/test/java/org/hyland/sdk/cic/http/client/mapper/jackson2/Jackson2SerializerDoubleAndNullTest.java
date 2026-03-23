@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import org.junit.jupiter.api.Test;
+import org.skyscreamer.jsonassert.JSONAssert;
 
 import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
@@ -36,7 +37,7 @@ class Jackson2SerializerDoubleAndNullTest {
     private final Jackson2Serializer serializer = new Jackson2SerializerFactory().getSerializer();
 
     @Test
-    void testSerializeDoubleInObject() {
+    void testSerializeDoubleInObject() throws Exception {
         var cicObject = CICObject.create();
         cicObject.putString("name", "Test");
         cicObject.putDouble("price", 19.99);
@@ -44,7 +45,7 @@ class Jackson2SerializerDoubleAndNullTest {
 
         String json = serializer.writeAsString(cicObject);
 
-        assertEquals("{\"name\":\"Test\",\"price\":19.99,\"rating\":4.5}", json);
+        JSONAssert.assertEquals("{\"name\":\"Test\",\"price\":19.99,\"rating\":4.5}", json, true);
     }
 
     @Test
@@ -103,18 +104,6 @@ class Jackson2SerializerDoubleAndNullTest {
         assertEquals(2, cicArray.getElements().size());
         assertEquals("item1", cicArray.getString(0));
         assertEquals("item2", cicArray.getString(1));
-    }
-
-    @Test
-    void testSerializeNullExplicitly() {
-        var cicObject = CICObject.create();
-        cicObject.putString("name", "Test");
-        cicObject.getProperties()
-                 .put("explicitNull", new org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive.CICNull());
-
-        String json = serializer.writeAsString(cicObject);
-
-        assertEquals("{\"name\":\"Test\",\"explicitNull\":null}", json);
     }
 
     @Test

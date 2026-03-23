@@ -135,12 +135,12 @@ public interface CICArray extends CICNode {
             @Override
             @SuppressWarnings("unchecked")
             public List<CICObject> toListObject() {
-                return (List<CICObject>) ((List<?>) array);
+                return (List<CICObject>) ((List<?>) List.copyOf(array));
             }
 
             @Override
             public List<CICNode> getElements() {
-                return array;
+                return List.copyOf(array);
             }
         };
     }
