@@ -31,9 +31,9 @@ public abstract class AbstractHttpClientBuilder<B extends AbstractHttpClientBuil
     private static final String DEFAULT_USER_AGENT;
 
     static {
-        DEFAULT_USER_AGENT = "CICJavaSDK/" + Optional.ofNullable(AbstractHttpClientBuilder.class.getPackage())
-                                                     .map(Package::getImplementationVersion)
-                                                     .orElse("unknown");
+        DEFAULT_USER_AGENT = "CICJavaSDK/"
+                + Optional.ofNullable(AbstractHttpClientBuilder.class.getPackage().getImplementationVersion())
+                          .orElse("unknown");
     }
 
     protected final String baseUrl;

@@ -29,9 +29,9 @@ import org.skyscreamer.jsonassert.JSONAssert;
 
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
-import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
-import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 import org.hyland.sdk.cic.ingest.object.IngestEvent;
+import org.hyland.sdk.cic.ingest.object.IngestEventProperties;
+import org.hyland.sdk.cic.ingest.object.PropertyArray;
 
 /**
  * @since 1.0.0
@@ -128,56 +128,31 @@ class IngestEventMapperTest {
         assertInstanceOf(IngestEventMapper.class, mapper);
     }
 
-    private CICObject buildComplexProperties() {
-        var properties = CICObject.create();
-
-        properties.putObject("createdAt", createAnnotatedProperty("2021-01-21T11:14:15.695Z", "dateCreated"));
-        properties.putObject("name", createAnnotatedProperty("purchase-order-scan.pdf", "name"));
-
-        var aspectsArray = CICArray.create();
-        aspectsArray.addString("versionable");
-        aspectsArray.addString("titled");
-        var aspectsProperty = CICObject.create();
-        aspectsProperty.putArray("value", aspectsArray);
-        aspectsProperty.putString("annotation", "aspects");
-        properties.putObject("aspectsNames", aspectsProperty);
-
-        var contentMetadata = CICObject.create();
-        contentMetadata.putLong("size", 531152L);
-        contentMetadata.putString("name", "purchase-order-scan.pdf");
-        contentMetadata.putString("content-type", "application/pdf");
-
-        var fileObject = CICObject.create();
-        fileObject.putObject("content-metadata", contentMetadata);
-
-        var contentProperty = CICObject.create();
-        contentProperty.putObject("file", fileObject);
-        properties.putObject("content", contentProperty);
-
-        var principalObject = CICObject.create();
-        principalObject.putString("id", "GROUP_EVERYONE");
-        principalObject.putString("type", "GROUP");
-
-        var readArray = CICArray.create();
-        readArray.addObject(principalObject);
-
-        var permissionsValue = CICObject.create();
-        permissionsValue.putArray("read", readArray);
-        permissionsValue.putArray("deny", CICArray.create());
-        permissionsValue.putString("principalsType", "effective");
-
-        var permissionsProperty = CICObject.create();
-        permissionsProperty.putObject("value", permissionsValue);
-        permissionsProperty.putString("annotation", "principals");
-        properties.putObject("PERMISSIONS", permissionsProperty);
-
-        return properties;
-    }
-
-    private CICObject createAnnotatedProperty(String value, String annotation) {
-        var property = CICObject.create();
-        property.putString("value", value);
-        property.putString("annotation", annotation);
-        return property;
+    private IngestEventProperties buildComplexProperties() {
+        return IngestEventProperties.builder()
+                                    .put("createdAt",
+                                            b -> b.put("value", "2021-01-21T11:14:15.695Z")
+                                                  .put("annotation", "dateCreated"))
+                                    .put("name",
+                                            b -> b.put("value", "purchase-order-scan.pdf").put("annotation", "name"))
+                                    .put("aspectsNames",
+                                            b -> b.put("value", PropertyArray.of("versionable", "titled"))
+                                                  .put("annotation", "aspects"))
+                                    .put("content",
+                                            b -> b.put("file",
+                                                    c -> c.put("content-metadata",
+                                                            d -> d.put("size", 531152L)
+                                                                  .put("name", "purchase-order-scan.pdf")
+                                                                  .put("content-type", "application/pdf"))))
+                                    .put("PERMISSIONS",
+                                            b -> b.put("value", c -> c.put("read",
+                                                    PropertyArray.of(IngestEventProperties.builder()
+                                                                                          .put("id", "GROUP_EVERYONE")
+                                                                                          .put("type", "GROUP")
+                                                                                          .build()))
+                                                                      .put("deny", PropertyArray.empty())
+                                                                      .put("principalsType", "effective"))
+                                                  .put("annotation", "principals"))
+                                    .build();
     }
 }

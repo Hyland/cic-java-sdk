@@ -65,6 +65,22 @@ class IngestServiceTest {
     }
 
     @Test
+    void testUploadBlobIfNeededWithEvent() {
+        var event = IngestEvent.builder(IngestEvent.Type.CREATE, "source-1", "doc123").build();
+        CICBlob blob = createTestBlob("sha256:abc123");
+
+        httpClient.digestCheckResult = false;
+        httpClient.preSignedUrls.add(new PreSignedUrl("url-1", "https://localhost/upload1"));
+
+        service.uploadBlobIfNeeded(event, blob);
+
+        assertEquals(1, httpClient.checkDigestCalls.size());
+        assertEquals("source-1", httpClient.checkDigestCalls.get(0).sourceId());
+        assertEquals("doc123", httpClient.checkDigestCalls.get(0).objectId());
+        assertEquals(1, httpClient.uploadCalls.size());
+    }
+
+    @Test
     void testUploadBlobIfNeededWithDigestExists() {
         String sourceId = "source-1";
         String objectId = "doc123";
@@ -90,13 +106,13 @@ class IngestServiceTest {
         CICBlob blob = createTestBlob(digest);
 
         httpClient.digestCheckResult = false;
-        httpClient.preSignedUrls.add(new PreSignedUrl("url-1", "https://acme.com/upload1"));
+        httpClient.preSignedUrls.add(new PreSignedUrl("url-1", "https://localhost/upload1"));
 
         service.uploadBlobIfNeeded(sourceId, objectId, blob);
 
         assertEquals(1, httpClient.checkDigestCalls.size());
         assertEquals(1, httpClient.uploadCalls.size());
-        assertEquals("https://acme.com/upload1", httpClient.uploadCalls.get(0).url());
+        assertEquals("https://localhost/upload1", httpClient.uploadCalls.get(0).url());
         assertEquals(blob, httpClient.uploadCalls.get(0).blob());
     }
 
@@ -106,7 +122,7 @@ class IngestServiceTest {
         String objectId = "doc123";
         CICBlob blob = createTestBlob(null);
 
-        httpClient.preSignedUrls.add(new PreSignedUrl("url-1", "https://acme.com/upload1"));
+        httpClient.preSignedUrls.add(new PreSignedUrl("url-1", "https://localhost/upload1"));
 
         service.uploadBlobIfNeeded(sourceId, objectId, blob);
 
@@ -117,8 +133,8 @@ class IngestServiceTest {
 
     @Test
     void testGetPreSignedUrlCaching() {
-        httpClient.preSignedUrls.add(new PreSignedUrl("url-1", "https://acme.com/upload1"));
-        httpClient.preSignedUrls.add(new PreSignedUrl("url-2", "https://acme.com/upload2"));
+        httpClient.preSignedUrls.add(new PreSignedUrl("url-1", "https://localhost/upload1"));
+        httpClient.preSignedUrls.add(new PreSignedUrl("url-2", "https://localhost/upload2"));
 
         CICBlob blob1 = createTestBlob(null);
         CICBlob blob2 = createTestBlob(null);
@@ -128,20 +144,20 @@ class IngestServiceTest {
 
         assertEquals(1, httpClient.retrievePreSignedUrlsCalls, "Should only fetch pre-signed URLs once");
         assertEquals(2, httpClient.uploadCalls.size());
-        assertEquals("https://acme.com/upload1", httpClient.uploadCalls.get(0).url());
-        assertEquals("https://acme.com/upload2", httpClient.uploadCalls.get(1).url());
+        assertEquals("https://localhost/upload1", httpClient.uploadCalls.get(0).url());
+        assertEquals("https://localhost/upload2", httpClient.uploadCalls.get(1).url());
     }
 
     @Test
     void testGetPreSignedUrlRetrievesMoreWhenExhausted() {
-        httpClient.preSignedUrls.add(new PreSignedUrl("url-1", "https://acme.com/upload1"));
+        httpClient.preSignedUrls.add(new PreSignedUrl("url-1", "https://localhost/upload1"));
 
         CICBlob blob1 = createTestBlob(null);
         CICBlob blob2 = createTestBlob(null);
 
         service.uploadBlobIfNeeded("source-1", "doc1", blob1);
 
-        httpClient.preSignedUrls.add(new PreSignedUrl("url-2", "https://acme.com/upload2"));
+        httpClient.preSignedUrls.add(new PreSignedUrl("url-2", "https://localhost/upload2"));
 
         service.uploadBlobIfNeeded("source-1", "doc2", blob2);
 
@@ -183,7 +199,7 @@ class IngestServiceTest {
         List<PreSignedUrl> preSignedUrls = new ArrayList<>();
 
         public TestIngestHttpClient() {
-            super(IngestHttpClient.from("https://test.example.com",
+            super(IngestHttpClient.from("https://localhost",
                     AuthenticationHttpClient.from().clientId("test-client-id").clientSecret("test-client-secret")));
         }
 

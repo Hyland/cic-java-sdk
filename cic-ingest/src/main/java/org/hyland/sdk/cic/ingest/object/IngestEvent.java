@@ -22,14 +22,12 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Objects;
-
-import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
-import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
+import java.util.function.Consumer;
 
 /**
  * @since 1.0.0
  */
-public record IngestEvent(Type type, String sourceId, String objectId, Instant date, CICObject properties) {
+public record IngestEvent(Type type, String sourceId, String objectId, Instant date, IngestEventProperties properties) {
 
     public IngestEvent {
         Objects.requireNonNull(type, "type cannot be null");
@@ -43,6 +41,10 @@ public record IngestEvent(Type type, String sourceId, String objectId, Instant d
         }
         Objects.requireNonNull(date, "date cannot be null");
         Objects.requireNonNull(properties, "properties cannot be null");
+    }
+
+    public Builder toBuilder() {
+        return new Builder(type, sourceId, objectId).date(date).properties(properties);
     }
 
     public static Builder builder(Type type, String sourceId, String objectId) {
@@ -59,14 +61,14 @@ public record IngestEvent(Type type, String sourceId, String objectId, Instant d
 
         private Instant date;
 
-        private CICObject properties;
+        private IngestEventProperties.Builder propertiesBuilder;
 
         private Builder(Type type, String sourceId, String objectId) {
             this.type = Objects.requireNonNull(type, "type cannot be null");
             this.sourceId = Objects.requireNonNull(sourceId, "sourceId cannot be null");
             this.objectId = Objects.requireNonNull(objectId, "objectId cannot be null");
             this.date = Instant.now();
-            this.properties = CICObject.create();
+            this.propertiesBuilder = IngestEventProperties.builder();
         }
 
         public Builder date(Instant date) {
@@ -74,70 +76,54 @@ public record IngestEvent(Type type, String sourceId, String objectId, Instant d
             return this;
         }
 
-        /**
-         * <b>Note:</b> This API directly exposes internal CIC object types and is considered beta.
-         * Avoid building deep dependencies on it as the property format may evolve with future CIC REST API changes.
-         */
-        public Builder properties(CICObject properties) {
-            this.properties = Objects.requireNonNullElseGet(properties, CICObject::create);
+        public Builder properties(IngestEventProperties properties) {
+            this.propertiesBuilder = IngestEventProperties.builder(
+                    Objects.requireNonNull(properties, "properties cannot be null"));
             return this;
         }
 
         public Builder putProperty(String key, String value) {
-            Objects.requireNonNull(key, "property key cannot be null");
-            Objects.requireNonNull(value, "property value cannot be null");
-            this.properties.putString(key, value);
+            propertiesBuilder.put(key, value);
             return this;
         }
 
         public Builder putProperty(String key, int value) {
-            Objects.requireNonNull(key, "property key cannot be null");
-            this.properties.putInt(key, value);
+            propertiesBuilder.put(key, value);
             return this;
         }
 
         public Builder putProperty(String key, long value) {
-            Objects.requireNonNull(key, "property key cannot be null");
-            this.properties.putLong(key, value);
+            propertiesBuilder.put(key, value);
             return this;
         }
 
         public Builder putProperty(String key, double value) {
-            Objects.requireNonNull(key, "property key cannot be null");
-            this.properties.putDouble(key, value);
+            propertiesBuilder.put(key, value);
             return this;
         }
 
         public Builder putProperty(String key, boolean value) {
-            Objects.requireNonNull(key, "property key cannot be null");
-            this.properties.putBoolean(key, value);
+            propertiesBuilder.put(key, value);
             return this;
         }
 
-        /**
-         * <b>Note:</b> This API directly exposes internal CIC object types and is considered beta.
-         * Avoid building deep dependencies on it as the property format may evolve with future CIC REST API changes.
-         */
-        public Builder putProperty(String key, CICArray value) {
-            Objects.requireNonNull(key, "property key cannot be null");
-            Objects.requireNonNull(value, "property value cannot be null");
-            this.properties.putArray(key, value);
+        public Builder putProperty(String key, PropertyArray value) {
+            propertiesBuilder.put(key, value);
             return this;
         }
 
-        /**
-         * <b>Note:</b> This API directly exposes internal CIC object types and is considered beta.
-         * Avoid building deep dependencies on it as the property format may evolve with future CIC REST API changes.
-         */
-        public Builder putProperty(String key, CICObject value) {
-            Objects.requireNonNull(key, "property key cannot be null");
-            Objects.requireNonNull(value, "property value cannot be null");
-            this.properties.putObject(key, value);
+        public Builder putProperty(String key, IngestEventProperties value) {
+            propertiesBuilder.put(key, value);
+            return this;
+        }
+
+        public Builder putProperty(String key, Consumer<IngestEventProperties.Builder> propertiesConsumer) {
+            propertiesBuilder.put(key, propertiesConsumer);
             return this;
         }
 
         public IngestEvent build() {
-            return new IngestEvent(type, sourceId, objectId, date, properties);
+            return new IngestEvent(type, sourceId, objectId, date, propertiesBuilder.build());
         }
     }
 
@@ -158,12 +144,12 @@ public record IngestEvent(Type type, String sourceId, String objectId, Instant d
         }
     }
 
-    public static class List extends ArrayList<IngestEvent> {
+    public static class Batch extends ArrayList<IngestEvent> {
 
-        public static List of(IngestEvent... events) {
-            var list = new List();
-            Collections.addAll(list, events);
-            return list;
+        public static Batch of(IngestEvent... events) {
+            var batch = new Batch();
+            Collections.addAll(batch, events);
+            return batch;
         }
     }
 }

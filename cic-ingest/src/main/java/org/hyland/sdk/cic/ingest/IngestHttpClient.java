@@ -120,7 +120,7 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
     public void ingest(IngestEvent event) {
         var request = this.requestBuilder(POST, INGESTION_EVENTS_PATH)
                           .header("Content-Type", "application/json")
-                          .entity(new CICEntity(IngestEvent.List.of(event)))
+                          .entity(new CICEntity(IngestEvent.Batch.of(event)))
                           .build();
 
         var response = sendThenReadAsString(request);

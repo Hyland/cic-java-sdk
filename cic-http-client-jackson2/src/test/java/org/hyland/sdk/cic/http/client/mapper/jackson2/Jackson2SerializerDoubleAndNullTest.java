@@ -107,6 +107,17 @@ class Jackson2SerializerDoubleAndNullTest {
     }
 
     @Test
+    void testSerializeNullExplicitly() {
+        var cicObject = CICObject.create();
+        cicObject.putString("name", "Test");
+        cicObject.putNull("explicitNull");
+
+        String json = serializer.writeAsString(cicObject);
+
+        assertEquals("{\"name\":\"Test\",\"explicitNull\":null}", json);
+    }
+
+    @Test
     void testRoundTripWithDoubleValues() {
         var original = CICObject.create();
         original.putDouble("pi", 3.14159);

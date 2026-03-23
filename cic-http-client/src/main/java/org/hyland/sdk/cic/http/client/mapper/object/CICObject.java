@@ -18,6 +18,7 @@
  */
 package org.hyland.sdk.cic.http.client.mapper.object;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -67,6 +68,8 @@ public interface CICObject extends CICNode {
 
     void putDouble(String key, double value);
 
+    void putNull(String key);
+
     double getDouble(String key, double defaultValue);
 
     static CICObject create() {
@@ -80,7 +83,7 @@ public interface CICObject extends CICNode {
 
             @Override
             public Map<String, CICNode> getProperties() {
-                return Map.copyOf(properties);
+                return Collections.unmodifiableMap(properties);
             }
 
             @Override
@@ -227,6 +230,11 @@ public interface CICObject extends CICNode {
             @Override
             public void putDouble(String key, double value) {
                 properties.put(key, new CICDouble(value));
+            }
+
+            @Override
+            public void putNull(String key) {
+                properties.put(key, new CICPrimitive.CICNull());
             }
         };
     }
