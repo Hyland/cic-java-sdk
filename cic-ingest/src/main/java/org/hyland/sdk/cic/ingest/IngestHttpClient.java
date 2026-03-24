@@ -46,12 +46,21 @@ import org.hyland.sdk.cic.ingest.object.PreSignedUrl;
  */
 public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
 
+    private static final String INGESTION_EVENTS_PATH = "/v2/ingestion-events";
+
+    private static final String PRESIGNED_URLS_PATH = "/v1/presigned-urls";
+
+    private static final String CHECK_DIGEST_PATH = "/v1/check-digest";
+
+    private final int presignedUrlsCount;
+
     // ---------------
     // Instantiation
     // ---------------
 
     protected IngestHttpClient(Builder builder) {
         super(builder);
+        this.presignedUrlsCount = builder.presignedUrlsCount;
     }
 
     public static Builder from() {
@@ -74,22 +83,31 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
     /**
      * Checks if a document already contains a blob with the given digest.
      *
-     * @param documentId the document identifier
+     * @param sourceId the content source identifier
+     * @param objectId the content identifier in the source repository
      * @param digest the blob digest
-     * @return true if the blob exists, false otherwise
-     * @throws CICSdkException if the request fails or returns an unexpected status code
+     * @return true if the blob exists, false if not found (404) or exists=false in response
+     * @throws CICSdkException if the request fails or returns an unexpected status code (400, 401, 403, 500)
      */
-    public boolean checkDigest(String documentId, String digest) {
-        var request = this.requestBuilder(GET, "/v1/check-digest/" + documentId)
+    public boolean checkDigest(String sourceId, String objectId, String digest) {
+        var request = this.requestBuilder(GET, CHECK_DIGEST_PATH + "/" + sourceId + "/" + objectId)
                           .queryParameter("digest", digest)
                           .build();
 
         var response = sendThenReadAsString(request);
-        if (ErrorUtils.isUnexpectedStatusCode(response.statusCode())) {
-            return false;
-        } else {
+        int statusCode = response.statusCode();
+
+        if (statusCode == 200) {
             var cicObject = MapperService.read(response.body(), CICObject.class);
             return cicObject.getBoolean("exists", false);
+        } else if (statusCode == 404) {
+            return false;
+        } else if (ErrorUtils.isUnexpectedStatusCode(statusCode)) {
+            ErrorUtils.throwException(response,
+                    "Failed to check digest, HTTP response returned with status code: " + statusCode);
+            return false;
+        } else {
+            return false;
         }
     }
 
@@ -100,9 +118,9 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
      * @throws CICSdkException if the request fails or returns a non-202 status code
      */
     public void ingest(IngestEvent event) {
-        var request = this.requestBuilder(POST, "/v2/ingestion-events")
+        var request = this.requestBuilder(POST, INGESTION_EVENTS_PATH)
                           .header("Content-Type", "application/json")
-                          .entity(new CICEntity(event))
+                          .entity(new CICEntity(IngestEvent.Batch.of(event)))
                           .build();
 
         var response = sendThenReadAsString(request);
@@ -119,8 +137,8 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
      * @return a list of {@link PreSignedUrl}
      */
     public List<PreSignedUrl> retrievePreSignedUrls() {
-        var request = this.requestBuilder(POST, "/v1/presigned-urls")
-                          .queryParameter("count", "100") // TODO make it configurable
+        var request = this.requestBuilder(POST, PRESIGNED_URLS_PATH)
+                          .queryParameter("count", String.valueOf(presignedUrlsCount))
                           .build();
         return sendThenMapAs(request, PreSignedUrl.List.class);
     }
@@ -136,7 +154,7 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
         try {
             // presigned url could be anywhere, so build a request from the ground
             var jdkRequest = HttpRequest.newBuilder(URI.create(preSignedUrl))
-                                        .POST(HttpRequest.BodyPublishers.ofInputStream(blob::getInputStream))
+                                        .PUT(HttpRequest.BodyPublishers.ofInputStream(blob::getInputStream))
                                         .build();
             var jdkResponse = client.send(jdkRequest, HttpResponse.BodyHandlers.ofString());
             if (jdkResponse.statusCode() != 200) {
@@ -152,6 +170,8 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
     }
 
     public static class Builder extends AbstractAuthenticatedHttpClientBuilder<Builder, IngestHttpClient> {
+
+        private int presignedUrlsCount = 100;
 
         /**
          * Creates a builder for IngestHttpClient.
@@ -172,6 +192,17 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
          */
         public Builder hxpEnvironment(String environment) {
             return header("hxp-environment", environment);
+        }
+
+        /**
+         * Sets the number of pre-signed URLs to retrieve in a single request.
+         *
+         * @param count
+         * @return
+         */
+        public Builder presignedUrlsCount(int count) {
+            this.presignedUrlsCount = count;
+            return this;
         }
 
         @Override

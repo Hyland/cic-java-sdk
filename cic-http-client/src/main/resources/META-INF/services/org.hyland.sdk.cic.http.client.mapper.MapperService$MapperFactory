@@ -1,1 +1,2 @@
 org.hyland.sdk.cic.http.client.auth.mapper.AuthenticationMapperFactory
+org.hyland.sdk.cic.http.client.mapper.BaseMapperFactory

@@ -55,5 +55,19 @@ public sealed interface CICPrimitive<T> extends CICNode {
         }
     }
 
+    record CICDouble(double value) implements CICPrimitive<Double> {
+        @Override
+        public Double getValue() {
+            return value;
+        }
+    }
+
+    record CICNull() implements CICPrimitive<Void> {
+        @Override
+        public Void getValue() {
+            return null;
+        }
+    }
+
     T getValue();
 }

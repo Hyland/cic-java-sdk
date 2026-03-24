@@ -33,6 +33,8 @@ public class IngestMapperFactory implements MapperService.MapperFactory {
     public <T> CICMapper<T> getMapper(Class<T> type) {
         if (IngestEvent.class.isAssignableFrom(type)) {
             return (CICMapper<T>) new IngestEventMapper();
+        } else if (IngestEvent.Batch.class.isAssignableFrom(type)) {
+            return (CICMapper<T>) new IngestEventMapper.BatchMapper();
         } else if (PreSignedUrl.class.isAssignableFrom(type)) {
             return (CICMapper<T>) new PreSignedUrlMapper();
         } else if (PreSignedUrl.List.class.isAssignableFrom(type)) {

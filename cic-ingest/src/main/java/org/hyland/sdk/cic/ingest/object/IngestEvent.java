@@ -19,51 +19,112 @@
 package org.hyland.sdk.cic.ingest.object;
 
 import java.time.Instant;
-import java.util.Optional;
-
-import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
  * @since 1.0.0
  */
-public class IngestEvent {
+public record IngestEvent(Type type, String sourceId, String objectId, Instant date, IngestEventProperties properties) {
 
-    protected final Type type;
-
-    protected final Instant date;
-
-    protected final String objectId;
-
-    protected String sourceId;
-
-    protected CICObject properties;
-
-    public IngestEvent(Type type, String objectId) {
-        this.type = type;
-        this.date = Instant.now();
-        this.objectId = objectId;
-        this.sourceId = null; // TODO check if needed, default to null in Nuxeo
-        this.properties = CICObject.create();
+    public IngestEvent {
+        Objects.requireNonNull(type, "type cannot be null");
+        Objects.requireNonNull(sourceId, "sourceId cannot be null");
+        if (sourceId.isBlank()) {
+            throw new IllegalArgumentException("sourceId cannot be blank");
+        }
+        Objects.requireNonNull(objectId, "objectId cannot be null");
+        if (objectId.isBlank()) {
+            throw new IllegalArgumentException("objectId cannot be blank");
+        }
+        Objects.requireNonNull(date, "date cannot be null");
+        Objects.requireNonNull(properties, "properties cannot be null");
     }
 
-    public Type type() {
-        return type;
+    public Builder toBuilder() {
+        return new Builder(type, sourceId, objectId).date(date).properties(properties);
     }
 
-    public Instant date() {
-        return date;
+    public static Builder builder(Type type, String sourceId, String objectId) {
+        return new Builder(type, sourceId, objectId);
     }
 
-    public String objectId() {
-        return objectId;
-    }
+    public static final class Builder {
 
-    public Optional<String> sourceId() {
-        return Optional.ofNullable(sourceId);
-    }
+        private final Type type;
 
-    public CICObject properties() {
-        return properties;
+        private final String sourceId;
+
+        private final String objectId;
+
+        private Instant date;
+
+        private IngestEventProperties.Builder propertiesBuilder;
+
+        private Builder(Type type, String sourceId, String objectId) {
+            this.type = Objects.requireNonNull(type, "type cannot be null");
+            this.sourceId = Objects.requireNonNull(sourceId, "sourceId cannot be null");
+            this.objectId = Objects.requireNonNull(objectId, "objectId cannot be null");
+            this.date = Instant.now();
+            this.propertiesBuilder = IngestEventProperties.builder();
+        }
+
+        public Builder date(Instant date) {
+            this.date = Objects.requireNonNull(date, "date cannot be null");
+            return this;
+        }
+
+        public Builder properties(IngestEventProperties properties) {
+            this.propertiesBuilder = IngestEventProperties.builder(
+                    Objects.requireNonNull(properties, "properties cannot be null"));
+            return this;
+        }
+
+        public Builder putProperty(String key, String value) {
+            propertiesBuilder.put(key, value);
+            return this;
+        }
+
+        public Builder putProperty(String key, int value) {
+            propertiesBuilder.put(key, value);
+            return this;
+        }
+
+        public Builder putProperty(String key, long value) {
+            propertiesBuilder.put(key, value);
+            return this;
+        }
+
+        public Builder putProperty(String key, double value) {
+            propertiesBuilder.put(key, value);
+            return this;
+        }
+
+        public Builder putProperty(String key, boolean value) {
+            propertiesBuilder.put(key, value);
+            return this;
+        }
+
+        public Builder putProperty(String key, PropertyArray value) {
+            propertiesBuilder.put(key, value);
+            return this;
+        }
+
+        public Builder putProperty(String key, IngestEventProperties value) {
+            propertiesBuilder.put(key, value);
+            return this;
+        }
+
+        public Builder putProperty(String key, Consumer<IngestEventProperties.Builder> propertiesConsumer) {
+            propertiesBuilder.put(key, propertiesConsumer);
+            return this;
+        }
+
+        public IngestEvent build() {
+            return new IngestEvent(type, sourceId, objectId, date, propertiesBuilder.build());
+        }
     }
 
     public enum Type {
@@ -80,6 +141,15 @@ public class IngestEvent {
 
         public String label() {
             return label;
+        }
+    }
+
+    public static class Batch extends ArrayList<IngestEvent> {
+
+        public static Batch of(IngestEvent... events) {
+            var batch = new Batch();
+            Collections.addAll(batch, events);
+            return batch;
         }
     }
 }

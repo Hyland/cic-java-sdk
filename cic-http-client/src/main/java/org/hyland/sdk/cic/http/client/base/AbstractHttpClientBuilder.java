@@ -21,11 +21,20 @@ package org.hyland.sdk.cic.http.client.base;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * @since 1.0.0
  */
 public abstract class AbstractHttpClientBuilder<B extends AbstractHttpClientBuilder<B, C>, C extends AbstractHttpClient> {
+
+    private static final String DEFAULT_USER_AGENT;
+
+    static {
+        DEFAULT_USER_AGENT = "CICJavaSDK/"
+                + Optional.ofNullable(AbstractHttpClientBuilder.class.getPackage().getImplementationVersion())
+                          .orElse("unknown");
+    }
 
     protected final String baseUrl;
 
@@ -35,6 +44,7 @@ public abstract class AbstractHttpClientBuilder<B extends AbstractHttpClientBuil
 
     protected AbstractHttpClientBuilder(String baseUrl) {
         this.baseUrl = baseUrl;
+        header("User-Agent", DEFAULT_USER_AGENT);
     }
 
     public B connectTimeout(Duration connectTimeout) {
@@ -45,6 +55,10 @@ public abstract class AbstractHttpClientBuilder<B extends AbstractHttpClientBuil
     public B header(String name, String value) {
         headers.put(name, value);
         return self();
+    }
+
+    public B userAgent(String userAgent) {
+        return header("User-Agent", userAgent);
     }
 
     @SuppressWarnings("unchecked")

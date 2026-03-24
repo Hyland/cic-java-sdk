@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  * Contributors:
- *     Kevin Leturc <kevin.leturc@hyland.com>
+ *     Damian Ujma <damian.ujma@hyland.com>
  */
 package org.hyland.sdk.cic.http.client.mapper.jackson2.serializer;
 
@@ -31,41 +31,10 @@ import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 /**
  * @since 1.0.0
  */
-public class CICObjectDeserializer extends JsonDeserializer<CICObject> {
+public class CICArrayDeserializer extends JsonDeserializer<CICArray> {
 
     @Override
-    public CICObject deserialize(JsonParser parser, DeserializationContext context) throws IOException {
-        return deserializeObject(parser);
-    }
-
-    protected CICObject deserializeObject(JsonParser parser) throws IOException {
-        if (parser.currentToken() != JsonToken.START_OBJECT) {
-            throw new IOException("not at the beginning of an object");
-        }
-        var cicObject = CICObject.create();
-        while (parser.nextToken() != JsonToken.END_OBJECT) {
-            if (parser.currentToken() != JsonToken.FIELD_NAME) {
-                throw new IOException("not at the beginning of an object");
-
-            }
-            String fieldName = parser.getText();
-            switch (parser.nextToken()) {
-                case VALUE_STRING -> cicObject.putString(fieldName, parser.getText());
-                case VALUE_FALSE -> cicObject.putBoolean(fieldName, false);
-                case VALUE_TRUE -> cicObject.putBoolean(fieldName, true);
-                case VALUE_NUMBER_INT -> cicObject.putLong(fieldName, parser.getLongValue());
-                case VALUE_NUMBER_FLOAT -> cicObject.putDouble(fieldName, parser.getDoubleValue());
-                case VALUE_NULL -> {
-                    // Skip null values - they won't be included in the object
-                }
-                case START_OBJECT -> cicObject.putObject(fieldName, deserializeObject(parser));
-                case START_ARRAY -> cicObject.putArray(fieldName, deserializeArray(parser));
-            }
-        }
-        return cicObject;
-    }
-
-    protected CICArray deserializeArray(JsonParser parser) throws IOException {
+    public CICArray deserialize(JsonParser parser, DeserializationContext context) throws IOException {
         if (parser.currentToken() != JsonToken.START_ARRAY) {
             throw new IOException("not at the beginning of an array");
         }
@@ -80,8 +49,8 @@ public class CICObjectDeserializer extends JsonDeserializer<CICObject> {
                 case VALUE_NULL -> {
                     // Skip null values - they won't be included in the array
                 }
-                case START_OBJECT -> cicArray.addObject(deserializeObject(parser));
-                case START_ARRAY -> cicArray.addArray(deserializeArray(parser));
+                case START_OBJECT -> cicArray.addObject(context.readValue(parser, CICObject.class));
+                case START_ARRAY -> cicArray.addArray(context.readValue(parser, CICArray.class));
             }
         }
         return cicArray;

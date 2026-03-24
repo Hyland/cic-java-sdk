@@ -18,9 +18,12 @@
  */
 package org.hyland.sdk.cic.http.client.mapper.object;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.hyland.sdk.cic.http.client.CICSdkException;
+import org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive.CICDouble;
 
 /**
  * @since 1.0.0
@@ -28,6 +31,8 @@ import org.hyland.sdk.cic.http.client.CICSdkException;
 public interface CICObject extends CICNode {
 
     boolean isEmpty();
+
+    Map<String, CICNode> getProperties();
 
     boolean getBoolean(String key, boolean defaultValue);
 
@@ -61,6 +66,12 @@ public interface CICObject extends CICNode {
 
     void putString(String key, String value);
 
+    void putDouble(String key, double value);
+
+    void putNull(String key);
+
+    double getDouble(String key, double defaultValue);
+
     static CICObject create() {
         var properties = new LinkedHashMap<String, CICNode>();
         return new CICObject() {
@@ -68,6 +79,11 @@ public interface CICObject extends CICNode {
             @Override
             public boolean isEmpty() {
                 return properties.isEmpty();
+            }
+
+            @Override
+            public Map<String, CICNode> getProperties() {
+                return Collections.unmodifiableMap(properties);
             }
 
             @Override
@@ -172,6 +188,16 @@ public interface CICObject extends CICNode {
             }
 
             @Override
+            public double getDouble(String key, double defaultValue) {
+                if (!properties.containsKey(key)) {
+                    return defaultValue;
+                } else if (properties.get(key) instanceof CICPrimitive.CICDouble dbl) {
+                    return dbl.value();
+                }
+                throw new CICSdkException("Property: %s is not a double".formatted(key));
+            }
+
+            @Override
             public void putArray(String key, CICArray value) {
                 properties.put(key, value);
             }
@@ -201,6 +227,15 @@ public interface CICObject extends CICNode {
                 properties.put(key, new CICPrimitive.CICString(value));
             }
 
+            @Override
+            public void putDouble(String key, double value) {
+                properties.put(key, new CICDouble(value));
+            }
+
+            @Override
+            public void putNull(String key) {
+                properties.put(key, new CICPrimitive.CICNull());
+            }
         };
     }
 }

@@ -16,6 +16,11 @@
       <groupId>org.hyland.sdk</groupId>
       <artifactId>cic-http-client</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.hyland.sdk</groupId>
+      <artifactId>cic-http-client-jackson2</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
 </project>
