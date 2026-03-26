@@ -80,7 +80,6 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
         return new Builder(baseUrl, authenticationBuilder);
     }
 
-
     /**
      * Lists agents, optionally filtered by source ID.
      *
