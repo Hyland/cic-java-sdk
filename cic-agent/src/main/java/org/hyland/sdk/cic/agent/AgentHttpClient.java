@@ -31,7 +31,6 @@ import org.hyland.sdk.cic.agent.object.AgentConfiguration;
 import org.hyland.sdk.cic.agent.object.AgentSummary;
 import org.hyland.sdk.cic.agent.object.Avatar;
 import org.hyland.sdk.cic.agent.object.CreateAgent;
-import org.hyland.sdk.cic.agent.object.CreateAgent.Builder;
 import org.hyland.sdk.cic.agent.object.GuardrailsResponse;
 import org.hyland.sdk.cic.agent.object.IntegrationSubmitQuestionRequest;
 import org.hyland.sdk.cic.agent.object.LlmModel;
@@ -245,7 +244,7 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
      * @param agentId the agent ID
      * @param questionRequest the question request
      * @return the question response containing the question ID
-     * @throws CICSdkException if the request fails or returns a non-202 status code
+     * @throws CICSdkException if the request fails
      */
     public QuestionResponse submitQuestion(String agentId, SubmitQuestionRequest questionRequest) {
         var request = this.requestBuilder(POST, AGENTS_PATH + "/" + agentId + "/questions")
@@ -286,7 +285,7 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
      * @param agentId the agent ID
      * @param questionRequest the integration question request
      * @return the question response containing the question ID
-     * @throws CICSdkException if the request fails or returns a non-202 status code
+     * @throws CICSdkException if the request fails
      */
     public QuestionResponse submitIntegrationQuestion(String agentId,
             IntegrationSubmitQuestionRequest questionRequest) {

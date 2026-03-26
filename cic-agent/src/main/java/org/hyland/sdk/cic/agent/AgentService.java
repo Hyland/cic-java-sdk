@@ -215,6 +215,7 @@ public class AgentService {
      * @throws CICSdkException if the request fails
      */
     public List<AgentAvatar> getAvatarsBatch(List<String> agentIds) {
+        Objects.requireNonNull(agentIds, "agentIds cannot be null");
         return httpClient.getAvatarsBatch(agentIds);
     }
 

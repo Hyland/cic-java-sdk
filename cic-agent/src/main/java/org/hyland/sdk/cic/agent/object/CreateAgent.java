@@ -19,7 +19,6 @@
 package org.hyland.sdk.cic.agent.object;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -35,9 +34,9 @@ public record CreateAgent(String name, String description, String modelName, Str
         Objects.requireNonNull(name, "name cannot be null");
         Objects.requireNonNull(description, "description cannot be null");
         Objects.requireNonNull(modelName, "modelName cannot be null");
-        sourceIds = sourceIds != null ? Collections.unmodifiableList(sourceIds) : null;
-        accessRights = accessRights != null ? Collections.unmodifiableList(accessRights) : null;
-        guardrails = guardrails != null ? Collections.unmodifiableList(guardrails) : null;
+        sourceIds = sourceIds != null ? List.copyOf(sourceIds) : null;
+        accessRights = accessRights != null ? List.copyOf(accessRights) : null;
+        guardrails = guardrails != null ? List.copyOf(guardrails) : null;
     }
 
     public static Builder builder() {

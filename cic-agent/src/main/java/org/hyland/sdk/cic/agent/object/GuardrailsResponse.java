@@ -18,7 +18,6 @@
  */
 package org.hyland.sdk.cic.agent.object;
 
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -27,6 +26,6 @@ import java.util.List;
 public record GuardrailsResponse(List<GuardrailGroup> guardrailGroups) {
 
     public GuardrailsResponse {
-        guardrailGroups = guardrailGroups != null ? Collections.unmodifiableList(guardrailGroups) : List.of();
+        guardrailGroups = guardrailGroups != null ? List.copyOf(guardrailGroups) : List.of();
     }
 }

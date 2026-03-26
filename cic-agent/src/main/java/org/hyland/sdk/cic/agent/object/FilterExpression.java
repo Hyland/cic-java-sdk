@@ -33,7 +33,8 @@ import java.util.Objects;
  * <li>{@link Double}</li>
  * <li>{@link Boolean}</li>
  * <li>{@code null}</li>
- * <li>{@link java.util.List List&lt;Object&gt;} — for JSON arrays (elements follow the same rules)</li>
+ * <li>{@link java.util.List List&lt;Object&gt;} — for JSON arrays (elements must follow the same rules, except that
+ * {@code null} elements are not supported)</li>
  * <li>{@link Map Map&lt;String, Object&gt;} — for nested JSON objects (values follow the same rules)</li>
  * </ul>
  *

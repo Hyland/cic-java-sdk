@@ -19,7 +19,6 @@
 package org.hyland.sdk.cic.agent.object;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -36,8 +35,8 @@ public record AgentSummary(String id, String name, String description, String mo
         Objects.requireNonNull(name, "name cannot be null");
         Objects.requireNonNull(description, "description cannot be null");
         Objects.requireNonNull(modelName, "modelName cannot be null");
-        sourceIds = sourceIds != null ? Collections.unmodifiableList(sourceIds) : List.of();
-        accessRights = accessRights != null ? Collections.unmodifiableList(accessRights) : List.of();
+        sourceIds = sourceIds != null ? List.copyOf(sourceIds) : List.of();
+        accessRights = accessRights != null ? List.copyOf(accessRights) : List.of();
     }
 
     /**

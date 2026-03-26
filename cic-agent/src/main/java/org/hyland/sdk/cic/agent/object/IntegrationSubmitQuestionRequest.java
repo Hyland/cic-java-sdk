@@ -19,7 +19,6 @@
 package org.hyland.sdk.cic.agent.object;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -31,7 +30,7 @@ public record IntegrationSubmitQuestionRequest(String question, String userId, L
     public IntegrationSubmitQuestionRequest {
         Objects.requireNonNull(question, "question cannot be null");
         Objects.requireNonNull(userId, "userId cannot be null");
-        contextObjectIds = contextObjectIds != null ? Collections.unmodifiableList(contextObjectIds) : null;
+        contextObjectIds = contextObjectIds != null ? List.copyOf(contextObjectIds) : null;
     }
 
     public static Builder builder() {

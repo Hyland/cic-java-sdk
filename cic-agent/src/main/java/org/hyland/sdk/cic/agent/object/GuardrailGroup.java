@@ -18,7 +18,6 @@
  */
 package org.hyland.sdk.cic.agent.object;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -30,6 +29,6 @@ public record GuardrailGroup(String displayName, String description, List<Guardr
     public GuardrailGroup {
         Objects.requireNonNull(displayName, "displayName cannot be null");
         Objects.requireNonNull(description, "description cannot be null");
-        guardrails = guardrails != null ? Collections.unmodifiableList(guardrails) : List.of();
+        guardrails = guardrails != null ? List.copyOf(guardrails) : List.of();
     }
 }
