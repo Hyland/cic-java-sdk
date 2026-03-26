@@ -30,7 +30,9 @@ class AvatarMapper implements CICMapper<Avatar> {
 
     @Override
     public Avatar fromCICNode(CICNode cicNode) {
-        var obj = (CICObject) cicNode;
+        if (!(cicNode instanceof CICObject obj)) {
+            throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
+        }
         return new Avatar(obj.getString("preSignedUrl", null));
     }
 }

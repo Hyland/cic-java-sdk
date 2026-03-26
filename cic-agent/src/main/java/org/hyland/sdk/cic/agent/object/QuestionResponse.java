@@ -18,22 +18,14 @@
  */
 package org.hyland.sdk.cic.agent.object;
 
-import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.Objects;
 
 /**
  * @since 1.0.0
  */
-public record LlmModel(String displayName, String modelName, String status, LocalDate eolDate,
-        String replacementModelName) {
+public record QuestionResponse(String questionId) {
 
-    public LlmModel {
-        Objects.requireNonNull(displayName, "displayName cannot be null");
-        Objects.requireNonNull(modelName, "modelName cannot be null");
-        Objects.requireNonNull(status, "status cannot be null");
-    }
-
-    public static class List extends ArrayList<LlmModel> {
+    public QuestionResponse {
+        Objects.requireNonNull(questionId, "questionId cannot be null");
     }
 }

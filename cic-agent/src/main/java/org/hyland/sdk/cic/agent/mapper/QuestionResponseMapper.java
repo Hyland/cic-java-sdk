@@ -18,10 +18,7 @@
  */
 package org.hyland.sdk.cic.agent.mapper;
 
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.toCICObject;
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.writeStringList;
-
-import org.hyland.sdk.cic.agent.object.SubmitQuestionRequest;
+import org.hyland.sdk.cic.agent.object.QuestionResponse;
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
@@ -29,18 +26,13 @@ import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 /**
  * @since 1.0.0
  */
-class SubmitQuestionRequestMapper implements CICMapper<SubmitQuestionRequest> {
+class QuestionResponseMapper implements CICMapper<QuestionResponse> {
 
     @Override
-    public CICNode toCICNode(SubmitQuestionRequest request) {
-        var obj = CICObject.create();
-        obj.putString("question", request.question());
-        if (request.contextObjectIds() != null) {
-            obj.putArray("contextObjectIds", writeStringList(request.contextObjectIds()));
+    public QuestionResponse fromCICNode(CICNode cicNode) {
+        if (!(cicNode instanceof CICObject obj)) {
+            throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
         }
-        if (request.dynamicFilter() != null) {
-            obj.putObject("dynamicFilter", toCICObject(request.dynamicFilter()));
-        }
-        return obj;
+        return new QuestionResponse(obj.getStringOrThrow("questionId"));
     }
 }

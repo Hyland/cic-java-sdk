@@ -33,7 +33,9 @@ class StaticAvatarMapper implements CICMapper<StaticAvatar> {
 
     @Override
     public StaticAvatar fromCICNode(CICNode cicNode) {
-        var obj = (CICObject) cicNode;
+        if (!(cicNode instanceof CICObject obj)) {
+            throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
+        }
         return new StaticAvatar(obj.getString("fileName", null), obj.getString("preSignedUrl", null));
     }
 
@@ -43,7 +45,9 @@ class StaticAvatarMapper implements CICMapper<StaticAvatar> {
 
         @Override
         public StaticAvatar.List fromCICNode(CICNode cicNode) {
-            var cicArray = (CICArray) cicNode;
+            if (!(cicNode instanceof CICArray cicArray)) {
+                throw new IllegalArgumentException("Expected CICArray, got: " + cicNode.getClass().getSimpleName());
+            }
             return cicArray.toListObject()
                            .stream()
                            .map(innerMapper::fromCICNode)

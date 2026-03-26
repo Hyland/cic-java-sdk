@@ -18,10 +18,11 @@
  */
 package org.hyland.sdk.cic.agent.mapper;
 
+import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.toCICObject;
 import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.writeAccessRights;
 import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.writeGuardrails;
 import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.writeRagParameters;
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.writeUuidList;
+import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.writeStringList;
 
 import org.hyland.sdk.cic.agent.object.UpdateAgent;
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
@@ -50,7 +51,7 @@ class UpdateAgentMapper implements CICMapper<UpdateAgent> {
             obj.putNull("instructions");
         }
         if (agent.sourceIds() != null) {
-            obj.putArray("sourceIds", writeUuidList(agent.sourceIds()));
+            obj.putArray("sourceIds", writeStringList(agent.sourceIds()));
         } else {
             obj.putNull("sourceIds");
         }
@@ -59,13 +60,13 @@ class UpdateAgentMapper implements CICMapper<UpdateAgent> {
         } else {
             obj.putNull("accessRights");
         }
-        if (agent.staticFilterExpression() instanceof CICObject filterObj) {
-            obj.putObject("staticFilterExpression", filterObj);
+        if (agent.staticFilterExpression() != null) {
+            obj.putObject("staticFilterExpression", toCICObject(agent.staticFilterExpression()));
         } else {
             obj.putNull("staticFilterExpression");
         }
-        if (agent.dynamicFilterTemplate() instanceof CICObject templateObj) {
-            obj.putObject("dynamicFilterTemplate", templateObj);
+        if (agent.dynamicFilterTemplate() != null) {
+            obj.putObject("dynamicFilterTemplate", toCICObject(agent.dynamicFilterTemplate()));
         } else {
             obj.putNull("dynamicFilterTemplate");
         }
@@ -80,7 +81,7 @@ class UpdateAgentMapper implements CICMapper<UpdateAgent> {
             obj.putNull("ragParameters");
         }
         if (agent.knowledgeGraphDomainId() != null) {
-            obj.putString("knowledgeGraphDomainId", agent.knowledgeGraphDomainId().toString());
+            obj.putString("knowledgeGraphDomainId", agent.knowledgeGraphDomainId());
         } else {
             obj.putNull("knowledgeGraphDomainId");
         }

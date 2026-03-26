@@ -18,11 +18,12 @@
  */
 package org.hyland.sdk.cic.agent.mapper;
 
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 import org.hyland.sdk.cic.agent.object.AccessRight;
+import org.hyland.sdk.cic.agent.object.FilterExpression;
 import org.hyland.sdk.cic.agent.object.Guardrail;
 import org.hyland.sdk.cic.agent.object.GuardrailDefinition;
 import org.hyland.sdk.cic.agent.object.GuardrailGroup;
@@ -31,6 +32,7 @@ import org.hyland.sdk.cic.agent.object.RagParameters;
 import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
+import org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive;
 
 /**
  * @since 1.0.0
@@ -40,20 +42,20 @@ final class AgentMapperUtils {
     private AgentMapperUtils() {
     }
 
-    // -- Deserialization helpers --
-
-    static List<UUID> readUuidList(CICObject cicObject, String key) {
+    static List<String> readStringList(CICObject cicObject, String key) {
         var properties = cicObject.getProperties();
         if (!properties.containsKey(key)) {
             return null;
         }
         var node = properties.get(key);
         if (node instanceof CICArray array) {
-            return array.getElements()
-                        .stream()
-                        .map(el -> UUID.fromString(
-                                ((org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive.CICString) el).getValue()))
-                        .collect(Collectors.toList());
+            return array.getElements().stream().map(el -> {
+                if (el instanceof CICPrimitive.CICString s) {
+                    return s.getValue();
+                }
+                throw new IllegalStateException(
+                        "Expected CICString in string list, got: " + el.getClass().getSimpleName());
+            }).toList();
         }
         return null;
     }
@@ -65,15 +67,14 @@ final class AgentMapperUtils {
         }
         var node = properties.get("accessRights");
         if (node instanceof CICArray array) {
-            return array.toListObject().stream().map(AgentMapperUtils::readAccessRight).collect(Collectors.toList());
+            return array.toListObject().stream().map(AgentMapperUtils::readAccessRight).toList();
         }
         return null;
     }
 
     static AccessRight readAccessRight(CICObject obj) {
         var type = PrincipalType.fromValue(obj.getStringOrThrow("type"));
-        var idStr = obj.getString("id", null);
-        var id = idStr != null ? UUID.fromString(idStr) : null;
+        var id = obj.getString("id", null);
         return new AccessRight(type, id);
     }
 
@@ -84,10 +85,7 @@ final class AgentMapperUtils {
         }
         var node = properties.get("guardrails");
         if (node instanceof CICArray array) {
-            return array.toListObject()
-                        .stream()
-                        .map(obj -> new Guardrail(obj.getStringOrThrow("name")))
-                        .collect(Collectors.toList());
+            return array.toListObject().stream().map(obj -> new Guardrail(obj.getStringOrThrow("name"))).toList();
         }
         return null;
     }
@@ -106,24 +104,26 @@ final class AgentMapperUtils {
         return null;
     }
 
-    static UUID readUuidOrNull(CICObject cicObject, String key) {
-        var value = cicObject.getString(key, null);
-        return value != null ? UUID.fromString(value) : null;
+    static String readStringOrNull(CICObject cicObject, String key) {
+        return cicObject.getString(key, null);
     }
 
-    static CICNode readNodeOrNull(CICObject cicObject, String key) {
+    static FilterExpression readFilterExpressionOrNull(CICObject cicObject, String key) {
         var properties = cicObject.getProperties();
         var node = properties.get(key);
-        if (node instanceof org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive.CICNull) {
+        if (node == null || node instanceof CICPrimitive.CICNull) {
             return null;
         }
-        return node;
+        if (!(node instanceof CICObject obj)) {
+            throw new IllegalArgumentException("Expected CICObject for filter expression at key '" + key + "', got: "
+                    + node.getClass().getSimpleName());
+        }
+        return FilterExpression.of(toMap(obj));
     }
 
     static Integer getIntegerOrNull(CICObject obj, String key) {
         var props = obj.getProperties();
-        if (!props.containsKey(key)
-                || props.get(key) instanceof org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive.CICNull) {
+        if (!props.containsKey(key) || props.get(key) instanceof CICPrimitive.CICNull) {
             return null;
         }
         return obj.getInt(key, 0);
@@ -131,21 +131,10 @@ final class AgentMapperUtils {
 
     static Boolean getBooleanOrNull(CICObject obj, String key) {
         var props = obj.getProperties();
-        if (!props.containsKey(key)
-                || props.get(key) instanceof org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive.CICNull) {
+        if (!props.containsKey(key) || props.get(key) instanceof CICPrimitive.CICNull) {
             return null;
         }
         return obj.getBoolean(key, false);
-    }
-
-    // -- Serialization helpers --
-
-    static CICArray writeUuidList(List<UUID> uuids) {
-        var array = CICArray.create();
-        if (uuids != null) {
-            uuids.forEach(uuid -> array.addString(uuid.toString()));
-        }
-        return array;
     }
 
     static CICArray writeAccessRights(List<AccessRight> accessRights) {
@@ -155,7 +144,7 @@ final class AgentMapperUtils {
                 var obj = CICObject.create();
                 obj.putString("type", ar.type().value());
                 if (ar.id() != null) {
-                    obj.putString("id", ar.id().toString());
+                    obj.putString("id", ar.id());
                 }
                 array.addObject(obj);
             });
@@ -203,13 +192,19 @@ final class AgentMapperUtils {
         return array;
     }
 
+    static CICObject toCICObject(FilterExpression expression) {
+        var obj = CICObject.create();
+        expression.properties().forEach((key, value) -> putValue(obj, key, value));
+        return obj;
+    }
+
     static List<GuardrailDefinition> readGuardrailDefinitions(CICArray array) {
         return array.toListObject().stream().map(obj -> {
             var name = obj.getStringOrThrow("name");
             var severity = obj.getString("severity", null);
             var isRecommended = obj.getBoolean("isRecommended", false);
             return new GuardrailDefinition(name, severity, isRecommended);
-        }).collect(Collectors.toList());
+        }).toList();
     }
 
     static List<GuardrailGroup> readGuardrailGroups(CICArray array) {
@@ -222,6 +217,87 @@ final class AgentMapperUtils {
                 guardrails = readGuardrailDefinitions(guardrailsArray);
             }
             return new GuardrailGroup(displayName, description, guardrails);
-        }).collect(Collectors.toList());
+        }).toList();
+    }
+
+    private static Map<String, Object> toMap(CICObject obj) {
+        var map = new LinkedHashMap<String, Object>();
+        obj.getProperties().forEach((key, node) -> map.put(key, toJavaValue(node)));
+        return map;
+    }
+
+    private static List<Object> toList(CICArray array) {
+        return array.getElements().stream().map(AgentMapperUtils::toJavaValue).toList();
+    }
+
+    private static Object toJavaValue(CICNode node) {
+        if (node instanceof CICPrimitive.CICString s) {
+            return s.getValue();
+        } else if (node instanceof CICPrimitive.CICInt i) {
+            return i.getValue();
+        } else if (node instanceof CICPrimitive.CICLong l) {
+            return l.getValue();
+        } else if (node instanceof CICPrimitive.CICDouble d) {
+            return d.getValue();
+        } else if (node instanceof CICPrimitive.CICBoolean b) {
+            return b.getValue();
+        } else if (node instanceof CICPrimitive.CICNull) {
+            return null;
+        } else if (node instanceof CICObject obj) {
+            return toMap(obj);
+        } else if (node instanceof CICArray arr) {
+            return toList(arr);
+        }
+        throw new IllegalStateException("Unsupported CICNode type: " + node.getClass().getSimpleName());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void putValue(CICObject target, String key, Object value) {
+        if (value == null) {
+            target.putNull(key);
+        } else if (value instanceof String s) {
+            target.putString(key, s);
+        } else if (value instanceof Integer i) {
+            target.putInt(key, i);
+        } else if (value instanceof Long l) {
+            target.putLong(key, l);
+        } else if (value instanceof Double d) {
+            target.putDouble(key, d);
+        } else if (value instanceof Boolean b) {
+            target.putBoolean(key, b);
+        } else if (value instanceof List<?> list) {
+            target.putArray(key, toArray(list));
+        } else if (value instanceof Map<?, ?> map) {
+            target.putObject(key, toCICObject(FilterExpression.of((Map<String, Object>) map)));
+        } else {
+            throw new IllegalArgumentException(
+                    "Unsupported value type for key '" + key + "': " + value.getClass().getName());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static CICArray toArray(List<?> elements) {
+        var array = CICArray.create();
+        for (var el : elements) {
+            if (el instanceof String s) {
+                array.addString(s);
+            } else if (el instanceof Integer i) {
+                array.addInt(i);
+            } else if (el instanceof Long l) {
+                array.addLong(l);
+            } else if (el instanceof Double d) {
+                array.addDouble(d);
+            } else if (el instanceof Boolean b) {
+                array.addBoolean(b);
+            } else if (el instanceof List<?> list) {
+                array.addArray(toArray(list));
+            } else if (el instanceof Map<?, ?> map) {
+                array.addObject(toCICObject(FilterExpression.of((Map<String, Object>) map)));
+            } else {
+                throw new IllegalArgumentException(
+                        "Unsupported array element type: " + (el == null ? "null" : el.getClass().getName()));
+            }
+        }
+        return array;
     }
 }

@@ -39,18 +39,18 @@ class GuardrailsResponseMapperTest {
                 {
                   "guardrailGroups": [
                     {
-                      "displayName": "Sexual content",
-                      "description": "Filters content that contains sexual material.",
+                      "displayName": "Mock content",
+                      "description": "Filters mock content.",
                       "guardrails": [
-                        {"name": "HAIP-Sexual-Low", "severity": "low", "isRecommended": true},
-                        {"name": "HAIP-Sexual-Medium", "severity": "medium", "isRecommended": true}
+                        {"name": "TEST-Mock-Low", "severity": "low", "isRecommended": true},
+                        {"name": "TEST-Mock-Medium", "severity": "medium", "isRecommended": true}
                       ]
                     },
                     {
                       "displayName": "Contextual Grounding",
                       "description": "Ensures responses are grounded in provided context.",
                       "guardrails": [
-                        {"name": "HAIP-Contextual-Grounding", "severity": null, "isRecommended": true}
+                        {"name": "TEST-Contextual-Grounding", "severity": null, "isRecommended": true}
                       ]
                     }
                   ]
@@ -63,9 +63,9 @@ class GuardrailsResponseMapperTest {
         assertEquals(2, response.guardrailGroups().size());
 
         var group1 = response.guardrailGroups().get(0);
-        assertEquals("Sexual content", group1.displayName());
+        assertEquals("Mock content", group1.displayName());
         assertEquals(2, group1.guardrails().size());
-        assertEquals("HAIP-Sexual-Low", group1.guardrails().get(0).name());
+        assertEquals("TEST-Mock-Low", group1.guardrails().get(0).name());
         assertEquals("low", group1.guardrails().get(0).severity());
         assertTrue(group1.guardrails().get(0).isRecommended());
 
@@ -73,5 +73,64 @@ class GuardrailsResponseMapperTest {
         assertEquals("Contextual Grounding", group2.displayName());
         assertEquals(1, group2.guardrails().size());
         assertNull(group2.guardrails().get(0).severity());
+    }
+
+    @Test
+    void testDeserializeGuardrailsResponseMultipleGroups() {
+        var json = """
+                {
+                  "guardrailGroups": [
+                    {
+                      "displayName": "Mock content",
+                      "description": "Filters mock content including explicit material.",
+                      "guardrails": [
+                        {"name": "TEST-Mock-Low", "severity": "low", "isRecommended": true},
+                        {"name": "TEST-Mock-Medium", "severity": "medium", "isRecommended": true},
+                        {"name": "TEST-Mock-High", "severity": "high", "isRecommended": true}
+                      ]
+                    },
+                    {
+                      "displayName": "Mock violence",
+                      "description": "Filters mock violent material.",
+                      "guardrails": [
+                        {"name": "TEST-Violence-Low", "severity": "low", "isRecommended": true},
+                        {"name": "TEST-Violence-Medium", "severity": "medium", "isRecommended": true},
+                        {"name": "TEST-Violence-High", "severity": "high", "isRecommended": true}
+                      ]
+                    },
+                    {
+                      "displayName": "Contextual Grounding",
+                      "description": "Ensures responses are grounded in provided context and source material.",
+                      "guardrails": [
+                        {"name": "TEST-Contextual-Grounding", "severity": null, "isRecommended": true}
+                      ]
+                    }
+                  ]
+                }
+                """;
+
+        var response = MapperService.read(json, GuardrailsResponse.class);
+
+        assertEquals(3, response.guardrailGroups().size());
+
+        var group1 = response.guardrailGroups().get(0);
+        assertEquals("Mock content", group1.displayName());
+        assertEquals(3, group1.guardrails().size());
+        assertEquals("TEST-Mock-Low", group1.guardrails().get(0).name());
+        assertEquals("low", group1.guardrails().get(0).severity());
+        assertTrue(group1.guardrails().get(0).isRecommended());
+        assertEquals("high", group1.guardrails().get(2).severity());
+
+        var group2 = response.guardrailGroups().get(1);
+        assertEquals("Mock violence", group2.displayName());
+        assertEquals(3, group2.guardrails().size());
+        assertEquals("TEST-Violence-Medium", group2.guardrails().get(1).name());
+
+        var grounding = response.guardrailGroups().get(2);
+        assertEquals("Contextual Grounding", grounding.displayName());
+        assertEquals(1, grounding.guardrails().size());
+        assertEquals("TEST-Contextual-Grounding", grounding.guardrails().get(0).name());
+        assertNull(grounding.guardrails().get(0).severity());
+        assertTrue(grounding.guardrails().get(0).isRecommended());
     }
 }

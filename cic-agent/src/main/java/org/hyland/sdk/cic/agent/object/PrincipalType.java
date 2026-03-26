@@ -18,12 +18,19 @@
  */
 package org.hyland.sdk.cic.agent.object;
 
+import java.util.Arrays;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 /**
  * @since 1.0.0
  */
 public enum PrincipalType {
 
     USER("User"), GROUP("Group");
+
+    private static final Map<String, PrincipalType> BY_VALUE = Arrays.stream(
+            values()).collect(Collectors.toUnmodifiableMap(PrincipalType::value, t -> t));
 
     private final String value;
 
@@ -36,11 +43,10 @@ public enum PrincipalType {
     }
 
     public static PrincipalType fromValue(String value) {
-        for (PrincipalType type : values()) {
-            if (type.value.equals(value)) {
-                return type;
-            }
+        var result = BY_VALUE.get(value);
+        if (result == null) {
+            throw new IllegalArgumentException("Unknown PrincipalType: " + value);
         }
-        throw new IllegalArgumentException("Unknown PrincipalType: " + value);
+        return result;
     }
 }

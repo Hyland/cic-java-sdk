@@ -22,12 +22,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * @since 1.0.0
  */
-public record IntegrationSubmitQuestionRequest(String question, UUID userId, List<String> contextObjectIds) {
+public record IntegrationSubmitQuestionRequest(String question, String userId, List<String> contextObjectIds) {
 
     public IntegrationSubmitQuestionRequest {
         Objects.requireNonNull(question, "question cannot be null");
@@ -39,7 +38,7 @@ public record IntegrationSubmitQuestionRequest(String question, UUID userId, Lis
         return new Builder();
     }
 
-    public static Builder builder(String question, UUID userId) {
+    public static Builder builder(String question, String userId) {
         return new Builder(question, userId);
     }
 
@@ -47,14 +46,14 @@ public record IntegrationSubmitQuestionRequest(String question, UUID userId, Lis
 
         private String question;
 
-        private UUID userId;
+        private String userId;
 
         private List<String> contextObjectIds;
 
         private Builder() {
         }
 
-        private Builder(String question, UUID userId) {
+        private Builder(String question, String userId) {
             this.question = Objects.requireNonNull(question, "question cannot be null");
             this.userId = Objects.requireNonNull(userId, "userId cannot be null");
         }
@@ -64,7 +63,7 @@ public record IntegrationSubmitQuestionRequest(String question, UUID userId, Lis
             return this;
         }
 
-        public Builder userId(UUID userId) {
+        public Builder userId(String userId) {
             this.userId = userId;
             return this;
         }

@@ -19,12 +19,11 @@
 package org.hyland.sdk.cic.agent.object;
 
 import java.util.ArrayList;
-import java.util.UUID;
 
 /**
  * @since 1.0.0
  */
-public record AgentAvatar(UUID agentId, String avatarUrl) {
+public record AgentAvatar(String agentId, String avatarUrl) {
 
     public static class List extends ArrayList<AgentAvatar> {
     }

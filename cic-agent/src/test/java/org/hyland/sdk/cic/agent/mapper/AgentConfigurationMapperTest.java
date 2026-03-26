@@ -21,13 +21,16 @@ package org.hyland.sdk.cic.agent.mapper;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.UUID;
+import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
 import org.hyland.sdk.cic.agent.object.AgentConfiguration;
+import org.hyland.sdk.cic.agent.object.FilterExpression;
 import org.hyland.sdk.cic.agent.object.PrincipalType;
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
 
@@ -41,12 +44,12 @@ class AgentConfigurationMapperTest {
         var json = """
                 {
                   "id": "775bb838-00ac-4aef-a9c4-049589523be8",
-                  "name": "Data Processing Agent",
-                  "description": "This agent is configured for data processing tasks.",
-                  "modelName": "bedrock-amazon-nova-micro",
-                  "avatarUrl": "http://www.example.com/avatar.png",
-                  "avatarPresignedUrl": "https://example.com/signed-avatar.png",
-                  "instructions": "Follow the data guidelines strictly.",
+                  "name": "Test Agent",
+                  "description": "Test agent description.",
+                  "modelName": "test-model-v1",
+                  "avatarUrl": "https://localhost/avatar.png",
+                  "avatarPresignedUrl": "https://localhost/signed-avatar.png",
+                  "instructions": "Test instructions.",
                   "sourceIds": [
                     "a323a0fc-aea1-4382-9403-1d9a7c009f6c",
                     "eb6da9c9-c4aa-455c-bc95-d3aed6dca74c"
@@ -60,8 +63,8 @@ class AgentConfigurationMapperTest {
                   "agentPlatformAgentId": null,
                   "agentPlatformAgentVersionId": null,
                   "guardrails": [
-                    {"name": "HAIP-Contextual-Grounding"},
-                    {"name": "HAIP-Insults-Low"}
+                    {"name": "TEST-Contextual-Grounding"},
+                    {"name": "TEST-Insults-Low"}
                   ],
                   "ragParameters": {
                     "limit": 50,
@@ -77,15 +80,15 @@ class AgentConfigurationMapperTest {
 
         var config = MapperService.read(json, AgentConfiguration.class);
 
-        assertEquals(UUID.fromString("775bb838-00ac-4aef-a9c4-049589523be8"), config.id());
-        assertEquals("Data Processing Agent", config.name());
-        assertEquals("This agent is configured for data processing tasks.", config.description());
-        assertEquals("bedrock-amazon-nova-micro", config.modelName());
-        assertEquals("http://www.example.com/avatar.png", config.avatarUrl());
-        assertEquals("https://example.com/signed-avatar.png", config.avatarPresignedUrl());
-        assertEquals("Follow the data guidelines strictly.", config.instructions());
+        assertEquals("775bb838-00ac-4aef-a9c4-049589523be8", config.id());
+        assertEquals("Test Agent", config.name());
+        assertEquals("Test agent description.", config.description());
+        assertEquals("test-model-v1", config.modelName());
+        assertEquals("https://localhost/avatar.png", config.avatarUrl());
+        assertEquals("https://localhost/signed-avatar.png", config.avatarPresignedUrl());
+        assertEquals("Test instructions.", config.instructions());
         assertEquals(2, config.sourceIds().size());
-        assertEquals(UUID.fromString("a323a0fc-aea1-4382-9403-1d9a7c009f6c"), config.sourceIds().get(0));
+        assertEquals("a323a0fc-aea1-4382-9403-1d9a7c009f6c", config.sourceIds().get(0));
         assertEquals(2, config.accessRights().size());
         assertEquals(PrincipalType.GROUP, config.accessRights().get(0).type());
         assertEquals(PrincipalType.USER, config.accessRights().get(1).type());
@@ -94,7 +97,7 @@ class AgentConfigurationMapperTest {
         assertNull(config.agentPlatformAgentId());
         assertNull(config.agentPlatformAgentVersionId());
         assertEquals(2, config.guardrails().size());
-        assertEquals("HAIP-Contextual-Grounding", config.guardrails().get(0).name());
+        assertEquals("TEST-Contextual-Grounding", config.guardrails().get(0).name());
         assertNotNull(config.ragParameters());
         assertEquals(50, config.ragParameters().limit());
         assertEquals(2, config.ragParameters().adjacentChunkRange());
@@ -111,9 +114,9 @@ class AgentConfigurationMapperTest {
                 [
                   {
                     "id": "13413629-6233-4dce-93bd-069e7f795999",
-                    "name": "Data Processing Agent",
-                    "description": "This agent is configured for data processing tasks.",
-                    "modelName": "bedrock-amazon-nova-micro",
+                    "name": "Test Agent",
+                    "description": "Test agent description.",
+                    "modelName": "test-model-v1",
                     "avatarUrl": null,
                     "instructions": null,
                     "sourceIds": [],
@@ -129,7 +132,162 @@ class AgentConfigurationMapperTest {
         var summaries = MapperService.read(json, org.hyland.sdk.cic.agent.object.AgentSummary.ListOf.class);
 
         assertEquals(1, summaries.size());
-        assertEquals(UUID.fromString("13413629-6233-4dce-93bd-069e7f795999"), summaries.get(0).id());
-        assertEquals("Data Processing Agent", summaries.get(0).name());
+        assertEquals("13413629-6233-4dce-93bd-069e7f795999", summaries.get(0).id());
+        assertEquals("Test Agent", summaries.get(0).name());
+    }
+
+    @Test
+    void testDeserializeAgentConfigurationWithFilterExpressions() {
+        var json = """
+                {
+                  "id": "775bb838-00ac-4aef-a9c4-049589523be8",
+                  "name": "Agent",
+                  "description": "Desc.",
+                  "modelName": "model",
+                  "version": 1,
+                  "latest": true,
+                  "staticFilterExpression": {
+                    "field": "category",
+                    "value": "finance",
+                    "nested": {"enabled": true, "count": 3}
+                  },
+                  "dynamicFilterTemplate": {
+                    "tags": ["reports", "quarterly"],
+                    "threshold": 0.75
+                  }
+                }
+                """;
+
+        var config = MapperService.read(json, AgentConfiguration.class);
+
+        assertNotNull(config.staticFilterExpression());
+        assertEquals("category", config.staticFilterExpression().properties().get("field"));
+        assertEquals("finance", config.staticFilterExpression().properties().get("value"));
+        var nested = (Map<?, ?>) config.staticFilterExpression().properties().get("nested");
+        assertNotNull(nested);
+        assertEquals(Boolean.TRUE, nested.get("enabled"));
+        assertEquals(3L, nested.get("count"));
+
+        assertNotNull(config.dynamicFilterTemplate());
+        assertEquals(0.75, config.dynamicFilterTemplate().properties().get("threshold"));
+        var tags = (List<?>) config.dynamicFilterTemplate().properties().get("tags");
+        assertNotNull(tags);
+        assertEquals(List.of("reports", "quarterly"), tags);
+    }
+
+    @Test
+    void testSerializeCreateAgentWithFilterExpression() throws Exception {
+        var filter = FilterExpression.of(Map.of("field", "status", "value", "active"));
+        var agent = org.hyland.sdk.cic.agent.object.CreateAgent.builder("Agent", "Desc", "test-model-v1")
+                                                               .staticFilterExpression(filter)
+                                                               .build();
+
+        var json = MapperService.writeAsString(agent);
+
+        org.skyscreamer.jsonassert.JSONAssert.assertEquals(
+                "{\"staticFilterExpression\":{\"field\":\"status\",\"value\":\"active\"}}", json,
+                org.skyscreamer.jsonassert.JSONCompareMode.LENIENT);
+    }
+
+    @Test
+    void testDeserializeAgentConfigurationWithAllOptionalFieldsAbsent() {
+        var json = """
+                {
+                  "id": "775bb838-00ac-4aef-a9c4-049589523be8",
+                  "name": "Test Agent",
+                  "description": "Test agent description.",
+                  "modelName": "test-model-v1",
+                  "version": 1,
+                  "latest": true
+                }
+                """;
+
+        var config = MapperService.read(json, AgentConfiguration.class);
+
+        assertEquals("775bb838-00ac-4aef-a9c4-049589523be8", config.id());
+        assertNull(config.avatarUrl());
+        assertNull(config.avatarPresignedUrl());
+        assertNull(config.instructions());
+        assertTrue(config.sourceIds().isEmpty());
+        assertTrue(config.accessRights().isEmpty());
+        assertNull(config.staticFilterExpression());
+        assertNull(config.dynamicFilterTemplate());
+        assertNull(config.agentPlatformAgentId());
+        assertNull(config.agentPlatformAgentVersionId());
+        assertTrue(config.guardrails().isEmpty());
+        assertNull(config.ragParameters());
+        assertNull(config.agentType());
+        assertNull(config.knowledgeGraphDomainId());
+    }
+
+    @Test
+    void testDeserializeAgentConfigurationWithNullRagParameters() {
+        var json = """
+                {
+                  "id": "775bb838-00ac-4aef-a9c4-049589523be8",
+                  "name": "Agent",
+                  "description": "Desc.",
+                  "modelName": "test-model-v1",
+                  "version": 1,
+                  "latest": false,
+                  "ragParameters": null
+                }
+                """;
+
+        var config = MapperService.read(json, AgentConfiguration.class);
+
+        assertNull(config.ragParameters());
+    }
+
+    @Test
+    void testDeserializeAgentConfigurationWithEmptyGuardrailsAndSources() {
+        var json = """
+                {
+                  "id": "775bb838-00ac-4aef-a9c4-049589523be8",
+                  "name": "Agent",
+                  "description": "Desc.",
+                  "modelName": "test-model-v1",
+                  "version": 1,
+                  "latest": false,
+                  "guardrails": [],
+                  "sourceIds": []
+                }
+                """;
+
+        var config = MapperService.read(json, AgentConfiguration.class);
+
+        assertNotNull(config.guardrails());
+        assertTrue(config.guardrails().isEmpty());
+        assertNotNull(config.sourceIds());
+        assertTrue(config.sourceIds().isEmpty());
+    }
+
+    @Test
+    void testPrincipalTypeFromValueUnknownThrows() {
+        assertThrows(IllegalArgumentException.class, () -> PrincipalType.fromValue("Unknown"));
+    }
+
+    @Test
+    void testPrincipalTypeFromValueNullThrows() {
+        assertThrows(NullPointerException.class, () -> PrincipalType.fromValue(null));
+    }
+
+    @Test
+    void testDeserializeAccessRightWithUnknownPrincipalTypeThrows() {
+        var json = """
+                {
+                  "id": "775bb838-00ac-4aef-a9c4-049589523be8",
+                  "name": "Agent",
+                  "description": "Desc.",
+                  "modelName": "model",
+                  "version": 1,
+                  "latest": false,
+                  "accessRights": [
+                    {"type": "UnknownType", "id": "11111111-1111-1111-1111-111111111111"}
+                  ]
+                }
+                """;
+
+        assertThrows(IllegalArgumentException.class, () -> MapperService.read(json, AgentConfiguration.class));
     }
 }

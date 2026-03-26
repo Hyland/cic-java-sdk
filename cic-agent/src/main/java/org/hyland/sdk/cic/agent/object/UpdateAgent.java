@@ -22,17 +22,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
-
-import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 
 /**
  * @since 1.0.0
  */
 public record UpdateAgent(String name, String description, String modelName, String avatarUrl, String instructions,
-        List<UUID> sourceIds, List<AccessRight> accessRights, CICNode staticFilterExpression,
-        CICNode dynamicFilterTemplate, List<Guardrail> guardrails, RagParameters ragParameters,
-        UUID knowledgeGraphDomainId) {
+        List<String> sourceIds, List<AccessRight> accessRights, FilterExpression staticFilterExpression,
+        FilterExpression dynamicFilterTemplate, List<Guardrail> guardrails, RagParameters ragParameters,
+        String knowledgeGraphDomainId) {
 
     public UpdateAgent {
         Objects.requireNonNull(name, "name cannot be null");
@@ -63,19 +60,19 @@ public record UpdateAgent(String name, String description, String modelName, Str
 
         private String instructions;
 
-        private List<UUID> sourceIds;
+        private List<String> sourceIds;
 
         private List<AccessRight> accessRights;
 
-        private CICNode staticFilterExpression;
+        private FilterExpression staticFilterExpression;
 
-        private CICNode dynamicFilterTemplate;
+        private FilterExpression dynamicFilterTemplate;
 
         private List<Guardrail> guardrails;
 
         private RagParameters ragParameters;
 
-        private UUID knowledgeGraphDomainId;
+        private String knowledgeGraphDomainId;
 
         private Builder() {
         }
@@ -111,7 +108,7 @@ public record UpdateAgent(String name, String description, String modelName, Str
             return this;
         }
 
-        public Builder sourceIds(List<UUID> sourceIds) {
+        public Builder sourceIds(List<String> sourceIds) {
             this.sourceIds = sourceIds != null ? new ArrayList<>(sourceIds) : null;
             return this;
         }
@@ -121,12 +118,12 @@ public record UpdateAgent(String name, String description, String modelName, Str
             return this;
         }
 
-        public Builder staticFilterExpression(CICNode staticFilterExpression) {
+        public Builder staticFilterExpression(FilterExpression staticFilterExpression) {
             this.staticFilterExpression = staticFilterExpression;
             return this;
         }
 
-        public Builder dynamicFilterTemplate(CICNode dynamicFilterTemplate) {
+        public Builder dynamicFilterTemplate(FilterExpression dynamicFilterTemplate) {
             this.dynamicFilterTemplate = dynamicFilterTemplate;
             return this;
         }
@@ -141,7 +138,7 @@ public record UpdateAgent(String name, String description, String modelName, Str
             return this;
         }
 
-        public Builder knowledgeGraphDomainId(UUID knowledgeGraphDomainId) {
+        public Builder knowledgeGraphDomainId(String knowledgeGraphDomainId) {
             this.knowledgeGraphDomainId = knowledgeGraphDomainId;
             return this;
         }

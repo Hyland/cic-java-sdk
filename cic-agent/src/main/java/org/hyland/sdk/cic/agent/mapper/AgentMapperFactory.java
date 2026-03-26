@@ -18,6 +18,9 @@
  */
 package org.hyland.sdk.cic.agent.mapper;
 
+import java.util.List;
+import java.util.Map;
+
 import org.hyland.sdk.cic.agent.object.AgentAvatar;
 import org.hyland.sdk.cic.agent.object.AgentConfiguration;
 import org.hyland.sdk.cic.agent.object.AgentSummary;
@@ -26,6 +29,7 @@ import org.hyland.sdk.cic.agent.object.CreateAgent;
 import org.hyland.sdk.cic.agent.object.GuardrailsResponse;
 import org.hyland.sdk.cic.agent.object.IntegrationSubmitQuestionRequest;
 import org.hyland.sdk.cic.agent.object.LlmModel;
+import org.hyland.sdk.cic.agent.object.QuestionResponse;
 import org.hyland.sdk.cic.agent.object.StaticAvatar;
 import org.hyland.sdk.cic.agent.object.SubmitQuestionRequest;
 import org.hyland.sdk.cic.agent.object.UpdateAgent;
@@ -37,39 +41,32 @@ import org.hyland.sdk.cic.http.client.mapper.MapperService;
  */
 public class AgentMapperFactory implements MapperService.MapperFactory {
 
+    // Stateless mappers are shared — order matters for types in the same hierarchy
+    private static final List<Map.Entry<Class<?>, CICMapper<?>>> MAPPERS = List.of(
+            Map.entry(AgentConfiguration.class, new AgentConfigurationMapper()),
+            Map.entry(AgentSummary.ListOf.class, new AgentSummaryMapper.ListMapper()),
+            Map.entry(AgentSummary.class, new AgentSummaryMapper()),
+            Map.entry(CreateAgent.class, new CreateAgentMapper()),
+            Map.entry(UpdateAgent.class, new UpdateAgentMapper()),
+            Map.entry(SubmitQuestionRequest.class, new SubmitQuestionRequestMapper()),
+            Map.entry(IntegrationSubmitQuestionRequest.class, new IntegrationSubmitQuestionRequestMapper()),
+            Map.entry(Avatar.class, new AvatarMapper()),
+            Map.entry(AgentAvatar.List.class, new AgentAvatarMapper.ListMapper()),
+            Map.entry(AgentAvatar.class, new AgentAvatarMapper()),
+            Map.entry(StaticAvatar.List.class, new StaticAvatarMapper.ListMapper()),
+            Map.entry(StaticAvatar.class, new StaticAvatarMapper()),
+            Map.entry(LlmModel.List.class, new LlmModelMapper.ListMapper()),
+            Map.entry(LlmModel.class, new LlmModelMapper()),
+            Map.entry(GuardrailsResponse.class, new GuardrailsResponseMapper()),
+            Map.entry(QuestionResponse.class, new QuestionResponseMapper()));
+
     @Override
     @SuppressWarnings("unchecked")
     public <T> CICMapper<T> getMapper(Class<T> type) {
-        if (AgentConfiguration.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new AgentConfigurationMapper();
-        } else if (AgentSummary.ListOf.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new AgentSummaryMapper.ListMapper();
-        } else if (AgentSummary.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new AgentSummaryMapper();
-        } else if (CreateAgent.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new CreateAgentMapper();
-        } else if (UpdateAgent.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new UpdateAgentMapper();
-        } else if (SubmitQuestionRequest.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new SubmitQuestionRequestMapper();
-        } else if (IntegrationSubmitQuestionRequest.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new IntegrationSubmitQuestionRequestMapper();
-        } else if (Avatar.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new AvatarMapper();
-        } else if (AgentAvatar.List.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new AgentAvatarMapper.ListMapper();
-        } else if (AgentAvatar.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new AgentAvatarMapper();
-        } else if (StaticAvatar.List.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new StaticAvatarMapper.ListMapper();
-        } else if (StaticAvatar.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new StaticAvatarMapper();
-        } else if (LlmModel.List.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new LlmModelMapper.ListMapper();
-        } else if (LlmModel.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new LlmModelMapper();
-        } else if (GuardrailsResponse.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new GuardrailsResponseMapper();
+        for (var entry : MAPPERS) {
+            if (entry.getKey().isAssignableFrom(type)) {
+                return (CICMapper<T>) entry.getValue();
+            }
         }
         return null;
     }

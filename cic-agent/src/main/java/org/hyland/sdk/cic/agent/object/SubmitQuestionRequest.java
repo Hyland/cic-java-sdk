@@ -23,12 +23,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
-
 /**
  * @since 1.0.0
  */
-public record SubmitQuestionRequest(String question, List<String> contextObjectIds, CICNode dynamicFilter) {
+public record SubmitQuestionRequest(String question, List<String> contextObjectIds, FilterExpression dynamicFilter) {
 
     public SubmitQuestionRequest {
         Objects.requireNonNull(question, "question cannot be null");
@@ -49,7 +47,7 @@ public record SubmitQuestionRequest(String question, List<String> contextObjectI
 
         private List<String> contextObjectIds;
 
-        private CICNode dynamicFilter;
+        private FilterExpression dynamicFilter;
 
         private Builder() {
         }
@@ -68,7 +66,7 @@ public record SubmitQuestionRequest(String question, List<String> contextObjectI
             return this;
         }
 
-        public Builder dynamicFilter(CICNode dynamicFilter) {
+        public Builder dynamicFilter(FilterExpression dynamicFilter) {
             this.dynamicFilter = dynamicFilter;
             return this;
         }

@@ -16,24 +16,30 @@
  * Contributors:
  *     Damian Ujma <damian.ujma@hyland.com>
  */
-package org.hyland.sdk.cic.agent.object;
+package org.hyland.sdk.cic.agent.mapper;
 
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Objects;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
+
+import org.hyland.sdk.cic.agent.object.QuestionResponse;
+import org.hyland.sdk.cic.http.client.mapper.MapperService;
 
 /**
  * @since 1.0.0
  */
-public record LlmModel(String displayName, String modelName, String status, LocalDate eolDate,
-        String replacementModelName) {
+class QuestionResponseMapperTest {
 
-    public LlmModel {
-        Objects.requireNonNull(displayName, "displayName cannot be null");
-        Objects.requireNonNull(modelName, "modelName cannot be null");
-        Objects.requireNonNull(status, "status cannot be null");
-    }
+    @Test
+    void testDeserializeQuestionResponse() {
+        var json = """
+                {
+                  "questionId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+                }
+                """;
 
-    public static class List extends ArrayList<LlmModel> {
+        var response = MapperService.read(json, QuestionResponse.class);
+
+        assertEquals("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", response.questionId());
     }
 }

@@ -19,6 +19,7 @@
 package org.hyland.sdk.cic.agent;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -36,8 +37,8 @@ import org.hyland.sdk.cic.agent.object.AgentSummary;
 import org.hyland.sdk.cic.agent.object.Avatar;
 import org.hyland.sdk.cic.agent.object.CreateAgent;
 import org.hyland.sdk.cic.agent.object.GuardrailsResponse;
-import org.hyland.sdk.cic.agent.object.IntegrationSubmitQuestionRequest;
 import org.hyland.sdk.cic.agent.object.LlmModel;
+import org.hyland.sdk.cic.agent.object.QuestionResponse;
 import org.hyland.sdk.cic.agent.object.StaticAvatar;
 import org.hyland.sdk.cic.agent.object.SubmitQuestionRequest;
 import org.hyland.sdk.cic.agent.object.UpdateAgent;
@@ -67,22 +68,45 @@ class AgentServiceTest {
 
         assertEquals(expected, result);
         assertNull(httpClient.lastListSourceId);
+        assertFalse(httpClient.lastListIncludePresignedUrls);
     }
 
     @Test
     void testListAgentsWithSourceId() {
-        var sourceId = UUID.randomUUID();
+        var sourceId = UUID.randomUUID().toString();
         httpClient.agentSummaries = new AgentSummary.ListOf();
 
         service.listAgents(sourceId);
 
         assertEquals(sourceId, httpClient.lastListSourceId);
+        assertFalse(httpClient.lastListIncludePresignedUrls);
+    }
+
+    @Test
+    void testListAgentsWithPresignedUrls() {
+        httpClient.agentSummaries = new AgentSummary.ListOf();
+
+        service.listAgents(true);
+
+        assertNull(httpClient.lastListSourceId);
+        assertTrue(httpClient.lastListIncludePresignedUrls);
+    }
+
+    @Test
+    void testListAgentsWithSourceIdAndPresignedUrls() {
+        var sourceId = UUID.randomUUID().toString();
+        httpClient.agentSummaries = new AgentSummary.ListOf();
+
+        service.listAgents(sourceId, true);
+
+        assertEquals(sourceId, httpClient.lastListSourceId);
+        assertTrue(httpClient.lastListIncludePresignedUrls);
     }
 
     @Test
     void testCreateAgent() {
         var createAgent = CreateAgent.builder("Test Agent", "A test agent", "bedrock-amazon-nova-micro").build();
-        var expectedId = UUID.randomUUID();
+        var expectedId = UUID.randomUUID().toString();
         httpClient.agentConfiguration = new AgentConfiguration(expectedId, "Test Agent", "A test agent",
                 "bedrock-amazon-nova-micro", null, null, null, List.of(), List.of(), 1, true, null, null, null, null,
                 List.of(), null, null, null);
@@ -96,7 +120,7 @@ class AgentServiceTest {
 
     @Test
     void testGetAgent() {
-        var agentId = UUID.randomUUID();
+        var agentId = UUID.randomUUID().toString();
         httpClient.agentConfiguration = new AgentConfiguration(agentId, "Agent", "Desc", "model", null, null, null,
                 List.of(), List.of(), 1, true, null, null, null, null, List.of(), null, null, null);
 
@@ -108,7 +132,7 @@ class AgentServiceTest {
 
     @Test
     void testUpdateAgent() {
-        var agentId = UUID.randomUUID();
+        var agentId = UUID.randomUUID().toString();
         var updateAgent = UpdateAgent.builder("Updated", "Updated desc", "model").build();
         httpClient.agentConfiguration = new AgentConfiguration(agentId, "Updated", "Updated desc", "model", null, null,
                 null, List.of(), List.of(), 2, true, null, null, null, null, List.of(), null, null, null);
@@ -122,7 +146,7 @@ class AgentServiceTest {
 
     @Test
     void testDeleteAgent() {
-        var agentId = UUID.randomUUID();
+        var agentId = UUID.randomUUID().toString();
 
         service.deleteAgent(agentId);
 
@@ -131,11 +155,14 @@ class AgentServiceTest {
 
     @Test
     void testSubmitQuestion() {
-        var agentId = UUID.randomUUID();
+        var agentId = UUID.randomUUID().toString();
         var questionRequest = SubmitQuestionRequest.builder("What is the status?").build();
+        var expectedQuestionId = UUID.randomUUID().toString();
+        httpClient.questionResponse = new QuestionResponse(expectedQuestionId);
 
-        service.submitQuestion(agentId, questionRequest);
+        var result = service.submitQuestion(agentId, questionRequest);
 
+        assertEquals(expectedQuestionId, result.questionId());
         assertEquals(agentId, httpClient.lastQuestionAgentId);
         assertEquals(questionRequest, httpClient.lastQuestionRequest);
     }
@@ -163,7 +190,7 @@ class AgentServiceTest {
 
     @Test
     void testGetAvatar() {
-        var agentId = UUID.randomUUID();
+        var agentId = UUID.randomUUID().toString();
         httpClient.avatar = new Avatar("https://example.com/avatar.png");
 
         var result = service.getAvatar(agentId);
@@ -184,33 +211,8 @@ class AgentServiceTest {
     }
 
     @Test
-    void testGetIntegrationAgent() {
-        var agentId = UUID.randomUUID();
-        httpClient.agentConfiguration = new AgentConfiguration(agentId, "Agent", "Desc", "model", null, null, null,
-                List.of(), List.of(), 1, true, null, null, null, null, List.of(), null, null, null);
-
-        var result = service.getIntegrationAgent(agentId);
-
-        assertEquals(agentId, result.id());
-    }
-
-    @Test
-    void testSubmitIntegrationQuestion() {
-        var agentId = UUID.randomUUID();
-        var userId = UUID.randomUUID();
-        var questionRequest = IntegrationSubmitQuestionRequest.builder("What is the status?", userId).build();
-
-        service.submitIntegrationQuestion(agentId, questionRequest);
-
-        assertEquals(agentId, httpClient.lastIntegrationQuestionAgentId);
-        assertEquals(questionRequest, httpClient.lastIntegrationQuestionRequest);
-    }
-
-    // -- Consumer-based API tests --
-
-    @Test
     void testCreateAgentWithConsumer() {
-        var expectedId = UUID.randomUUID();
+        var expectedId = UUID.randomUUID().toString();
         httpClient.agentConfiguration = new AgentConfiguration(expectedId, "Agent", "Desc", "bedrock-amazon-nova-micro",
                 null, null, null, List.of(), List.of(), 1, true, null, null, null, null, List.of(), null, null, null);
 
@@ -225,7 +227,7 @@ class AgentServiceTest {
 
     @Test
     void testUpdateAgentWithConsumer() {
-        var agentId = UUID.randomUUID();
+        var agentId = UUID.randomUUID().toString();
         httpClient.agentConfiguration = new AgentConfiguration(agentId, "Updated", "Updated desc", "model", null, null,
                 null, List.of(), List.of(), 2, true, null, null, null, null, List.of(), null, null, null);
 
@@ -239,47 +241,36 @@ class AgentServiceTest {
 
     @Test
     void testSubmitQuestionWithConsumer() {
-        var agentId = UUID.randomUUID();
+        var agentId = UUID.randomUUID().toString();
+        var expectedQuestionId = UUID.randomUUID().toString();
+        httpClient.questionResponse = new QuestionResponse(expectedQuestionId);
 
-        service.submitQuestion(agentId, r -> r.question("What is the status?"));
+        var result = service.submitQuestion(agentId, r -> r.question("What is the status?"));
 
+        assertEquals(expectedQuestionId, result.questionId());
         assertEquals(agentId, httpClient.lastQuestionAgentId);
         assertEquals("What is the status?", httpClient.lastQuestionRequest.question());
     }
 
     @Test
-    void testSubmitIntegrationQuestionWithConsumer() {
-        var agentId = UUID.randomUUID();
-        var userId = UUID.randomUUID();
-
-        service.submitIntegrationQuestion(agentId, r -> r.question("What is the status?").userId(userId));
-
-        assertEquals(agentId, httpClient.lastIntegrationQuestionAgentId);
-        assertEquals("What is the status?", httpClient.lastIntegrationQuestionRequest.question());
-        assertEquals(userId, httpClient.lastIntegrationQuestionRequest.userId());
-    }
-
-    // -- AgentResource tests --
-
-    @Test
     void testAgentResourceGet() {
-        var agentId = UUID.randomUUID();
+        var agentId = UUID.randomUUID().toString();
         httpClient.agentConfiguration = new AgentConfiguration(agentId, "Agent", "Desc", "model", null, null, null,
                 List.of(), List.of(), 1, true, null, null, null, null, List.of(), null, null, null);
 
         var agent = service.agent(agentId);
 
         assertEquals(agentId, agent.id());
-        assertEquals(agentId, agent.get().id());
+        assertEquals(agentId, agent.getConfiguration().id());
     }
 
     @Test
     void testAgentResourceGetWithPresignedUrl() {
-        var agentId = UUID.randomUUID();
+        var agentId = UUID.randomUUID().toString();
         httpClient.agentConfiguration = new AgentConfiguration(agentId, "Agent", "Desc", "model", null, null, null,
                 List.of(), List.of(), 1, true, null, null, null, null, List.of(), null, null, null);
 
-        var result = service.agent(agentId).get(true);
+        var result = service.agent(agentId).getConfiguration(true);
 
         assertEquals(agentId, result.id());
         assertTrue(httpClient.lastIncludePresignedUrl);
@@ -287,7 +278,7 @@ class AgentServiceTest {
 
     @Test
     void testAgentResourceUpdate() {
-        var agentId = UUID.randomUUID();
+        var agentId = UUID.randomUUID().toString();
         httpClient.agentConfiguration = new AgentConfiguration(agentId, "Updated", "Desc", "model", null, null, null,
                 List.of(), List.of(), 2, true, null, null, null, null, List.of(), null, null, null);
 
@@ -299,7 +290,7 @@ class AgentServiceTest {
 
     @Test
     void testAgentResourceDelete() {
-        var agentId = UUID.randomUUID();
+        var agentId = UUID.randomUUID().toString();
 
         service.agent(agentId).delete();
 
@@ -308,11 +299,11 @@ class AgentServiceTest {
 
     @Test
     void testAgentResourceVersion() {
-        var agentId = UUID.randomUUID();
+        var agentId = UUID.randomUUID().toString();
         httpClient.agentConfiguration = new AgentConfiguration(agentId, "Agent", "Desc", "model", null, null, null,
                 List.of(), List.of(), 3, true, null, null, null, null, List.of(), null, null, null);
 
-        var result = service.agent(agentId).version(3);
+        var result = service.agent(agentId).getVersion(3);
 
         assertEquals(3, result.version());
         assertEquals(agentId, httpClient.lastVersionAgentId);
@@ -321,11 +312,11 @@ class AgentServiceTest {
 
     @Test
     void testAgentResourceVersionWithPresignedUrl() {
-        var agentId = UUID.randomUUID();
+        var agentId = UUID.randomUUID().toString();
         httpClient.agentConfiguration = new AgentConfiguration(agentId, "Agent", "Desc", "model", null, null, null,
                 List.of(), List.of(), 3, true, null, null, null, null, List.of(), null, null, null);
 
-        var result = service.agent(agentId).version(3, true);
+        var result = service.agent(agentId).getVersion(3, true);
 
         assertEquals(3, result.version());
         assertTrue(httpClient.lastIncludePresignedUrl);
@@ -333,33 +324,25 @@ class AgentServiceTest {
 
     @Test
     void testAgentResourceAvatar() {
-        var agentId = UUID.randomUUID();
+        var agentId = UUID.randomUUID().toString();
         httpClient.avatar = new Avatar("https://example.com/avatar.png");
 
-        var result = service.agent(agentId).avatar();
+        var result = service.agent(agentId).getAvatar();
 
         assertEquals("https://example.com/avatar.png", result.preSignedUrl());
     }
 
     @Test
     void testAgentResourceSubmitQuestion() {
-        var agentId = UUID.randomUUID();
+        var agentId = UUID.randomUUID().toString();
+        var expectedQuestionId = UUID.randomUUID().toString();
+        httpClient.questionResponse = new QuestionResponse(expectedQuestionId);
 
-        service.agent(agentId).submitQuestion(r -> r.question("Hello?"));
+        var result = service.agent(agentId).submitQuestion(r -> r.question("Hello?"));
 
+        assertEquals(expectedQuestionId, result.questionId());
         assertEquals(agentId, httpClient.lastQuestionAgentId);
         assertEquals("Hello?", httpClient.lastQuestionRequest.question());
-    }
-
-    @Test
-    void testAgentResourceSubmitIntegrationQuestion() {
-        var agentId = UUID.randomUUID();
-        var userId = UUID.randomUUID();
-
-        service.agent(agentId).submitIntegrationQuestion(r -> r.question("Hello?").userId(userId));
-
-        assertEquals(agentId, httpClient.lastIntegrationQuestionAgentId);
-        assertEquals("Hello?", httpClient.lastIntegrationQuestionRequest.question());
     }
 
     @Test
@@ -381,27 +364,27 @@ class AgentServiceTest {
 
         StaticAvatar.List staticAvatars;
 
-        UUID lastListSourceId;
+        QuestionResponse questionResponse;
+
+        String lastListSourceId;
+
+        boolean lastListIncludePresignedUrls;
 
         CreateAgent lastCreateAgent;
 
-        UUID lastGetAgentId;
+        String lastGetAgentId;
 
-        UUID lastUpdateAgentId;
+        String lastUpdateAgentId;
 
         UpdateAgent lastUpdateAgent;
 
-        UUID lastDeleteAgentId;
+        String lastDeleteAgentId;
 
-        UUID lastQuestionAgentId;
+        String lastQuestionAgentId;
 
         SubmitQuestionRequest lastQuestionRequest;
 
-        UUID lastIntegrationQuestionAgentId;
-
-        IntegrationSubmitQuestionRequest lastIntegrationQuestionRequest;
-
-        UUID lastVersionAgentId;
+        String lastVersionAgentId;
 
         int lastVersion;
 
@@ -413,8 +396,9 @@ class AgentServiceTest {
         }
 
         @Override
-        public List<AgentSummary> listAgents(UUID sourceId, boolean includePresignedUrls) {
+        public List<AgentSummary> listAgents(String sourceId, boolean includePresignedUrls) {
             lastListSourceId = sourceId;
+            lastListIncludePresignedUrls = includePresignedUrls;
             return agentSummaries;
         }
 
@@ -425,14 +409,14 @@ class AgentServiceTest {
         }
 
         @Override
-        public AgentConfiguration getAgent(UUID agentId, boolean includePresignedUrl) {
+        public AgentConfiguration getAgent(String agentId, boolean includePresignedUrl) {
             lastGetAgentId = agentId;
             lastIncludePresignedUrl = includePresignedUrl;
             return agentConfiguration;
         }
 
         @Override
-        public AgentConfiguration getAgentVersion(UUID agentId, int version, boolean includePresignedUrl) {
+        public AgentConfiguration getAgentVersion(String agentId, int version, boolean includePresignedUrl) {
             lastVersionAgentId = agentId;
             lastVersion = version;
             lastIncludePresignedUrl = includePresignedUrl;
@@ -440,21 +424,22 @@ class AgentServiceTest {
         }
 
         @Override
-        public AgentConfiguration updateAgent(UUID agentId, UpdateAgent agent) {
+        public AgentConfiguration updateAgent(String agentId, UpdateAgent agent) {
             lastUpdateAgentId = agentId;
             lastUpdateAgent = agent;
             return agentConfiguration;
         }
 
         @Override
-        public void deleteAgent(UUID agentId) {
+        public void deleteAgent(String agentId) {
             lastDeleteAgentId = agentId;
         }
 
         @Override
-        public void submitQuestion(UUID agentId, SubmitQuestionRequest questionRequest) {
+        public QuestionResponse submitQuestion(String agentId, SubmitQuestionRequest questionRequest) {
             lastQuestionAgentId = agentId;
             lastQuestionRequest = questionRequest;
+            return questionResponse;
         }
 
         @Override
@@ -468,12 +453,12 @@ class AgentServiceTest {
         }
 
         @Override
-        public Avatar getAvatar(UUID agentId) {
+        public Avatar getAvatar(String agentId) {
             return avatar;
         }
 
         @Override
-        public List<AgentAvatar> getAvatarsBatch(List<UUID> agentIds) {
+        public List<AgentAvatar> getAvatarsBatch(List<String> agentIds) {
             return new ArrayList<>();
         }
 
@@ -482,20 +467,5 @@ class AgentServiceTest {
             return staticAvatars;
         }
 
-        @Override
-        public AgentConfiguration getIntegrationAgent(UUID agentId) {
-            return agentConfiguration;
-        }
-
-        @Override
-        public List<AgentSummary> listIntegrationAgents(UUID sourceId) {
-            return agentSummaries;
-        }
-
-        @Override
-        public void submitIntegrationQuestion(UUID agentId, IntegrationSubmitQuestionRequest questionRequest) {
-            lastIntegrationQuestionAgentId = agentId;
-            lastIntegrationQuestionRequest = questionRequest;
-        }
     }
 }

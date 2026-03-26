@@ -19,12 +19,11 @@
 package org.hyland.sdk.cic.agent.object;
 
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * @since 1.0.0
  */
-public record AccessRight(PrincipalType type, UUID id) {
+public record AccessRight(PrincipalType type, String id) {
 
     public AccessRight {
         Objects.requireNonNull(type, "type cannot be null");

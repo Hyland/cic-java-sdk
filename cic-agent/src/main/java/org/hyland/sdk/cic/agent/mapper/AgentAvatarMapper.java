@@ -18,7 +18,6 @@
  */
 package org.hyland.sdk.cic.agent.mapper;
 
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.hyland.sdk.cic.agent.object.AgentAvatar;
@@ -34,9 +33,10 @@ class AgentAvatarMapper implements CICMapper<AgentAvatar> {
 
     @Override
     public AgentAvatar fromCICNode(CICNode cicNode) {
-        var obj = (CICObject) cicNode;
-        var agentIdStr = obj.getString("agentId", null);
-        var agentId = agentIdStr != null ? UUID.fromString(agentIdStr) : null;
+        if (!(cicNode instanceof CICObject obj)) {
+            throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
+        }
+        var agentId = obj.getString("agentId", null);
         return new AgentAvatar(agentId, obj.getString("avatarUrl", null));
     }
 
@@ -46,7 +46,9 @@ class AgentAvatarMapper implements CICMapper<AgentAvatar> {
 
         @Override
         public AgentAvatar.List fromCICNode(CICNode cicNode) {
-            var cicArray = (CICArray) cicNode;
+            if (!(cicNode instanceof CICArray cicArray)) {
+                throw new IllegalArgumentException("Expected CICArray, got: " + cicNode.getClass().getSimpleName());
+            }
             return cicArray.toListObject()
                            .stream()
                            .map(innerMapper::fromCICNode)

@@ -21,6 +21,8 @@ package org.hyland.sdk.cic.agent.mapper;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import java.time.LocalDate;
+
 import org.junit.jupiter.api.Test;
 
 import org.hyland.sdk.cic.agent.object.LlmModel;
@@ -36,15 +38,15 @@ class LlmModelMapperTest {
         var json = """
                 [
                   {
-                    "displayName": "Amazon Nova Micro",
-                    "modelName": "amazon.nova-micro-v1:0",
+                    "displayName": "Mock Model Alpha",
+                    "modelName": "mock-model-alpha-v1",
                     "status": "Active",
                     "eolDate": null,
                     "replacementModelName": null
                   },
                   {
-                    "displayName": "Meta Llama 3.2 11B",
-                    "modelName": "meta.llama3-2-11b-instruct-v1:0",
+                    "displayName": "Mock Model Beta",
+                    "modelName": "mock-model-beta-v1",
                     "status": "Deprecated",
                     "eolDate": null,
                     "replacementModelName": null
@@ -55,10 +57,72 @@ class LlmModelMapperTest {
         var models = MapperService.read(json, LlmModel.List.class);
 
         assertEquals(2, models.size());
-        assertEquals("Amazon Nova Micro", models.get(0).displayName());
-        assertEquals("amazon.nova-micro-v1:0", models.get(0).modelName());
+        assertEquals("Mock Model Alpha", models.get(0).displayName());
+        assertEquals("mock-model-alpha-v1", models.get(0).modelName());
         assertEquals("Active", models.get(0).status());
         assertNull(models.get(0).eolDate());
         assertEquals("Deprecated", models.get(1).status());
+    }
+
+    @Test
+    void testDeserializeLlmModelListMultiple() {
+        var json = """
+                [
+                  {
+                    "displayName": "Mock Model Alpha",
+                    "modelName": "mock-model-alpha-v1",
+                    "status": "Active",
+                    "eolDate": null,
+                    "replacementModelName": null
+                  },
+                  {
+                    "displayName": "Mock Model Beta",
+                    "modelName": "mock-model-beta-v1",
+                    "status": "Active",
+                    "eolDate": null,
+                    "replacementModelName": null
+                  },
+                  {
+                    "displayName": "Mock Model Gamma",
+                    "modelName": "mock-model-gamma-v1",
+                    "status": "Deprecated",
+                    "eolDate": null,
+                    "replacementModelName": null
+                  }
+                ]
+                """;
+
+        var models = MapperService.read(json, LlmModel.List.class);
+
+        assertEquals(3, models.size());
+        assertEquals("Mock Model Alpha", models.get(0).displayName());
+        assertEquals("mock-model-alpha-v1", models.get(0).modelName());
+        assertEquals("Active", models.get(0).status());
+        assertEquals("Mock Model Beta", models.get(1).displayName());
+        assertEquals("mock-model-beta-v1", models.get(1).modelName());
+        assertEquals("Deprecated", models.get(2).status());
+    }
+
+    @Test
+    void testDeserializeLlmModelWithReplacementModelName() {
+        var json = """
+                [
+                  {
+                    "displayName": "Old Model",
+                    "modelName": "old-model-v1:0",
+                    "status": "Deprecated",
+                    "eolDate": "2025-06-01",
+                    "replacementModelName": "new-model-v2:0"
+                  }
+                ]
+                """;
+
+        var models = MapperService.read(json, LlmModel.List.class);
+
+        assertEquals(1, models.size());
+        assertEquals("old-model-v1:0", models.get(0).modelName());
+        assertEquals("Deprecated", models.get(0).status());
+        assertEquals(LocalDate.of(2025, 6, 1), models.get(0).eolDate());
+        assertEquals("new-model-v2:0", models.get(0).replacementModelName());
     }
 }

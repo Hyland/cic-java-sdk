@@ -18,6 +18,7 @@
  */
 package org.hyland.sdk.cic.agent.mapper;
 
+import java.time.LocalDate;
 import java.util.stream.Collectors;
 
 import org.hyland.sdk.cic.agent.object.LlmModel;
@@ -33,10 +34,13 @@ class LlmModelMapper implements CICMapper<LlmModel> {
 
     @Override
     public LlmModel fromCICNode(CICNode cicNode) {
-        var obj = (CICObject) cicNode;
+        if (!(cicNode instanceof CICObject obj)) {
+            throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
+        }
+        var eolDateStr = obj.getString("eolDate", null);
+        var eolDate = eolDateStr != null ? LocalDate.parse(eolDateStr) : null;
         return new LlmModel(obj.getStringOrThrow("displayName"), obj.getStringOrThrow("modelName"),
-                obj.getStringOrThrow("status"), obj.getString("eolDate", null),
-                obj.getString("replacementModelName", null));
+                obj.getStringOrThrow("status"), eolDate, obj.getString("replacementModelName", null));
     }
 
     static class ListMapper implements CICMapper<LlmModel.List> {
@@ -45,7 +49,9 @@ class LlmModelMapper implements CICMapper<LlmModel> {
 
         @Override
         public LlmModel.List fromCICNode(CICNode cicNode) {
-            var cicArray = (CICArray) cicNode;
+            if (!(cicNode instanceof CICArray cicArray)) {
+                throw new IllegalArgumentException("Expected CICArray, got: " + cicNode.getClass().getSimpleName());
+            }
             return cicArray.toListObject()
                            .stream()
                            .map(innerMapper::fromCICNode)

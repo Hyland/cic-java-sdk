@@ -31,7 +31,9 @@ class GuardrailsResponseMapper implements CICMapper<GuardrailsResponse> {
 
     @Override
     public GuardrailsResponse fromCICNode(CICNode cicNode) {
-        var obj = (CICObject) cicNode;
+        if (!(cicNode instanceof CICObject obj)) {
+            throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
+        }
         var groupsNode = obj.getProperties().get("guardrailGroups");
         if (groupsNode instanceof CICArray groupsArray) {
             return new GuardrailsResponse(AgentMapperUtils.readGuardrailGroups(groupsArray));

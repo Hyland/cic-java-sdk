@@ -22,17 +22,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
-
-import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 
 /**
  * @since 1.0.0
  */
-public record AgentSummary(UUID id, String name, String description, String modelName, String avatarUrl,
-        String avatarPresignedUrl, String instructions, List<UUID> sourceIds, List<AccessRight> accessRights,
-        int version, boolean latest, CICNode staticFilterExpression, CICNode dynamicFilterTemplate, String agentType,
-        UUID knowledgeGraphDomainId) {
+public record AgentSummary(String id, String name, String description, String modelName, String avatarUrl,
+        String avatarPresignedUrl, String instructions, List<String> sourceIds, List<AccessRight> accessRights,
+        int version, boolean latest, FilterExpression staticFilterExpression, FilterExpression dynamicFilterTemplate,
+        String agentType, String knowledgeGraphDomainId) {
 
     public AgentSummary {
         Objects.requireNonNull(id, "id cannot be null");
@@ -43,6 +40,11 @@ public record AgentSummary(UUID id, String name, String description, String mode
         accessRights = accessRights != null ? Collections.unmodifiableList(accessRights) : List.of();
     }
 
+    /**
+     * Type-token marker class used for SPI-based mapper dispatch. Extending {@link ArrayList} allows
+     * {@link org.hyland.sdk.cic.http.client.mapper.MapperService} to resolve a distinct mapper for a
+     * {@code List<AgentSummary>} without relying on generic type information that is erased at runtime.
+     */
     public static class ListOf extends ArrayList<AgentSummary> {
     }
 }

@@ -24,16 +24,18 @@ import static org.hyland.sdk.cic.http.client.base.CICHttpRequest.POST;
 import static org.hyland.sdk.cic.http.client.base.CICHttpRequest.PUT;
 
 import java.util.List;
-import java.util.UUID;
+import java.util.Objects;
 
 import org.hyland.sdk.cic.agent.object.AgentAvatar;
 import org.hyland.sdk.cic.agent.object.AgentConfiguration;
 import org.hyland.sdk.cic.agent.object.AgentSummary;
 import org.hyland.sdk.cic.agent.object.Avatar;
 import org.hyland.sdk.cic.agent.object.CreateAgent;
+import org.hyland.sdk.cic.agent.object.CreateAgent.Builder;
 import org.hyland.sdk.cic.agent.object.GuardrailsResponse;
 import org.hyland.sdk.cic.agent.object.IntegrationSubmitQuestionRequest;
 import org.hyland.sdk.cic.agent.object.LlmModel;
+import org.hyland.sdk.cic.agent.object.QuestionResponse;
 import org.hyland.sdk.cic.agent.object.StaticAvatar;
 import org.hyland.sdk.cic.agent.object.SubmitQuestionRequest;
 import org.hyland.sdk.cic.agent.object.UpdateAgent;
@@ -61,12 +63,13 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
 
     private static final String INTEGRATIONS_AGENTS_PATH = "/integrations/agents";
 
-    // ---------------
-    // Instantiation
-    // ---------------
-
     protected AgentHttpClient(Builder builder) {
         super(builder);
+    }
+
+    public static Builder from() {
+        // TODO turn this to production
+        return from("https://discovery.dev.experience.hyland.com/agent");
     }
 
     public static Builder from(String baseUrl) {
@@ -77,9 +80,6 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
         return new Builder(baseUrl, authenticationBuilder);
     }
 
-    // -----------------
-    // Agent CRUD APIs
-    // -----------------
 
     /**
      * Lists agents, optionally filtered by source ID.
@@ -89,10 +89,10 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
      * @return a list of agent summaries
      * @throws CICSdkException if the request fails
      */
-    public List<AgentSummary> listAgents(UUID sourceId, boolean includePresignedUrls) {
+    public List<AgentSummary> listAgents(String sourceId, boolean includePresignedUrls) {
         var requestBuilder = this.requestBuilder(GET, AGENTS_PATH);
         if (sourceId != null) {
-            requestBuilder.queryParameter("sourceId", sourceId.toString());
+            requestBuilder.queryParameter("sourceId", sourceId);
         }
         requestBuilder.queryParameter("includePresignedUrls", String.valueOf(includePresignedUrls));
         return sendThenMapAs(requestBuilder.build(), AgentSummary.ListOf.class);
@@ -121,7 +121,7 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
      * @return the agent configuration
      * @throws CICSdkException if the request fails
      */
-    public AgentConfiguration getAgent(UUID agentId, boolean includePresignedUrl) {
+    public AgentConfiguration getAgent(String agentId, boolean includePresignedUrl) {
         var request = this.requestBuilder(GET, AGENTS_PATH + "/" + agentId)
                           .queryParameter("includePresignedUrl", String.valueOf(includePresignedUrl))
                           .build();
@@ -136,7 +136,7 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
      * @return the updated agent configuration
      * @throws CICSdkException if the request fails
      */
-    public AgentConfiguration updateAgent(UUID agentId, UpdateAgent agent) {
+    public AgentConfiguration updateAgent(String agentId, UpdateAgent agent) {
         var request = this.requestBuilder(PUT, AGENTS_PATH + "/" + agentId)
                           .header("Content-Type", "application/json")
                           .entity(new CICEntity(agent))
@@ -150,7 +150,7 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
      * @param agentId the agent ID
      * @throws CICSdkException if the request fails or returns a non-204 status code
      */
-    public void deleteAgent(UUID agentId) {
+    public void deleteAgent(String agentId) {
         var request = this.requestBuilder(DELETE, AGENTS_PATH + "/" + agentId).build();
         var response = sendThenReadAsString(request);
         if (response.statusCode() != 204) {
@@ -168,16 +168,12 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
      * @return the agent configuration
      * @throws CICSdkException if the request fails
      */
-    public AgentConfiguration getAgentVersion(UUID agentId, int version, boolean includePresignedUrl) {
+    public AgentConfiguration getAgentVersion(String agentId, int version, boolean includePresignedUrl) {
         var request = this.requestBuilder(GET, AGENTS_PATH + "/" + agentId + "/versions/" + version)
                           .queryParameter("includePresignedUrl", String.valueOf(includePresignedUrl))
                           .build();
         return sendThenMapAs(request, AgentConfiguration.class);
     }
-
-    // ---------------
-    // Avatar APIs
-    // ---------------
 
     /**
      * Gets the avatar for an agent.
@@ -186,7 +182,7 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
      * @return the avatar with pre-signed URL
      * @throws CICSdkException if the request fails
      */
-    public Avatar getAvatar(UUID agentId) {
+    public Avatar getAvatar(String agentId) {
         var request = this.requestBuilder(GET, AGENTS_PATH + "/" + agentId + "/avatar").build();
         return sendThenMapAs(request, Avatar.class);
     }
@@ -198,10 +194,11 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
      * @return the list of agent avatars
      * @throws CICSdkException if the request fails
      */
-    public List<AgentAvatar> getAvatarsBatch(List<UUID> agentIds) {
+    public List<AgentAvatar> getAvatarsBatch(List<String> agentIds) {
+        Objects.requireNonNull(agentIds, "agentIds cannot be null");
         var body = CICObject.create();
         var array = CICArray.create();
-        agentIds.forEach(id -> array.addString(id.toString()));
+        agentIds.forEach(array::addString);
         body.putArray("agentIds", array);
         var request = this.requestBuilder(POST, AGENTS_PATH + "/avatars/batch")
                           .header("Content-Type", "application/json")
@@ -220,10 +217,6 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
         var request = this.requestBuilder(GET, AGENTS_PATH + "/avatars/static").build();
         return sendThenMapAs(request, StaticAvatar.List.class);
     }
-
-    // ----------------------------
-    // Models & Guardrails APIs
-    // ----------------------------
 
     /**
      * Lists available LLM models.
@@ -247,32 +240,21 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
         return sendThenMapAs(request, GuardrailsResponse.class);
     }
 
-    // ----------------
-    // Questions API
-    // ----------------
-
     /**
      * Submits a question to an agent.
      *
      * @param agentId the agent ID
      * @param questionRequest the question request
+     * @return the question response containing the question ID
      * @throws CICSdkException if the request fails or returns a non-202 status code
      */
-    public void submitQuestion(UUID agentId, SubmitQuestionRequest questionRequest) {
+    public QuestionResponse submitQuestion(String agentId, SubmitQuestionRequest questionRequest) {
         var request = this.requestBuilder(POST, AGENTS_PATH + "/" + agentId + "/questions")
                           .header("Content-Type", "application/json")
                           .entity(new CICEntity(questionRequest))
                           .build();
-        var response = sendThenReadAsString(request);
-        if (response.statusCode() != 202) {
-            ErrorUtils.throwException(response,
-                    "Failed to submit question, HTTP response returned with status code: " + response.statusCode());
-        }
+        return sendThenMapAs(request, QuestionResponse.class);
     }
-
-    // ---------------------
-    // Integrations APIs
-    // ---------------------
 
     /**
      * Gets an agent via the integrations endpoint.
@@ -281,7 +263,7 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
      * @return the agent configuration
      * @throws CICSdkException if the request fails
      */
-    public AgentConfiguration getIntegrationAgent(UUID agentId) {
+    public AgentConfiguration getIntegrationAgent(String agentId) {
         var request = this.requestBuilder(GET, INTEGRATIONS_AGENTS_PATH + "/" + agentId).build();
         return sendThenMapAs(request, AgentConfiguration.class);
     }
@@ -293,10 +275,9 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
      * @return a list of agent summaries
      * @throws CICSdkException if the request fails
      */
-    public List<AgentSummary> listIntegrationAgents(UUID sourceId) {
-        var request = this.requestBuilder(GET, INTEGRATIONS_AGENTS_PATH)
-                          .queryParameter("sourceId", sourceId.toString())
-                          .build();
+    public List<AgentSummary> listIntegrationAgents(String sourceId) {
+        Objects.requireNonNull(sourceId, "sourceId cannot be null");
+        var request = this.requestBuilder(GET, INTEGRATIONS_AGENTS_PATH).queryParameter("sourceId", sourceId).build();
         return sendThenMapAs(request, AgentSummary.ListOf.class);
     }
 
@@ -305,19 +286,16 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
      *
      * @param agentId the agent ID
      * @param questionRequest the integration question request
+     * @return the question response containing the question ID
      * @throws CICSdkException if the request fails or returns a non-202 status code
      */
-    public void submitIntegrationQuestion(UUID agentId, IntegrationSubmitQuestionRequest questionRequest) {
+    public QuestionResponse submitIntegrationQuestion(String agentId,
+            IntegrationSubmitQuestionRequest questionRequest) {
         var request = this.requestBuilder(POST, INTEGRATIONS_AGENTS_PATH + "/" + agentId + "/questions")
                           .header("Content-Type", "application/json")
                           .entity(new CICEntity(questionRequest))
                           .build();
-        var response = sendThenReadAsString(request);
-        if (response.statusCode() != 202) {
-            ErrorUtils.throwException(response,
-                    "Failed to submit integration question, HTTP response returned with status code: "
-                            + response.statusCode());
-        }
+        return sendThenMapAs(request, QuestionResponse.class);
     }
 
     public static class Builder extends AbstractAuthenticatedHttpClientBuilder<Builder, AgentHttpClient> {
@@ -341,6 +319,16 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
          */
         public Builder hxpEnvironment(String environment) {
             return header("hxp-environment", environment);
+        }
+
+        /**
+         * Sets the hxp-app header.
+         *
+         * @param app the app value
+         * @return this builder
+         */
+        public Builder hxpApp(String app) {
+            return header("hxp-app", app);
         }
 
         @Override

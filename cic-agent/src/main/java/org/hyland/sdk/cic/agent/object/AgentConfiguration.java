@@ -21,18 +21,15 @@ package org.hyland.sdk.cic.agent.object;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
-
-import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 
 /**
  * @since 1.0.0
  */
-public record AgentConfiguration(UUID id, String name, String description, String modelName, String avatarUrl,
-        String avatarPresignedUrl, String instructions, List<UUID> sourceIds, List<AccessRight> accessRights,
-        int version, boolean latest, CICNode staticFilterExpression, CICNode dynamicFilterTemplate,
-        UUID agentPlatformAgentId, UUID agentPlatformAgentVersionId, List<Guardrail> guardrails,
-        RagParameters ragParameters, String agentType, UUID knowledgeGraphDomainId) {
+public record AgentConfiguration(String id, String name, String description, String modelName, String avatarUrl,
+        String avatarPresignedUrl, String instructions, List<String> sourceIds, List<AccessRight> accessRights,
+        int version, boolean latest, FilterExpression staticFilterExpression, FilterExpression dynamicFilterTemplate,
+        String agentPlatformAgentId, String agentPlatformAgentVersionId, List<Guardrail> guardrails,
+        RagParameters ragParameters, String agentType, String knowledgeGraphDomainId) {
 
     public AgentConfiguration {
         Objects.requireNonNull(id, "id cannot be null");

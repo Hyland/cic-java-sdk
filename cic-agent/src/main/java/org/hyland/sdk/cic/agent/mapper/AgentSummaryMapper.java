@@ -19,11 +19,10 @@
 package org.hyland.sdk.cic.agent.mapper;
 
 import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.readAccessRights;
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.readNodeOrNull;
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.readUuidList;
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.readUuidOrNull;
+import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.readFilterExpressionOrNull;
+import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.readStringList;
+import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.readStringOrNull;
 
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.hyland.sdk.cic.agent.object.AgentSummary;
@@ -39,14 +38,17 @@ class AgentSummaryMapper implements CICMapper<AgentSummary> {
 
     @Override
     public AgentSummary fromCICNode(CICNode cicNode) {
-        var obj = (CICObject) cicNode;
-        return new AgentSummary(UUID.fromString(obj.getStringOrThrow("id")), obj.getStringOrThrow("name"),
+        if (!(cicNode instanceof CICObject obj)) {
+            throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
+        }
+        return new AgentSummary(obj.getStringOrThrow("id"), obj.getStringOrThrow("name"),
                 obj.getStringOrThrow("description"), obj.getStringOrThrow("modelName"),
                 obj.getString("avatarUrl", null), obj.getString("avatarPresignedUrl", null),
-                obj.getString("instructions", null), readUuidList(obj, "sourceIds"), readAccessRights(obj),
+                obj.getString("instructions", null), readStringList(obj, "sourceIds"), readAccessRights(obj),
                 obj.getInt("version", 0), obj.getBoolean("latest", false),
-                readNodeOrNull(obj, "staticFilterExpression"), readNodeOrNull(obj, "dynamicFilterTemplate"),
-                obj.getString("agentType", null), readUuidOrNull(obj, "knowledgeGraphDomainId"));
+                readFilterExpressionOrNull(obj, "staticFilterExpression"),
+                readFilterExpressionOrNull(obj, "dynamicFilterTemplate"), obj.getString("agentType", null),
+                readStringOrNull(obj, "knowledgeGraphDomainId"));
     }
 
     static class ListMapper implements CICMapper<AgentSummary.ListOf> {
@@ -55,7 +57,9 @@ class AgentSummaryMapper implements CICMapper<AgentSummary> {
 
         @Override
         public AgentSummary.ListOf fromCICNode(CICNode cicNode) {
-            var cicArray = (CICArray) cicNode;
+            if (!(cicNode instanceof CICArray cicArray)) {
+                throw new IllegalArgumentException("Expected CICArray, got: " + cicNode.getClass().getSimpleName());
+            }
             return cicArray.toListObject()
                            .stream()
                            .map(innerMapper::fromCICNode)
