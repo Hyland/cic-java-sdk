@@ -81,6 +81,11 @@ public class IngestService {
         ingest(IngestEvent.Batch.of(event));
     }
 
+    public void ingest(IngestEvent.Batch batch) {
+        httpClient.ingest(
+                batch.stream().map(this::uploadBlobsIfNeeded).collect(Collectors.toCollection(IngestEvent.Batch::new)));
+    }
+
     protected IngestEvent uploadBlobsIfNeeded(IngestEvent event) {
         return event.toBuilder().replaceProperties((key, property) -> {
             if (property instanceof IngestEventPropertyFile propertyFile && propertyFile.blob().isPresent()) {

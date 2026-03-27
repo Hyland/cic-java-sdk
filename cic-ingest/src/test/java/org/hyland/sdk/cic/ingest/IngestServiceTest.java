@@ -156,7 +156,9 @@ class IngestServiceTest {
         service.ingest(event);
 
         assertEquals(1, httpClient.ingestCalls.size());
-        var ingestedEvent = httpClient.ingestCalls.get(0);
+        var batch = httpClient.ingestCalls.get(0);
+        assertEquals(1, batch.size());
+        var ingestedEvent = batch.get(0);
         assertEquals(event, ingestedEvent);
         assertEquals("source-2", ingestedEvent.sourceId().orElseThrow());
     }
@@ -345,7 +347,7 @@ class IngestServiceTest {
 
     private static class TestIngestHttpClient extends IngestHttpClient {
 
-        List<IngestEvent> ingestCalls = new ArrayList<>();
+        List<IngestEvent.Batch> ingestCalls = new ArrayList<>();
 
         List<CheckDigestCall> checkDigestCalls = new ArrayList<>();
 
@@ -364,8 +366,8 @@ class IngestServiceTest {
         }
 
         @Override
-        public void ingest(IngestEvent event) {
-            ingestCalls.add(event);
+        public void ingest(IngestEvent.Batch batch) {
+            ingestCalls.add(batch);
         }
 
         @Override
