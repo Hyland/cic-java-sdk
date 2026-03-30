@@ -21,13 +21,26 @@ package org.hyland.sdk.cic.http.client.mapper.object;
 import java.io.InputStream;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalLong;
 
 /**
  * @since 1.0.0
  */
-public interface CICBlob {
+public interface CICBlob extends CICMarker {
 
     InputStream getInputStream();
+
+    default Optional<String> getContentType() {
+        return Optional.empty();
+    }
+
+    default Optional<String> getName() {
+        return Optional.empty();
+    }
+
+    default OptionalLong getSize() {
+        return OptionalLong.empty();
+    }
 
     Optional<String> getDigest();
 

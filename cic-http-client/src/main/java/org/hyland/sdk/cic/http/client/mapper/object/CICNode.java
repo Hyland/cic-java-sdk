@@ -26,7 +26,7 @@ import org.hyland.sdk.cic.http.client.CICSdkException;
 /**
  * @since 1.0.0
  */
-public interface CICNode {
+public interface CICNode extends CICMarker {
 
     Object toJavaValue();
 

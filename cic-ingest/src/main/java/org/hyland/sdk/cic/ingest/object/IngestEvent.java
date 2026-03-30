@@ -21,9 +21,10 @@ package org.hyland.sdk.cic.ingest.object;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Consumer;
 
 import org.hyland.sdk.cic.http.client.util.StringUtils;
 
@@ -41,14 +42,14 @@ public final class IngestEvent {
 
     protected final Instant date;
 
-    protected final IngestEventProperties properties;
+    protected final Map<String, IngestEventProperty> properties;
 
     protected IngestEvent(Builder builder) {
-        this.type = Objects.requireNonNull(builder.type, "type cannot be null");
+        this.type = builder.type;
         this.sourceId = builder.sourceId;
-        this.objectId = StringUtils.requireNonBlank(builder.objectId, "objectId cannot be blank");
-        this.date = Objects.requireNonNull(builder.date, "date cannot be null");
-        this.properties = Objects.requireNonNull(builder.propertiesBuilder.build(), "properties cannot be null");
+        this.objectId = builder.objectId;
+        this.date = builder.date;
+        this.properties = Collections.unmodifiableMap(new LinkedHashMap<>(builder.properties));
     }
 
     public static Builder builder(Type type, String objectId) {
@@ -71,7 +72,7 @@ public final class IngestEvent {
         return date;
     }
 
-    public IngestEventProperties properties() {
+    public Map<String, IngestEventProperty> properties() {
         return properties;
     }
 
@@ -110,18 +111,18 @@ public final class IngestEvent {
 
         private final String objectId;
 
+        private final Map<String, IngestEventProperty> properties;
+
         // nullable
         private String sourceId;
 
         private Instant date;
 
-        private IngestEventProperties.Builder propertiesBuilder;
-
         private Builder(Type type, String objectId) {
             this.type = Objects.requireNonNull(type, "type cannot be null");
-            this.objectId = Objects.requireNonNull(objectId, "objectId cannot be null");
+            this.objectId = StringUtils.requireNonBlank(objectId, "objectId cannot be blank");
             this.date = Instant.now();
-            this.propertiesBuilder = IngestEventProperties.builder();
+            this.properties = new LinkedHashMap<>();
         }
 
         public Builder sourceId(String sourceId) {
@@ -134,50 +135,72 @@ public final class IngestEvent {
             return this;
         }
 
-        public Builder properties(IngestEventProperties properties) {
-            this.propertiesBuilder = IngestEventProperties.builder(
-                    Objects.requireNonNull(properties, "properties cannot be null"));
+        public Builder properties(Map<String, IngestEventProperty> properties) {
+            Objects.requireNonNull(properties, "properties cannot be null");
+            this.properties.clear();
+            this.properties.putAll(properties);
             return this;
         }
 
-        public Builder putProperty(String key, String value) {
-            propertiesBuilder.put(key, value);
+        public Builder putProperties(Map<String, IngestEventProperty> properties) {
+            Objects.requireNonNull(properties, "properties cannot be null");
+            properties.forEach(this::putProperty);
             return this;
         }
 
-        public Builder putProperty(String key, int value) {
-            propertiesBuilder.put(key, value);
-            return this;
-        }
-
-        public Builder putProperty(String key, long value) {
-            propertiesBuilder.put(key, value);
-            return this;
-        }
-
-        public Builder putProperty(String key, double value) {
-            propertiesBuilder.put(key, value);
+        public Builder putProperty(String key, IngestEventProperty property) {
+            Objects.requireNonNull(key, "key cannot be null");
+            Objects.requireNonNull(property, "property cannot be null");
+            this.properties.put(key, property);
             return this;
         }
 
         public Builder putProperty(String key, boolean value) {
-            propertiesBuilder.put(key, value);
-            return this;
+            return putProperty(key, IngestEventPropertyValue.builder(value).build());
         }
 
-        public Builder putProperty(String key, PropertyArray value) {
-            propertiesBuilder.put(key, value);
-            return this;
+        public Builder putProperty(String key, boolean value, boolean... values) {
+            return putProperty(key, IngestEventPropertyValue.builder(value, values).build());
         }
 
-        public Builder putProperty(String key, IngestEventProperties value) {
-            propertiesBuilder.put(key, value);
-            return this;
+        public Builder putProperty(String key, double value) {
+            return putProperty(key, IngestEventPropertyValue.builder(value).build());
         }
 
-        public Builder putProperty(String key, Consumer<IngestEventProperties.Builder> propertiesConsumer) {
-            propertiesBuilder.put(key, propertiesConsumer);
-            return this;
+        public Builder putProperty(String key, double value, double... values) {
+            return putProperty(key, IngestEventPropertyValue.builder(value, values).build());
+        }
+
+        public Builder putProperty(String key, Instant value) {
+            return putProperty(key, IngestEventPropertyValue.builder(value).build());
+        }
+
+        public Builder putProperty(String key, Instant value, Instant... values) {
+            return putProperty(key, IngestEventPropertyValue.builder(value, values).build());
+        }
+
+        public Builder putProperty(String key, int value) {
+            return putProperty(key, IngestEventPropertyValue.builder(value).build());
+        }
+
+        public Builder putProperty(String key, int value, int... values) {
+            return putProperty(key, IngestEventPropertyValue.builder(value, values).build());
+        }
+
+        public Builder putProperty(String key, long value) {
+            return putProperty(key, IngestEventPropertyValue.builder(value).build());
+        }
+
+        public Builder putProperty(String key, long value, long... values) {
+            return putProperty(key, IngestEventPropertyValue.builder(value, values).build());
+        }
+
+        public Builder putProperty(String key, String value) {
+            return putProperty(key, IngestEventPropertyValue.builder(value).build());
+        }
+
+        public Builder putProperty(String key, String value, String... values) {
+            return putProperty(key, IngestEventPropertyValue.builder(value, values).build());
         }
 
         public IngestEvent build() {
