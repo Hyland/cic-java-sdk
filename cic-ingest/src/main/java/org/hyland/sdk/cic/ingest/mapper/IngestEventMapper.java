@@ -37,7 +37,9 @@ class IngestEventMapper implements CICMapper<IngestEvent> {
         cicObject.putString("eventType", event.type().label());
         cicObject.putLong("sourceTimestamp", event.date().toEpochMilli());
         cicObject.putString("objectId", event.objectId());
-        cicObject.putString("sourceId", event.sourceId());
+        cicObject.putString("sourceId",
+                event.sourceId()
+                     .orElseThrow(() -> new IllegalStateException("sourceId is null within event: " + event)));
         cicObject.putObject("properties", toPropertiesObject(event.properties()));
         return cicObject;
     }
