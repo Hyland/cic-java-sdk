@@ -39,10 +39,32 @@ public class IngestService {
         this.httpClient = httpClient;
     }
 
+    /**
+     * Uploads the given blob if needed, ie: blob does not have a digest or is the same as remote.
+     * <p>
+     * The {@code sourceId} from given {@link IngestEvent} will be used if not null, otherwise the configured
+     * {@link IngestHttpClient.Builder#sourceId(String)} will be used.
+     */
     public Optional<PreSignedUrl> uploadBlobIfNeeded(IngestEvent event, CICBlob blob) {
-        return uploadBlobIfNeeded(event.sourceId(), event.objectId(), blob);
+        return uploadBlobIfNeeded(event.sourceId().orElse(null), event.objectId(), blob);
     }
 
+    /**
+     * Uploads the given blob if needed, ie: blob does not have a digest or is the same as remote.
+     * <p>
+     * Usage of this method is permitted when the underlying {@link IngestHttpClient} is built with
+     * {@link IngestHttpClient.Builder#sourceId(String)}.
+     */
+    public Optional<PreSignedUrl> uploadBlobIfNeeded(String objectId, CICBlob blob) {
+        return uploadBlobIfNeeded(null, objectId, blob);
+    }
+
+    /**
+     * Uploads the given blob if needed, ie: blob does not have a digest or is the same as remote.
+     * <p>
+     * The given {@code sourceId} will be used if not null, otherwise the configured
+     * {@link IngestHttpClient.Builder#sourceId(String)} will be used.
+     */
     public Optional<PreSignedUrl> uploadBlobIfNeeded(String sourceId, String objectId, CICBlob blob) {
         if (blob.getDigest().isPresent() && httpClient.checkDigest(sourceId, objectId, blob.getDigest().get())) {
             // document already have the blob, no need to upload it again

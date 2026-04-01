@@ -53,7 +53,7 @@ class IngestServiceTest {
 
     @Test
     void testIngest() {
-        var event = IngestEvent.builder(IngestEvent.Type.CREATE, "source-1", "doc123")
+        var event = IngestEvent.builder(IngestEvent.Type.CREATE, "doc123")
                                .date(Instant.ofEpochMilli(1609459200000L))
                                .putProperty("title", "Test Document")
                                .build();
@@ -65,8 +65,24 @@ class IngestServiceTest {
     }
 
     @Test
+    void testIngestWithSourceId() {
+        var event = IngestEvent.builder(IngestEvent.Type.CREATE, "doc123")
+                               .sourceId("source-2")
+                               .date(Instant.ofEpochMilli(1609459200000L))
+                               .putProperty("title", "Test Document")
+                               .build();
+
+        service.ingest(event);
+
+        assertEquals(1, httpClient.ingestCalls.size());
+        var ingestedEvent = httpClient.ingestCalls.get(0);
+        assertEquals(event, ingestedEvent);
+        assertEquals("source-2", ingestedEvent.sourceId().orElseThrow());
+    }
+
+    @Test
     void testUploadBlobIfNeededWithEvent() {
-        var event = IngestEvent.builder(IngestEvent.Type.CREATE, "source-1", "doc123").build();
+        var event = IngestEvent.builder(IngestEvent.Type.CREATE, "doc123").build();
         CICBlob blob = createTestBlob("sha256:abc123");
 
         httpClient.digestCheckResult = false;
@@ -200,7 +216,8 @@ class IngestServiceTest {
 
         public TestIngestHttpClient() {
             super(IngestHttpClient.from("https://localhost",
-                    AuthenticationHttpClient.from().clientId("test-client-id").clientSecret("test-client-secret")));
+                    AuthenticationHttpClient.from().clientId("test-client-id").clientSecret("test-client-secret"))
+                                  .sourceId("source-1"));
         }
 
         @Override
@@ -210,7 +227,8 @@ class IngestServiceTest {
 
         @Override
         public boolean checkDigest(String sourceId, String objectId, String digest) {
-            checkDigestCalls.add(new CheckDigestCall(sourceId, objectId, digest));
+            // TODO maybe mock with a real HTTP server, sourceId resolution is source duplicated
+            checkDigestCalls.add(new CheckDigestCall(sourceId == null ? this.sourceId : sourceId, objectId, digest));
             return digestCheckResult;
         }
 
