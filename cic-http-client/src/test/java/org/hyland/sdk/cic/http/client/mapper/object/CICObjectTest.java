@@ -20,9 +20,12 @@ package org.hyland.sdk.cic.http.client.mapper.object;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.LocalDate;
 
 import org.junit.jupiter.api.Test;
 
@@ -50,6 +53,9 @@ public class CICObjectTest {
         assertEquals("default", cicObject.getString("string", "default"));
         assertEquals("another", cicObject.getString("string", "another"));
         assertThrows(CICSdkException.class, () -> cicObject.getStringOrThrow("string"));
+        assertNull(cicObject.getLocalDate("localDate", null));
+        assertEquals(LocalDate.of(2025, 1, 1), cicObject.getLocalDate("localDate", LocalDate.of(2025, 1, 1)));
+        assertThrows(CICSdkException.class, () -> cicObject.getLocalDateOrThrow("localDate"));
     }
 
     @Test
@@ -112,6 +118,21 @@ public class CICObjectTest {
         assertThrows(CICSdkException.class, () -> cicObject.getIntOrThrow("string"));
         assertThrows(CICSdkException.class, () -> cicObject.getLong("string", 0L));
         assertThrows(CICSdkException.class, () -> cicObject.getLongOrThrow("string"));
+    }
+
+    @Test
+    public void scalarLocalDate() {
+        var cicObject = CICObject.create();
+        cicObject.putLocalDate("localDate", LocalDate.of(2025, 6, 1));
+        assertEquals(LocalDate.of(2025, 6, 1), cicObject.getLocalDate("localDate", null));
+        assertEquals(LocalDate.of(2025, 6, 1), cicObject.getLocalDateOrThrow("localDate"));
+        assertEquals("2025-06-01", cicObject.getString("localDate", null));
+        assertThrows(CICSdkException.class, () -> cicObject.getBoolean("localDate", true));
+        assertThrows(CICSdkException.class, () -> cicObject.getBooleanOrThrow("localDate"));
+        assertThrows(CICSdkException.class, () -> cicObject.getInt("localDate", 0));
+        assertThrows(CICSdkException.class, () -> cicObject.getIntOrThrow("localDate"));
+        assertThrows(CICSdkException.class, () -> cicObject.getLong("localDate", 0L));
+        assertThrows(CICSdkException.class, () -> cicObject.getLongOrThrow("localDate"));
     }
 
     @Test

@@ -34,6 +34,6 @@ public record LlmModel(String displayName, String modelName, String status, Loca
         Objects.requireNonNull(status, "status cannot be null");
     }
 
-    public static class List extends ArrayList<LlmModel> {
+    public static class ListOf extends ArrayList<LlmModel> {
     }
 }

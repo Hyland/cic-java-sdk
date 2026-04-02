@@ -30,6 +30,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import org.hyland.sdk.cic.agent.object.AgentConfiguration;
+import org.hyland.sdk.cic.agent.object.AgentSummary;
 import org.hyland.sdk.cic.agent.object.FilterExpression;
 import org.hyland.sdk.cic.agent.object.PrincipalType;
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
@@ -129,7 +130,7 @@ class AgentConfigurationMapperTest {
                 ]
                 """;
 
-        var summaries = MapperService.read(json, org.hyland.sdk.cic.agent.object.AgentSummary.ListOf.class);
+        var summaries = MapperService.read(json, AgentSummary.ListOf.class);
 
         assertEquals(1, summaries.size());
         assertEquals("13413629-6233-4dce-93bd-069e7f795999", summaries.get(0).id());

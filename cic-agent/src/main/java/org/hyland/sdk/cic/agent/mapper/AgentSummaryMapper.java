@@ -26,6 +26,7 @@ import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.readStringOrNull;
 import java.util.stream.Collectors;
 
 import org.hyland.sdk.cic.agent.object.AgentSummary;
+import org.hyland.sdk.cic.agent.object.AgentSummary.ListOf;
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
@@ -51,19 +52,19 @@ class AgentSummaryMapper implements CICMapper<AgentSummary> {
                 readStringOrNull(obj, "knowledgeGraphDomainId"));
     }
 
-    static class ListMapper implements CICMapper<AgentSummary.ListOf> {
+    static class ListMapper implements CICMapper<ListOf> {
 
         private final AgentSummaryMapper innerMapper = new AgentSummaryMapper();
 
         @Override
-        public AgentSummary.ListOf fromCICNode(CICNode cicNode) {
+        public ListOf fromCICNode(CICNode cicNode) {
             if (!(cicNode instanceof CICArray cicArray)) {
                 throw new IllegalArgumentException("Expected CICArray, got: " + cicNode.getClass().getSimpleName());
             }
             return cicArray.toListObject()
                            .stream()
                            .map(innerMapper::fromCICNode)
-                           .collect(Collectors.toCollection(AgentSummary.ListOf::new));
+                           .collect(Collectors.toCollection(ListOf::new));
         }
     }
 }

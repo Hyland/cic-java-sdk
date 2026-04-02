@@ -20,6 +20,7 @@ package org.hyland.sdk.cic.agent.mapper;
 
 import org.hyland.sdk.cic.agent.object.Avatar;
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
+import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 
@@ -34,5 +35,23 @@ class AvatarMapper implements CICMapper<Avatar> {
             throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
         }
         return new Avatar(obj.getString("preSignedUrl", null));
+    }
+
+    static class BatchMapMapper implements CICMapper<Avatar.BatchMap> {
+
+        @Override
+        public Avatar.BatchMap fromCICNode(CICNode cicNode) {
+            if (!(cicNode instanceof CICArray cicArray)) {
+                throw new IllegalArgumentException("Expected CICArray, got: " + cicNode.getClass().getSimpleName());
+            }
+            var result = new Avatar.BatchMap();
+            for (var node : cicArray.toListObject()) {
+                var agentId = node.getString("agentId", null);
+                if (agentId != null) {
+                    result.put(agentId, new Avatar(node.getString("avatarUrl", null)));
+                }
+            }
+            return result;
+        }
     }
 }

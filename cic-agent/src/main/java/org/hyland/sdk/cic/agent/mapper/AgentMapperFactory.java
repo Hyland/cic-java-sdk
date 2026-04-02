@@ -20,13 +20,13 @@ package org.hyland.sdk.cic.agent.mapper;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
-import org.hyland.sdk.cic.agent.object.AgentAvatar;
 import org.hyland.sdk.cic.agent.object.AgentConfiguration;
 import org.hyland.sdk.cic.agent.object.AgentSummary;
 import org.hyland.sdk.cic.agent.object.Avatar;
 import org.hyland.sdk.cic.agent.object.CreateAgent;
-import org.hyland.sdk.cic.agent.object.GuardrailsResponse;
+import org.hyland.sdk.cic.agent.object.GuardrailGroup;
 import org.hyland.sdk.cic.agent.object.IntegrationSubmitQuestionRequest;
 import org.hyland.sdk.cic.agent.object.LlmModel;
 import org.hyland.sdk.cic.agent.object.QuestionResponse;
@@ -42,7 +42,7 @@ import org.hyland.sdk.cic.http.client.mapper.MapperService;
 public class AgentMapperFactory implements MapperService.MapperFactory {
 
     // Stateless mappers are shared — order matters for types in the same hierarchy
-    private static final List<Map.Entry<Class<?>, CICMapper<?>>> MAPPERS = List.of(
+    private static final List<Entry<Class<?>, CICMapper<?>>> MAPPERS = List.of(
             Map.entry(AgentConfiguration.class, new AgentConfigurationMapper()),
             Map.entry(AgentSummary.ListOf.class, new AgentSummaryMapper.ListMapper()),
             Map.entry(AgentSummary.class, new AgentSummaryMapper()),
@@ -51,13 +51,12 @@ public class AgentMapperFactory implements MapperService.MapperFactory {
             Map.entry(SubmitQuestionRequest.class, new SubmitQuestionRequestMapper()),
             Map.entry(IntegrationSubmitQuestionRequest.class, new IntegrationSubmitQuestionRequestMapper()),
             Map.entry(Avatar.class, new AvatarMapper()),
-            Map.entry(AgentAvatar.List.class, new AgentAvatarMapper.ListMapper()),
-            Map.entry(AgentAvatar.class, new AgentAvatarMapper()),
-            Map.entry(StaticAvatar.List.class, new StaticAvatarMapper.ListMapper()),
+            Map.entry(Avatar.BatchMap.class, new AvatarMapper.BatchMapMapper()),
+            Map.entry(StaticAvatar.ListOf.class, new StaticAvatarMapper.ListMapper()),
             Map.entry(StaticAvatar.class, new StaticAvatarMapper()),
-            Map.entry(LlmModel.List.class, new LlmModelMapper.ListMapper()),
+            Map.entry(LlmModel.ListOf.class, new LlmModelMapper.ListMapper()),
             Map.entry(LlmModel.class, new LlmModelMapper()),
-            Map.entry(GuardrailsResponse.class, new GuardrailsResponseMapper()),
+            Map.entry(GuardrailGroup.ListOf.class, new GuardrailGroupListMapper()),
             Map.entry(QuestionResponse.class, new QuestionResponseMapper()));
 
     @Override

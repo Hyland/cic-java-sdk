@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
-import org.hyland.sdk.cic.agent.object.GuardrailsResponse;
+import org.hyland.sdk.cic.agent.object.GuardrailGroup.ListOf;
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
 
 /**
@@ -57,19 +57,19 @@ class GuardrailsResponseMapperTest {
                 }
                 """;
 
-        var response = MapperService.read(json, GuardrailsResponse.class);
+        var groups = MapperService.read(json, ListOf.class);
 
-        assertNotNull(response);
-        assertEquals(2, response.guardrailGroups().size());
+        assertNotNull(groups);
+        assertEquals(2, groups.size());
 
-        var group1 = response.guardrailGroups().get(0);
+        var group1 = groups.get(0);
         assertEquals("Mock content", group1.displayName());
         assertEquals(2, group1.guardrails().size());
         assertEquals("TEST-Mock-Low", group1.guardrails().get(0).name());
         assertEquals("low", group1.guardrails().get(0).severity());
         assertTrue(group1.guardrails().get(0).isRecommended());
 
-        var group2 = response.guardrailGroups().get(1);
+        var group2 = groups.get(1);
         assertEquals("Contextual Grounding", group2.displayName());
         assertEquals(1, group2.guardrails().size());
         assertNull(group2.guardrails().get(0).severity());
@@ -109,11 +109,11 @@ class GuardrailsResponseMapperTest {
                 }
                 """;
 
-        var response = MapperService.read(json, GuardrailsResponse.class);
+        var groups = MapperService.read(json, ListOf.class);
 
-        assertEquals(3, response.guardrailGroups().size());
+        assertEquals(3, groups.size());
 
-        var group1 = response.guardrailGroups().get(0);
+        var group1 = groups.get(0);
         assertEquals("Mock content", group1.displayName());
         assertEquals(3, group1.guardrails().size());
         assertEquals("TEST-Mock-Low", group1.guardrails().get(0).name());
@@ -121,12 +121,12 @@ class GuardrailsResponseMapperTest {
         assertTrue(group1.guardrails().get(0).isRecommended());
         assertEquals("high", group1.guardrails().get(2).severity());
 
-        var group2 = response.guardrailGroups().get(1);
+        var group2 = groups.get(1);
         assertEquals("Mock violence", group2.displayName());
         assertEquals(3, group2.guardrails().size());
         assertEquals("TEST-Violence-Medium", group2.guardrails().get(1).name());
 
-        var grounding = response.guardrailGroups().get(2);
+        var grounding = groups.get(2);
         assertEquals("Contextual Grounding", grounding.displayName());
         assertEquals(1, grounding.guardrails().size());
         assertEquals("TEST-Contextual-Grounding", grounding.guardrails().get(0).name());

@@ -41,7 +41,7 @@ class StaticAvatarMapperTest {
                 [{"fileName": "example.png", "preSignedUrl": "https://localhost/avatars/example.png"}]
                 """;
 
-        var avatars = MapperService.read(json, StaticAvatar.List.class);
+        var avatars = MapperService.read(json, StaticAvatar.ListOf.class);
 
         assertEquals(1, avatars.size());
         assertEquals("example.png", avatars.get(0).fileName());
@@ -50,7 +50,7 @@ class StaticAvatarMapperTest {
 
     @Test
     void testDeserializeStaticAvatarListEmpty() {
-        var avatars = MapperService.read("[]", StaticAvatar.List.class);
+        var avatars = MapperService.read("[]", StaticAvatar.ListOf.class);
 
         assertNotNull(avatars);
         assertTrue(avatars.isEmpty());
@@ -66,7 +66,7 @@ class StaticAvatarMapperTest {
                 ]
                 """;
 
-        var avatars = MapperService.read(json, StaticAvatar.List.class);
+        var avatars = MapperService.read(json, StaticAvatar.ListOf.class);
 
         assertEquals(3, avatars.size());
         assertEquals("Blue-Gold.png", avatars.get(0).fileName());
@@ -79,7 +79,7 @@ class StaticAvatarMapperTest {
     @Test
     void testMapperFactory() {
         var factory = new AgentMapperFactory();
-        CICMapper<StaticAvatar.List> mapper = factory.getMapper(StaticAvatar.List.class);
+        CICMapper<StaticAvatar.ListOf> mapper = factory.getMapper(StaticAvatar.ListOf.class);
         assertNotNull(mapper);
         assertInstanceOf(StaticAvatarMapper.ListMapper.class, mapper);
     }

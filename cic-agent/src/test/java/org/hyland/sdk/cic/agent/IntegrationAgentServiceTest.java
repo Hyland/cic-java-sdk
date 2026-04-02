@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 
 import org.hyland.sdk.cic.agent.object.AgentConfiguration;
 import org.hyland.sdk.cic.agent.object.AgentSummary;
+import org.hyland.sdk.cic.agent.object.AgentSummary.ListOf;
 import org.hyland.sdk.cic.agent.object.IntegrationSubmitQuestionRequest;
 import org.hyland.sdk.cic.agent.object.QuestionResponse;
 import org.hyland.sdk.cic.http.client.auth.AuthenticationHttpClient;
@@ -51,7 +52,7 @@ class IntegrationAgentServiceTest {
     @Test
     void testListAgents() {
         var sourceId = UUID.randomUUID().toString();
-        var expected = new AgentSummary.ListOf();
+        var expected = new ListOf();
         httpClient.agentSummaries = expected;
 
         var result = service.listAgents(sourceId);
@@ -115,7 +116,7 @@ class IntegrationAgentServiceTest {
 
     private static class TestAgentHttpClient extends AgentHttpClient {
 
-        AgentSummary.ListOf agentSummaries;
+        ListOf agentSummaries;
 
         AgentConfiguration agentConfiguration;
 

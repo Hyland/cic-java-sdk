@@ -19,15 +19,15 @@
 package org.hyland.sdk.cic.agent;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import org.hyland.sdk.cic.agent.object.AgentAvatar;
 import org.hyland.sdk.cic.agent.object.AgentConfiguration;
 import org.hyland.sdk.cic.agent.object.AgentSummary;
 import org.hyland.sdk.cic.agent.object.Avatar;
 import org.hyland.sdk.cic.agent.object.CreateAgent;
-import org.hyland.sdk.cic.agent.object.GuardrailsResponse;
+import org.hyland.sdk.cic.agent.object.GuardrailGroup;
 import org.hyland.sdk.cic.agent.object.LlmModel;
 import org.hyland.sdk.cic.agent.object.QuestionResponse;
 import org.hyland.sdk.cic.agent.object.StaticAvatar;
@@ -211,10 +211,10 @@ public class AgentService {
      * Gets avatars for multiple agents in batch.
      *
      * @param agentIds the list of agent IDs
-     * @return the list of agent avatars
+     * @return a map of agent ID to avatar
      * @throws CICSdkException if the request fails
      */
-    public List<AgentAvatar> getAvatarsBatch(List<String> agentIds) {
+    public Map<String, Avatar> getAvatarsBatch(List<String> agentIds) {
         Objects.requireNonNull(agentIds, "agentIds cannot be null");
         return httpClient.getAvatarsBatch(agentIds);
     }
@@ -242,10 +242,10 @@ public class AgentService {
     /**
      * Lists available guardrails.
      *
-     * @return the guardrails response
+     * @return a list of guardrail groups
      * @throws CICSdkException if the request fails
      */
-    public GuardrailsResponse listGuardrails() {
+    public List<GuardrailGroup> listGuardrails() {
         return httpClient.listGuardrails();
     }
 

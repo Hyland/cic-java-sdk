@@ -24,14 +24,14 @@ import static org.hyland.sdk.cic.http.client.base.CICHttpRequest.POST;
 import static org.hyland.sdk.cic.http.client.base.CICHttpRequest.PUT;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
-import org.hyland.sdk.cic.agent.object.AgentAvatar;
 import org.hyland.sdk.cic.agent.object.AgentConfiguration;
 import org.hyland.sdk.cic.agent.object.AgentSummary;
 import org.hyland.sdk.cic.agent.object.Avatar;
 import org.hyland.sdk.cic.agent.object.CreateAgent;
-import org.hyland.sdk.cic.agent.object.GuardrailsResponse;
+import org.hyland.sdk.cic.agent.object.GuardrailGroup;
 import org.hyland.sdk.cic.agent.object.IntegrationSubmitQuestionRequest;
 import org.hyland.sdk.cic.agent.object.LlmModel;
 import org.hyland.sdk.cic.agent.object.QuestionResponse;
@@ -189,10 +189,10 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
      * Gets avatars for multiple agents in batch.
      *
      * @param agentIds the list of agent IDs
-     * @return the list of agent avatars
+     * @return a map of agent ID to avatar
      * @throws CICSdkException if the request fails
      */
-    public List<AgentAvatar> getAvatarsBatch(List<String> agentIds) {
+    public Map<String, Avatar> getAvatarsBatch(List<String> agentIds) {
         Objects.requireNonNull(agentIds, "agentIds cannot be null");
         var body = CICObject.create();
         var array = CICArray.create();
@@ -202,7 +202,7 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
                           .header("Content-Type", "application/json")
                           .entity(new CICEntity(body))
                           .build();
-        return sendThenMapAs(request, AgentAvatar.List.class);
+        return sendThenMapAs(request, Avatar.BatchMap.class);
     }
 
     /**
@@ -213,7 +213,7 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
      */
     public List<StaticAvatar> getStaticAvatars() {
         var request = this.requestBuilder(GET, AGENTS_PATH + "/avatars/static").build();
-        return sendThenMapAs(request, StaticAvatar.List.class);
+        return sendThenMapAs(request, StaticAvatar.ListOf.class);
     }
 
     /**
@@ -224,18 +224,18 @@ public class AgentHttpClient extends AbstractAuthenticatedHttpClient {
      */
     public List<LlmModel> listModels() {
         var request = this.requestBuilder(GET, MODELS_PATH).build();
-        return sendThenMapAs(request, LlmModel.List.class);
+        return sendThenMapAs(request, LlmModel.ListOf.class);
     }
 
     /**
      * Lists available guardrails.
      *
-     * @return the guardrails response
+     * @return a list of guardrail groups
      * @throws CICSdkException if the request fails
      */
-    public GuardrailsResponse listGuardrails() {
+    public List<GuardrailGroup> listGuardrails() {
         var request = this.requestBuilder(GET, GUARDRAILS_PATH).build();
-        return sendThenMapAs(request, GuardrailsResponse.class);
+        return sendThenMapAs(request, GuardrailGroup.ListOf.class);
     }
 
     /**
