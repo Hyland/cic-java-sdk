@@ -18,10 +18,7 @@
  */
 package org.hyland.sdk.cic.agent.mapper;
 
-import java.time.LocalDate;
-import java.util.stream.Collectors;
-
-import org.hyland.sdk.cic.agent.object.LlmModel;
+import org.hyland.sdk.cic.agent.object.GuardrailsResponse;
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
@@ -30,32 +27,17 @@ import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 /**
  * @since 1.0.0
  */
-class LlmModelMapper implements CICMapper<LlmModel> {
+class GuardrailsResponseMapper implements CICMapper<GuardrailsResponse> {
 
     @Override
-    public LlmModel fromCICNode(CICNode cicNode) {
+    public GuardrailsResponse fromCICNode(CICNode cicNode) {
         if (!(cicNode instanceof CICObject obj)) {
             throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
         }
-        var eolDateStr = obj.getString("eolDate", null);
-        var eolDate = eolDateStr != null ? LocalDate.parse(eolDateStr) : null;
-        return new LlmModel(obj.getStringOrThrow("displayName"), obj.getStringOrThrow("modelName"),
-                obj.getStringOrThrow("status"), eolDate, obj.getString("replacementModelName", null));
-    }
-
-    static class ListMapper implements CICMapper<LlmModel.List> {
-
-        private final LlmModelMapper innerMapper = new LlmModelMapper();
-
-        @Override
-        public LlmModel.List fromCICNode(CICNode cicNode) {
-            if (!(cicNode instanceof CICArray cicArray)) {
-                throw new IllegalArgumentException("Expected CICArray, got: " + cicNode.getClass().getSimpleName());
-            }
-            return cicArray.toListObject()
-                           .stream()
-                           .map(innerMapper::fromCICNode)
-                           .collect(Collectors.toCollection(LlmModel.List::new));
+        var groupsNode = obj.getProperties().get("guardrailGroups");
+        if (groupsNode instanceof CICArray groupsArray) {
+            return new GuardrailsResponse(AgentMapperUtils.readGuardrailGroups(groupsArray));
         }
+        return new GuardrailsResponse(null);
     }
 }

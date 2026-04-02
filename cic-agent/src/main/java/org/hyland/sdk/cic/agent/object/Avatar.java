@@ -18,13 +18,8 @@
  */
 package org.hyland.sdk.cic.agent.object;
 
-import java.util.HashMap;
-
 /**
  * @since 1.0.0
  */
 public record Avatar(String preSignedUrl) {
-
-    public static class BatchMap extends HashMap<String, Avatar> {
-    }
 }

@@ -18,7 +18,9 @@
  */
 package org.hyland.sdk.cic.agent.mapper;
 
-import org.hyland.sdk.cic.agent.object.GuardrailGroup.ListOf;
+import java.util.stream.Collectors;
+
+import org.hyland.sdk.cic.agent.object.AgentAvatar;
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
@@ -27,18 +29,30 @@ import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 /**
  * @since 1.0.0
  */
-class GuardrailGroupListMapper implements CICMapper<ListOf> {
+class AgentAvatarMapper implements CICMapper<AgentAvatar> {
 
     @Override
-    public ListOf fromCICNode(CICNode cicNode) {
+    public AgentAvatar fromCICNode(CICNode cicNode) {
         if (!(cicNode instanceof CICObject obj)) {
             throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
         }
-        var result = new ListOf();
-        var groupsNode = obj.getProperties().get("guardrailGroups");
-        if (groupsNode instanceof CICArray groupsArray) {
-            result.addAll(AgentMapperUtils.readGuardrailGroups(groupsArray));
+        var agentId = obj.getString("agentId", null);
+        return new AgentAvatar(agentId, obj.getString("avatarUrl", null));
+    }
+
+    static class ListMapper implements CICMapper<AgentAvatar.List> {
+
+        private final AgentAvatarMapper innerMapper = new AgentAvatarMapper();
+
+        @Override
+        public AgentAvatar.List fromCICNode(CICNode cicNode) {
+            if (!(cicNode instanceof CICArray cicArray)) {
+                throw new IllegalArgumentException("Expected CICArray, got: " + cicNode.getClass().getSimpleName());
+            }
+            return cicArray.toListObject()
+                           .stream()
+                           .map(innerMapper::fromCICNode)
+                           .collect(Collectors.toCollection(AgentAvatar.List::new));
         }
-        return result;
     }
 }

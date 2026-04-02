@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
-import org.hyland.sdk.cic.agent.object.Avatar;
+import org.hyland.sdk.cic.agent.object.AgentAvatar;
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
 
@@ -36,7 +36,7 @@ import org.hyland.sdk.cic.http.client.mapper.MapperService;
 class AgentAvatarMapperTest {
 
     @Test
-    void testDeserializeAvatarBatchMap() {
+    void testDeserializeAgentAvatarList() {
         var json = """
                 [
                   {
@@ -50,40 +50,41 @@ class AgentAvatarMapperTest {
                 ]
                 """;
 
-        var avatars = MapperService.read(json, Avatar.BatchMap.class);
+        var avatars = MapperService.read(json, AgentAvatar.List.class);
 
         assertEquals(2, avatars.size());
-        assertEquals("https://localhost/avatars/example.png",
-                avatars.get("31a01094-e01a-4cc5-830b-ccca11e07a49").preSignedUrl());
-        assertEquals("https://localhost/avatars/other.png",
-                avatars.get("6ba7b810-9dad-11d1-80b4-00c04fd430c8").preSignedUrl());
+        assertEquals("31a01094-e01a-4cc5-830b-ccca11e07a49", avatars.get(0).agentId());
+        assertEquals("https://localhost/avatars/example.png", avatars.get(0).avatarUrl());
+        assertEquals("6ba7b810-9dad-11d1-80b4-00c04fd430c8", avatars.get(1).agentId());
+        assertEquals("https://localhost/avatars/other.png", avatars.get(1).avatarUrl());
     }
 
     @Test
-    void testDeserializeAvatarBatchMapEmpty() {
-        var avatars = MapperService.read("[]", Avatar.BatchMap.class);
+    void testDeserializeAgentAvatarListEmpty() {
+        var avatars = MapperService.read("[]", AgentAvatar.List.class);
 
         assertNotNull(avatars);
         assertTrue(avatars.isEmpty());
     }
 
     @Test
-    void testDeserializeAvatarBatchMapWithNullAvatarUrl() {
+    void testDeserializeAgentAvatarWithNullAvatarUrl() {
         var json = """
                 [{"agentId": "31a01094-e01a-4cc5-830b-ccca11e07a49", "avatarUrl": null}]
                 """;
 
-        var avatars = MapperService.read(json, Avatar.BatchMap.class);
+        var avatars = MapperService.read(json, AgentAvatar.List.class);
 
         assertEquals(1, avatars.size());
-        assertNull(avatars.get("31a01094-e01a-4cc5-830b-ccca11e07a49").preSignedUrl());
+        assertEquals("31a01094-e01a-4cc5-830b-ccca11e07a49", avatars.get(0).agentId());
+        assertNull(avatars.get(0).avatarUrl());
     }
 
     @Test
     void testMapperFactory() {
         var factory = new AgentMapperFactory();
-        CICMapper<Avatar.BatchMap> mapper = factory.getMapper(Avatar.BatchMap.class);
+        CICMapper<AgentAvatar.List> mapper = factory.getMapper(AgentAvatar.List.class);
         assertNotNull(mapper);
-        assertInstanceOf(AvatarMapper.BatchMapMapper.class, mapper);
+        assertInstanceOf(AgentAvatarMapper.ListMapper.class, mapper);
     }
 }

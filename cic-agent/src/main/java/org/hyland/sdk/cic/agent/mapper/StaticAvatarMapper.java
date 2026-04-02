@@ -39,19 +39,19 @@ class StaticAvatarMapper implements CICMapper<StaticAvatar> {
         return new StaticAvatar(obj.getString("fileName", null), obj.getString("preSignedUrl", null));
     }
 
-    static class ListMapper implements CICMapper<StaticAvatar.ListOf> {
+    static class ListMapper implements CICMapper<StaticAvatar.List> {
 
         private final StaticAvatarMapper innerMapper = new StaticAvatarMapper();
 
         @Override
-        public StaticAvatar.ListOf fromCICNode(CICNode cicNode) {
+        public StaticAvatar.List fromCICNode(CICNode cicNode) {
             if (!(cicNode instanceof CICArray cicArray)) {
                 throw new IllegalArgumentException("Expected CICArray, got: " + cicNode.getClass().getSimpleName());
             }
             return cicArray.toListObject()
                            .stream()
                            .map(innerMapper::fromCICNode)
-                           .collect(Collectors.toCollection(StaticAvatar.ListOf::new));
+                           .collect(Collectors.toCollection(StaticAvatar.List::new));
         }
     }
 }

@@ -24,19 +24,19 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import org.hyland.sdk.cic.agent.object.AgentAvatar;
 import org.hyland.sdk.cic.agent.object.AgentConfiguration;
 import org.hyland.sdk.cic.agent.object.AgentSummary;
 import org.hyland.sdk.cic.agent.object.Avatar;
 import org.hyland.sdk.cic.agent.object.CreateAgent;
-import org.hyland.sdk.cic.agent.object.GuardrailGroup;
+import org.hyland.sdk.cic.agent.object.GuardrailsResponse;
 import org.hyland.sdk.cic.agent.object.LlmModel;
 import org.hyland.sdk.cic.agent.object.QuestionResponse;
 import org.hyland.sdk.cic.agent.object.StaticAvatar;
@@ -169,7 +169,7 @@ class AgentServiceTest {
 
     @Test
     void testListModels() {
-        var expected = new LlmModel.ListOf();
+        var expected = new LlmModel.List();
         expected.add(new LlmModel("Nova Micro", "amazon.nova-micro-v1:0", "Active", null, null));
         httpClient.llmModels = expected;
 
@@ -181,11 +181,11 @@ class AgentServiceTest {
 
     @Test
     void testListGuardrails() {
-        httpClient.guardrailGroups = new GuardrailGroup.ListOf();
+        httpClient.guardrailsResponse = new GuardrailsResponse(List.of());
 
         var result = service.listGuardrails();
 
-        assertTrue(result.isEmpty());
+        assertTrue(result.guardrailGroups().isEmpty());
     }
 
     @Test
@@ -200,7 +200,7 @@ class AgentServiceTest {
 
     @Test
     void testGetStaticAvatars() {
-        var expected = new StaticAvatar.ListOf();
+        var expected = new StaticAvatar.List();
         expected.add(new StaticAvatar("avatar.png", "https://example.com/avatar.png"));
         httpClient.staticAvatars = expected;
 
@@ -356,13 +356,13 @@ class AgentServiceTest {
 
         AgentConfiguration agentConfiguration;
 
-        LlmModel.ListOf llmModels;
+        LlmModel.List llmModels;
 
-        GuardrailGroup.ListOf guardrailGroups;
+        GuardrailsResponse guardrailsResponse;
 
         Avatar avatar;
 
-        StaticAvatar.ListOf staticAvatars;
+        StaticAvatar.List staticAvatars;
 
         QuestionResponse questionResponse;
 
@@ -448,8 +448,8 @@ class AgentServiceTest {
         }
 
         @Override
-        public List<GuardrailGroup> listGuardrails() {
-            return guardrailGroups;
+        public GuardrailsResponse listGuardrails() {
+            return guardrailsResponse;
         }
 
         @Override
@@ -458,8 +458,8 @@ class AgentServiceTest {
         }
 
         @Override
-        public Map<String, Avatar> getAvatarsBatch(List<String> agentIds) {
-            return new HashMap<>();
+        public List<AgentAvatar> getAvatarsBatch(List<String> agentIds) {
+            return new ArrayList<>();
         }
 
         @Override
