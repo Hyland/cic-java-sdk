@@ -18,6 +18,7 @@
  */
 package org.hyland.sdk.cic.http.client.mapper.object;
 
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -42,6 +43,8 @@ public interface CICObject extends CICNode {
 
     String getString(String key, String defaultValue);
 
+    LocalDate getLocalDate(String key, LocalDate defaultValue);
+
     CICArray getArrayOrThrow(String key);
 
     boolean getBooleanOrThrow(String key);
@@ -53,6 +56,8 @@ public interface CICObject extends CICNode {
     CICObject getObjectOrThrow(String key);
 
     String getStringOrThrow(String key);
+
+    LocalDate getLocalDateOrThrow(String key);
 
     void putArray(String key, CICArray value);
 
@@ -67,6 +72,8 @@ public interface CICObject extends CICNode {
     void putString(String key, String value);
 
     void putDouble(String key, double value);
+
+    void putLocalDate(String key, LocalDate value);
 
     void putNull(String key);
 
@@ -122,6 +129,15 @@ public interface CICObject extends CICNode {
                     return string.value();
                 }
                 throw new CICSdkException("Property: %s is not a string".formatted(key));
+            }
+
+            @Override
+            public LocalDate getLocalDate(String key, LocalDate defaultValue) {
+                var value = getString(key, null);
+                if (value == null) {
+                    return defaultValue;
+                }
+                return LocalDate.parse(value);
             }
 
             @Override
@@ -188,6 +204,15 @@ public interface CICObject extends CICNode {
             }
 
             @Override
+            public LocalDate getLocalDateOrThrow(String key) {
+                LocalDate value = getLocalDate(key, null);
+                if (value != null) {
+                    return value;
+                }
+                throw new CICSdkException("Property: %s does not exist or is not a date".formatted(key));
+            }
+
+            @Override
             public double getDouble(String key, double defaultValue) {
                 if (!properties.containsKey(key)) {
                     return defaultValue;
@@ -225,6 +250,11 @@ public interface CICObject extends CICNode {
             @Override
             public void putString(String key, String value) {
                 properties.put(key, new CICPrimitive.CICString(value));
+            }
+
+            @Override
+            public void putLocalDate(String key, LocalDate value) {
+                properties.put(key, new CICPrimitive.CICString(value.toString()));
             }
 
             @Override
