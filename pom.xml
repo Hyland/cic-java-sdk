@@ -9,7 +9,7 @@
 
   <name>Hyland CIC Java SDK</name>
   <description>Java SDK for CIC integrations</description>
-  <url>https://github.com/nuxeo/cic-java-sdk</url>
+  <url>https://github.com/HylandExperience/cic-java-sdk</url>
   <inceptionYear>2026</inceptionYear>
   <organization>
     <name>Hyland</name>
@@ -30,21 +30,21 @@
   </modules>
 
   <scm>
-    <connection>scm:git:git://github.com/nuxeo/cic-java-sdk.git</connection>
-    <developerConnection>scm:git:ssh://git@github.com:nuxeo/cic-java-sdk.git</developerConnection>
-    <url>https://github.com/nuxeo/cic-java-sdk</url>
+    <connection>scm:git:git://github.com/HylandExperience/cic-java-sdk.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com:HylandExperience/cic-java-sdk.git</developerConnection>
+    <url>https://github.com/HylandExperience/cic-java-sdk</url>
   </scm>
 
   <distributionManagement>
     <repository>
       <id>github</id>
       <name>GitHub Packages</name>
-      <url>https://maven.pkg.github.com/nuxeo/cic-java-sdk</url>
+      <url>https://maven.pkg.github.com/HylandExperience/cic-java-sdk</url>
     </repository>
     <snapshotRepository>
       <id>github</id>
       <name>GitHub Packages</name>
-      <url>https://maven.pkg.github.com/nuxeo/cic-java-sdk</url>
+      <url>https://maven.pkg.github.com/HylandExperience/cic-java-sdk</url>
     </snapshotRepository>
   </distributionManagement>
 
