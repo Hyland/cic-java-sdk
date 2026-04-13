@@ -47,6 +47,16 @@ public class AgentService {
     }
 
     /**
+     * Returns an {@link IntegrationAgentService} for integration-specific agent operations backed by the same HTTP
+     * client.
+     *
+     * @return the integration agent service
+     */
+    public IntegrationAgentService integrations() {
+        return new IntegrationAgentService(httpClient);
+    }
+
+    /**
      * Returns an {@link AgentResource} handle bound to the given agent ID.
      *
      * @param agentId the agent ID

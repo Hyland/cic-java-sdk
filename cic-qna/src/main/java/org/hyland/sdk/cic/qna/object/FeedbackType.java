@@ -14,20 +14,33 @@
  * limitations under the License.
  *
  * Contributors:
- *     Kevin Leturc <kevin.leturc@hyland.com>
+ *     Damian Ujma <damian.ujma@hyland.com>
  */
-package org.hyland.sdk.cic.http.client;
+package org.hyland.sdk.cic.qna.object;
 
 /**
  * @since 1.0.0
  */
-public class CICSdkException extends RuntimeException {
+public enum FeedbackType {
 
-    public CICSdkException(String message) {
-        super(message);
+    GOOD("Good"), BAD("Bad"), RETRY("Retry");
+
+    private final String value;
+
+    FeedbackType(String value) {
+        this.value = value;
     }
 
-    public CICSdkException(String message, Throwable cause) {
-        super(message, cause);
+    public String value() {
+        return value;
+    }
+
+    public static FeedbackType fromValue(String value) {
+        for (var type : values()) {
+            if (type.value.equals(value)) {
+                return type;
+            }
+        }
+        throw new IllegalArgumentException("Unknown FeedbackType: " + value);
     }
 }

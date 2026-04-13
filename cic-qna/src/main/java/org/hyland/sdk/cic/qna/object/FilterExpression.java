@@ -14,20 +14,26 @@
  * limitations under the License.
  *
  * Contributors:
- *     Kevin Leturc <kevin.leturc@hyland.com>
+ *     Damian Ujma <damian.ujma@hyland.com>
  */
-package org.hyland.sdk.cic.http.client;
+package org.hyland.sdk.cic.qna.object;
+
+import java.util.Map;
+import java.util.Objects;
 
 /**
+ * Represents an arbitrary JSON object expression passed to or received from the QnA API, such as a filter expression.
+ *
  * @since 1.0.0
  */
-public class CICSdkException extends RuntimeException {
+public record FilterExpression(Map<String, Object> properties) {
 
-    public CICSdkException(String message) {
-        super(message);
+    public FilterExpression {
+        Objects.requireNonNull(properties, "properties cannot be null");
+        properties = Map.copyOf(properties);
     }
 
-    public CICSdkException(String message, Throwable cause) {
-        super(message, cause);
+    public static FilterExpression of(Map<String, Object> properties) {
+        return new FilterExpression(properties);
     }
 }

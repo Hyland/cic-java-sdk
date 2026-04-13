@@ -14,20 +14,19 @@
  * limitations under the License.
  *
  * Contributors:
- *     Kevin Leturc <kevin.leturc@hyland.com>
+ *     Damian Ujma <damian.ujma@hyland.com>
  */
-package org.hyland.sdk.cic.http.client;
+package org.hyland.sdk.cic.qna.object;
+
+import java.util.Objects;
 
 /**
  * @since 1.0.0
  */
-public class CICSdkException extends RuntimeException {
+public record StartConversationResponse(Conversation conversation, ConversationMessage message) {
 
-    public CICSdkException(String message) {
-        super(message);
-    }
-
-    public CICSdkException(String message, Throwable cause) {
-        super(message, cause);
+    public StartConversationResponse {
+        Objects.requireNonNull(conversation, "conversation cannot be null");
+        Objects.requireNonNull(message, "message cannot be null");
     }
 }

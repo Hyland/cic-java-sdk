@@ -35,7 +35,7 @@ public class IntegrationAgentService {
 
     protected final AgentHttpClient httpClient;
 
-    public IntegrationAgentService(AgentHttpClient httpClient) {
+    IntegrationAgentService(AgentHttpClient httpClient) {
         this.httpClient = httpClient;
     }
 

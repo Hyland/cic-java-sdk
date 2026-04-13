@@ -24,7 +24,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -199,6 +198,24 @@ class AgentServiceTest {
     }
 
     @Test
+    void testGetAvatarsBatch() {
+        var id1 = UUID.randomUUID().toString();
+        var id2 = UUID.randomUUID().toString();
+        httpClient.avatarsBatch = Map.of(id1, new Avatar("https://example.com/avatar1.png"), id2,
+                new Avatar("https://example.com/avatar2.png"));
+
+        var result = service.getAvatarsBatch(List.of(id1, id2));
+
+        assertEquals(httpClient.avatarsBatch, result);
+        assertEquals(List.of(id1, id2), httpClient.lastAvatarsBatchIds);
+    }
+
+    @Test
+    void testGetAvatarsBatchNullThrows() {
+        assertThrows(NullPointerException.class, () -> service.getAvatarsBatch(null));
+    }
+
+    @Test
     void testGetStaticAvatars() {
         var expected = new StaticAvatar.ListOf();
         expected.add(new StaticAvatar("avatar.png", "https://example.com/avatar.png"));
@@ -362,6 +379,8 @@ class AgentServiceTest {
 
         Avatar avatar;
 
+        Map<String, Avatar> avatarsBatch;
+
         StaticAvatar.ListOf staticAvatars;
 
         QuestionResponse questionResponse;
@@ -383,6 +402,8 @@ class AgentServiceTest {
         String lastQuestionAgentId;
 
         SubmitQuestionRequest lastQuestionRequest;
+
+        List<String> lastAvatarsBatchIds;
 
         String lastVersionAgentId;
 
@@ -459,7 +480,8 @@ class AgentServiceTest {
 
         @Override
         public Map<String, Avatar> getAvatarsBatch(List<String> agentIds) {
-            return new HashMap<>();
+            lastAvatarsBatchIds = agentIds;
+            return avatarsBatch;
         }
 
         @Override

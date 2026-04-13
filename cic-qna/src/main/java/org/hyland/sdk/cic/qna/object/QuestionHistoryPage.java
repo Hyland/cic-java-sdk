@@ -14,20 +14,23 @@
  * limitations under the License.
  *
  * Contributors:
- *     Kevin Leturc <kevin.leturc@hyland.com>
+ *     Damian Ujma <damian.ujma@hyland.com>
  */
-package org.hyland.sdk.cic.http.client;
+package org.hyland.sdk.cic.qna.object;
+
+import java.util.List;
+
+import org.hyland.sdk.cic.http.client.pagination.PageableResponse;
+import org.hyland.sdk.cic.http.client.pagination.Pagination;
 
 /**
+ * Type-token class for paginated question history responses, used for mapper lookup.
+ *
  * @since 1.0.0
  */
-public class CICSdkException extends RuntimeException {
+public class QuestionHistoryPage extends PageableResponse<QuestionHistory> {
 
-    public CICSdkException(String message) {
-        super(message);
-    }
-
-    public CICSdkException(String message, Throwable cause) {
-        super(message, cause);
+    public QuestionHistoryPage(List<QuestionHistory> data, Pagination pagination) {
+        super(data, pagination);
     }
 }

@@ -14,20 +14,23 @@
  * limitations under the License.
  *
  * Contributors:
- *     Kevin Leturc <kevin.leturc@hyland.com>
+ *     Damian Ujma <damian.ujma@hyland.com>
  */
-package org.hyland.sdk.cic.http.client;
+package org.hyland.sdk.cic.qna.object;
+
+import java.util.Objects;
 
 /**
+ * @param id the unique conversation ID
+ * @param name the conversation name, may be {@code null}
+ * @param description the conversation description, may be {@code null}
+ * @param lastModified the last modification timestamp as an ISO-8601 string (e.g. {@code "2026-04-02T11:42:00Z"}), may
+ *            be {@code null}
  * @since 1.0.0
  */
-public class CICSdkException extends RuntimeException {
+public record Conversation(String id, String name, String description, String lastModified) {
 
-    public CICSdkException(String message) {
-        super(message);
-    }
-
-    public CICSdkException(String message, Throwable cause) {
-        super(message, cause);
+    public Conversation {
+        Objects.requireNonNull(id, "id cannot be null");
     }
 }

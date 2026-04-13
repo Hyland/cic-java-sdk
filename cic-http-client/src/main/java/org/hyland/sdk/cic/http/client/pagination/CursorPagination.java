@@ -14,20 +14,16 @@
  * limitations under the License.
  *
  * Contributors:
- *     Kevin Leturc <kevin.leturc@hyland.com>
+ *     Damian Ujma <damian.ujma@hyland.com>
  */
-package org.hyland.sdk.cic.http.client;
+package org.hyland.sdk.cic.http.client.pagination;
 
 /**
+ * Cursor-based pagination metadata returned by the API.
+ *
+ * @param nextCursor the cursor to use for the next page, or {@code null} when {@code hasMore} is {@code false}
+ * @param hasMore {@code true} if there are more pages to fetch
  * @since 1.0.0
  */
-public class CICSdkException extends RuntimeException {
-
-    public CICSdkException(String message) {
-        super(message);
-    }
-
-    public CICSdkException(String message, Throwable cause) {
-        super(message, cause);
-    }
+public record CursorPagination(String nextCursor, boolean hasMore) {
 }

@@ -14,20 +14,19 @@
  * limitations under the License.
  *
  * Contributors:
- *     Kevin Leturc <kevin.leturc@hyland.com>
+ *     Damian Ujma <damian.ujma@hyland.com>
  */
-package org.hyland.sdk.cic.http.client;
+package org.hyland.sdk.cic.qna.object;
+
+import java.util.Objects;
 
 /**
  * @since 1.0.0
  */
-public class CICSdkException extends RuntimeException {
+public record SetAnswerReference(String referenceId, String objectId, double rankScore) {
 
-    public CICSdkException(String message) {
-        super(message);
-    }
-
-    public CICSdkException(String message, Throwable cause) {
-        super(message, cause);
+    public SetAnswerReference {
+        Objects.requireNonNull(referenceId, "referenceId cannot be null");
+        Objects.requireNonNull(objectId, "objectId cannot be null");
     }
 }
