@@ -141,7 +141,8 @@ final class QnaMapperUtils {
             return null;
         }
         if (!(node instanceof CICArray array)) {
-            return null;
+            throw new IllegalArgumentException(
+                    "Expected CICArray for key '" + key + "', got: " + node.getClass().getSimpleName());
         }
         return array.toListObject().stream().map(docObj -> {
             var documentId = docObj.getString("documentId", null);
@@ -164,7 +165,8 @@ final class QnaMapperUtils {
             return null;
         }
         if (!(node instanceof CICArray array)) {
-            return null;
+            throw new IllegalArgumentException(
+                    "Expected CICArray for key 'objectReferences', got: " + node.getClass().getSimpleName());
         }
         return array.toListObject().stream().map(refObj -> {
             var objectId = refObj.getString("objectId", null);

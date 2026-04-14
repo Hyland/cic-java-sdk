@@ -19,7 +19,6 @@
 package org.hyland.sdk.cic.http.client.util;
 
 import org.hyland.sdk.cic.http.client.CICError;
-import org.hyland.sdk.cic.http.client.CICSdkException;
 import org.hyland.sdk.cic.http.client.CICServiceException;
 import org.hyland.sdk.cic.http.client.base.CICHttpResponse;
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
@@ -45,7 +44,7 @@ public final class ErrorUtils {
         CICError remoteCause = null;
         try {
             remoteCause = MapperService.read(response.body(), CICError.class);
-        } catch (CICSdkException e) {
+        } catch (Exception e) {
             // ignore parsing error
         }
         throw new CICServiceException(exceptionMessage, response.statusCode(), remoteCause);
