@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Instant;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
@@ -32,34 +33,23 @@ import org.junit.jupiter.api.Test;
 class IngestEventTest {
 
     @Test
-    void testNullSourceIdThrows() {
-        assertThrows(NullPointerException.class,
-                () -> IngestEvent.builder(IngestEvent.Type.CREATE, null, "doc1").build());
-    }
-
-    @Test
-    void testBlankSourceIdThrows() {
-        assertThrows(IllegalArgumentException.class,
-                () -> IngestEvent.builder(IngestEvent.Type.CREATE, "  ", "doc1").build());
-    }
-
-    @Test
     void testNullObjectIdThrows() {
         assertThrows(NullPointerException.class,
-                () -> IngestEvent.builder(IngestEvent.Type.CREATE, "src1", null).build());
+                () -> IngestEvent.builder(IngestEvent.Type.CREATE, null).sourceId("src1").build());
     }
 
     @Test
     void testBlankObjectIdThrows() {
         assertThrows(IllegalArgumentException.class,
-                () -> IngestEvent.builder(IngestEvent.Type.CREATE, "src1", "  ").build());
+                () -> IngestEvent.builder(IngestEvent.Type.CREATE, "   ").sourceId("src1").build());
     }
 
     @Test
     void testToBuilderPreservesAllFields() {
         var date = Instant.ofEpochMilli(1609459200000L);
         var props = IngestEventProperties.builder().put("key", "value").build();
-        var original = IngestEvent.builder(IngestEvent.Type.CREATE, "src1", "doc1")
+        var original = IngestEvent.builder(IngestEvent.Type.CREATE, "doc1")
+                                  .sourceId("src1")
                                   .date(date)
                                   .properties(props)
                                   .build();
@@ -76,12 +66,12 @@ class IngestEventTest {
 
     @Test
     void testToBuilderAllowsOverride() {
-        var original = IngestEvent.builder(IngestEvent.Type.CREATE, "src1", "doc1").build();
+        var original = IngestEvent.builder(IngestEvent.Type.CREATE, "doc1").sourceId("src1").build();
 
         var modified = original.toBuilder().date(Instant.ofEpochMilli(9999999L)).putProperty("extra", "val").build();
 
         assertEquals(IngestEvent.Type.CREATE, modified.type());
-        assertEquals("src1", modified.sourceId());
+        assertEquals(Optional.of("src1"), modified.sourceId());
         assertEquals("doc1", modified.objectId());
         assertEquals(Instant.ofEpochMilli(9999999L), modified.date());
         assertEquals("val", modified.properties().toMap().get("extra"));
