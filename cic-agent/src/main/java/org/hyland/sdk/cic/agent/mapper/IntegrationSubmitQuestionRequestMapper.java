@@ -35,7 +35,7 @@ class IntegrationSubmitQuestionRequestMapper implements CICMapper<IntegrationSub
         var obj = CICObject.create();
         obj.putString("question", request.question());
         obj.putString("userId", request.userId().toString());
-        if (request.contextObjectIds() != null) {
+        if (!request.contextObjectIds().isEmpty()) {
             obj.putArray("contextObjectIds", writeStringList(request.contextObjectIds()));
         }
         return obj;

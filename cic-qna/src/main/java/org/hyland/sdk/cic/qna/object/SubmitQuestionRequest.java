@@ -36,8 +36,8 @@ public record SubmitQuestionRequest(String questionId, String question, List<Str
         Objects.requireNonNull(integrationType, "integrationType cannot be null");
         Objects.requireNonNull(agentId, "agentId cannot be null");
         Objects.requireNonNull(modelName, "modelName cannot be null");
-        contextObjectIds = contextObjectIds != null ? List.copyOf(contextObjectIds) : null;
-        sourceIds = sourceIds != null ? List.copyOf(sourceIds) : null;
+        contextObjectIds = contextObjectIds != null ? List.copyOf(contextObjectIds) : List.of();
+        sourceIds = sourceIds != null ? List.copyOf(sourceIds) : List.of();
     }
 
     public static Builder builder() {

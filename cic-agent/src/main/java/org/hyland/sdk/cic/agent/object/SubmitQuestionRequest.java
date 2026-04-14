@@ -29,7 +29,7 @@ public record SubmitQuestionRequest(String question, List<String> contextObjectI
 
     public SubmitQuestionRequest {
         Objects.requireNonNull(question, "question cannot be null");
-        contextObjectIds = contextObjectIds != null ? List.copyOf(contextObjectIds) : null;
+        contextObjectIds = contextObjectIds != null ? List.copyOf(contextObjectIds) : List.of();
     }
 
     public static Builder builder() {

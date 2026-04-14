@@ -108,7 +108,8 @@ final class QnaMapperUtils {
                         "Expected CICString in string list, got: " + el.getClass().getSimpleName());
             }).toList();
         }
-        return null;
+        throw new IllegalArgumentException(
+                "Expected CICArray for key '" + key + "', got: " + node.getClass().getSimpleName());
     }
 
     static CursorPagination readCursorPagination(CICObject obj) {
@@ -145,7 +146,7 @@ final class QnaMapperUtils {
         return array.toListObject().stream().map(docObj -> {
             var documentId = docObj.getString("documentId", null);
             var refsNode = docObj.getProperties().get("references");
-            List<DocumentReferenceItem> refs = null;
+            List<DocumentReferenceItem> refs = List.of();
             if (refsNode instanceof CICArray refsArray) {
                 refs = refsArray.toListObject()
                                 .stream()
@@ -168,7 +169,7 @@ final class QnaMapperUtils {
         return array.toListObject().stream().map(refObj -> {
             var objectId = refObj.getString("objectId", null);
             var refsNode = refObj.getProperties().get("references");
-            List<AnswerReferenceItem> refs = null;
+            List<AnswerReferenceItem> refs = List.of();
             if (refsNode instanceof CICArray refsArray) {
                 refs = refsArray.toListObject()
                                 .stream()

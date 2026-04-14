@@ -24,6 +24,7 @@ import static org.hyland.sdk.cic.qna.mapper.QnaMapperUtils.writeStringList;
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
+import org.hyland.sdk.cic.qna.object.Filters;
 import org.hyland.sdk.cic.qna.object.SubmitQuestionRequest;
 
 /**
@@ -36,7 +37,7 @@ class SubmitQuestionRequestMapper implements CICMapper<SubmitQuestionRequest> {
         var obj = CICObject.create();
         obj.putString("questionId", request.questionId());
         obj.putString("question", request.question());
-        if (request.contextObjectIds() != null) {
+        if (!request.contextObjectIds().isEmpty()) {
             obj.putArray("contextObjectIds", writeStringList(request.contextObjectIds()));
         }
         obj.putString("userId", request.userId());
@@ -52,26 +53,30 @@ class SubmitQuestionRequestMapper implements CICMapper<SubmitQuestionRequest> {
         if (request.instructions() != null) {
             obj.putString("instructions", request.instructions());
         }
-        if (request.sourceIds() != null) {
+        if (!request.sourceIds().isEmpty()) {
             obj.putArray("sourceIds", writeStringList(request.sourceIds()));
         }
         if (request.filters() != null) {
-            var filtersObj = CICObject.create();
-            if (request.filters().merged() != null) {
-                filtersObj.putObject("merged", toCICObject(request.filters().merged()));
-            }
-            if (request.filters().dynamic() != null) {
-                filtersObj.putObject("dynamic", toCICObject(request.filters().dynamic()));
-            }
-            if (request.filters().staticFilter() != null) {
-                filtersObj.putObject("static", toCICObject(request.filters().staticFilter()));
-            }
-            if (request.filters().hxqlFilter() != null) {
-                filtersObj.putString("hxqlFilter", request.filters().hxqlFilter());
-            } else {
-                filtersObj.putNull("hxqlFilter");
-            }
-            obj.putObject("filters", filtersObj);
+            obj.putObject("filters", writeFilters(request.filters()));
+        }
+        return obj;
+    }
+
+    private CICObject writeFilters(Filters filters) {
+        var obj = CICObject.create();
+        if (filters.merged() != null) {
+            obj.putObject("merged", toCICObject(filters.merged()));
+        }
+        if (filters.dynamic() != null) {
+            obj.putObject("dynamic", toCICObject(filters.dynamic()));
+        }
+        if (filters.staticFilter() != null) {
+            obj.putObject("static", toCICObject(filters.staticFilter()));
+        }
+        if (filters.hxqlFilter() != null) {
+            obj.putString("hxqlFilter", filters.hxqlFilter());
+        } else {
+            obj.putNull("hxqlFilter");
         }
         return obj;
     }
