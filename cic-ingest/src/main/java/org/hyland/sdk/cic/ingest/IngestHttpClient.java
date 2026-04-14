@@ -36,6 +36,7 @@ import org.hyland.sdk.cic.http.client.mapper.MapperService;
 import org.hyland.sdk.cic.http.client.mapper.object.CICBlob;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 import org.hyland.sdk.cic.http.client.util.ErrorUtils;
+import org.hyland.sdk.cic.http.client.util.StringUtils;
 import org.hyland.sdk.cic.ingest.object.IngestEvent;
 import org.hyland.sdk.cic.ingest.object.PreSignedUrl;
 
@@ -52,6 +53,8 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
 
     private static final String CHECK_DIGEST_PATH = "/v1/check-digest";
 
+    protected final String sourceId;
+
     private final int presignedUrlsCount;
 
     // ---------------
@@ -60,6 +63,7 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
 
     protected IngestHttpClient(Builder builder) {
         super(builder);
+        this.sourceId = builder.sourceId;
         this.presignedUrlsCount = builder.presignedUrlsCount;
     }
 
@@ -90,6 +94,8 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
      * @throws CICSdkException if the request fails or returns an unexpected status code (400, 401, 403, 500)
      */
     public boolean checkDigest(String sourceId, String objectId, String digest) {
+        sourceId = sourceId == null ? this.sourceId : sourceId;
+        StringUtils.requireNonBlank(sourceId, "sourceId must be provided either in method parameter or builder");
         var request = this.requestBuilder(GET, CHECK_DIGEST_PATH + "/" + sourceId + "/" + objectId)
                           .queryParameter("digest", digest)
                           .build();
@@ -120,7 +126,8 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
     public void ingest(IngestEvent event) {
         var request = this.requestBuilder(POST, INGESTION_EVENTS_PATH)
                           .header("Content-Type", "application/json")
-                          .entity(new CICEntity(IngestEvent.Batch.of(event)))
+                          .entity(new CICEntity(IngestEvent.Batch.of(
+                                  event.toBuilder().sourceId(event.sourceId().orElse(this.sourceId)).build())))
                           .build();
 
         var response = sendThenReadAsString(request);
@@ -171,6 +178,8 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
 
     public static class Builder extends AbstractAuthenticatedHttpClientBuilder<Builder, IngestHttpClient> {
 
+        protected String sourceId;
+
         private int presignedUrlsCount = 100;
 
         /**
@@ -195,10 +204,18 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
         }
 
         /**
-         * Sets the number of pre-signed URLs to retrieve in a single request.
+         * Sets the sourceId in REST URLs or Body.
          *
-         * @param count
-         * @return
+         * @param sourceId the source id
+         * @return this builder
+         */
+        public Builder sourceId(String sourceId) {
+            this.sourceId = sourceId;
+            return this;
+        }
+
+        /**
+         * Sets the number of pre-signed URLs to retrieve in a single request.
          */
         public Builder presignedUrlsCount(int count) {
             this.presignedUrlsCount = count;

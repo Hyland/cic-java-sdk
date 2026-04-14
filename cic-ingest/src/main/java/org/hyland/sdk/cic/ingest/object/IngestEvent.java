@@ -22,53 +22,111 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Consumer;
+
+import org.hyland.sdk.cic.http.client.util.StringUtils;
 
 /**
  * @since 1.0.0
  */
-public record IngestEvent(Type type, String sourceId, String objectId, Instant date, IngestEventProperties properties) {
+public final class IngestEvent {
 
-    public IngestEvent {
-        Objects.requireNonNull(type, "type cannot be null");
-        Objects.requireNonNull(sourceId, "sourceId cannot be null");
-        if (sourceId.isBlank()) {
-            throw new IllegalArgumentException("sourceId cannot be blank");
-        }
-        Objects.requireNonNull(objectId, "objectId cannot be null");
-        if (objectId.isBlank()) {
-            throw new IllegalArgumentException("objectId cannot be blank");
-        }
-        Objects.requireNonNull(date, "date cannot be null");
-        Objects.requireNonNull(properties, "properties cannot be null");
+    protected final Type type;
+
+    // nullable
+    protected final String sourceId;
+
+    protected final String objectId;
+
+    protected final Instant date;
+
+    protected final IngestEventProperties properties;
+
+    protected IngestEvent(Builder builder) {
+        this.type = Objects.requireNonNull(builder.type, "type cannot be null");
+        this.sourceId = builder.sourceId;
+        this.objectId = StringUtils.requireNonBlank(builder.objectId, "objectId cannot be blank");
+        this.date = Objects.requireNonNull(builder.date, "date cannot be null");
+        this.properties = Objects.requireNonNull(builder.propertiesBuilder.build(), "properties cannot be null");
+    }
+
+    public static Builder builder(Type type, String objectId) {
+        return new Builder(type, objectId);
+    }
+
+    public Type type() {
+        return type;
+    }
+
+    public Optional<String> sourceId() {
+        return Optional.ofNullable(sourceId);
+    }
+
+    public String objectId() {
+        return objectId;
+    }
+
+    public Instant date() {
+        return date;
+    }
+
+    public IngestEventProperties properties() {
+        return properties;
     }
 
     public Builder toBuilder() {
-        return new Builder(type, sourceId, objectId).date(date).properties(properties);
+        return new Builder(type, objectId).sourceId(sourceId).date(date).properties(properties);
     }
 
-    public static Builder builder(Type type, String sourceId, String objectId) {
-        return new Builder(type, sourceId, objectId);
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (obj == null || obj.getClass() != this.getClass()) {
+            return false;
+        }
+        var that = (IngestEvent) obj;
+        return Objects.equals(this.type, that.type) && Objects.equals(this.sourceId, that.sourceId)
+                && Objects.equals(this.objectId, that.objectId) && Objects.equals(this.date, that.date)
+                && Objects.equals(this.properties, that.properties);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(type, sourceId, objectId, date, properties);
+    }
+
+    @Override
+    public String toString() {
+        return "IngestEvent[type=" + type + ", sourceId=" + sourceId + ", objectId=" + objectId + ", date=" + date
+                + ", properties=REDACTED]";
     }
 
     public static final class Builder {
 
         private final Type type;
 
-        private final String sourceId;
-
         private final String objectId;
+
+        // nullable
+        private String sourceId;
 
         private Instant date;
 
         private IngestEventProperties.Builder propertiesBuilder;
 
-        private Builder(Type type, String sourceId, String objectId) {
+        private Builder(Type type, String objectId) {
             this.type = Objects.requireNonNull(type, "type cannot be null");
-            this.sourceId = Objects.requireNonNull(sourceId, "sourceId cannot be null");
             this.objectId = Objects.requireNonNull(objectId, "objectId cannot be null");
             this.date = Instant.now();
             this.propertiesBuilder = IngestEventProperties.builder();
+        }
+
+        public Builder sourceId(String sourceId) {
+            this.sourceId = sourceId;
+            return this;
         }
 
         public Builder date(Instant date) {
@@ -123,7 +181,7 @@ public record IngestEvent(Type type, String sourceId, String objectId, Instant d
         }
 
         public IngestEvent build() {
-            return new IngestEvent(type, sourceId, objectId, date, propertiesBuilder.build());
+            return new IngestEvent(this);
         }
     }
 

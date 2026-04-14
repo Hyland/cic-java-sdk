@@ -40,7 +40,8 @@ class IngestEventMapperTest {
 
     @Test
     void testSerializeIngestEvent() throws JSONException {
-        var event = IngestEvent.builder(IngestEvent.Type.CREATE, "source-1", "doc123")
+        var event = IngestEvent.builder(IngestEvent.Type.CREATE, "doc123")
+                               .sourceId("source-1")
                                .date(Instant.ofEpochMilli(1609459200000L))
                                .putProperty("title", "Test Document")
                                .putProperty("version", 1)
@@ -67,8 +68,8 @@ class IngestEventMapperTest {
 
     @Test
     void testSerializeComplexIngestEventMatchingExample() throws JSONException {
-        var event = IngestEvent.builder(IngestEvent.Type.CREATE_OR_UPDATE, "a1f3e7c0-d193-7023-ce1d-0a63de491876",
-                "d71dd823-82c7-477c-8490-04cb0e826e65")
+        var event = IngestEvent.builder(IngestEvent.Type.CREATE_OR_UPDATE, "d71dd823-82c7-477c-8490-04cb0e826e65")
+                               .sourceId("a1f3e7c0-d193-7023-ce1d-0a63de491876")
                                .date(Instant.ofEpochMilli(1611656982995L))
                                .properties(buildComplexProperties())
                                .build();
