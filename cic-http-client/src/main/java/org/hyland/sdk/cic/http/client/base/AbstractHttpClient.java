@@ -36,6 +36,8 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import org.hyland.sdk.cic.http.client.CICSdkException;
@@ -43,6 +45,8 @@ import org.hyland.sdk.cic.http.client.base.CICHttpRequest.CICEntity;
 import org.hyland.sdk.cic.http.client.base.CICHttpRequest.FormDataEntity;
 import org.hyland.sdk.cic.http.client.base.CICHttpRequest.InputStreamEntity;
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
+import org.hyland.sdk.cic.http.client.retry.RetryContext;
+import org.hyland.sdk.cic.http.client.retry.RetryPolicy;
 import org.hyland.sdk.cic.http.client.util.ErrorUtils;
 
 /**
@@ -50,11 +54,15 @@ import org.hyland.sdk.cic.http.client.util.ErrorUtils;
  */
 public abstract class AbstractHttpClient implements AutoCloseable {
 
+    private static final Logger LOG = Logger.getLogger(AbstractHttpClient.class.getName());
+
     protected final HttpClient client;
 
     protected final String baseUrl;
 
     protected final Map<String, String> headers;
+
+    protected final RetryPolicy retryPolicy;
 
     protected AbstractHttpClient(AbstractHttpClientBuilder<?, ?> builder) {
         var clientBuilder = HttpClient.newBuilder();
@@ -64,6 +72,7 @@ public abstract class AbstractHttpClient implements AutoCloseable {
         this.client = clientBuilder.build();
         this.baseUrl = builder.baseUrl;
         this.headers = Collections.unmodifiableMap(new LinkedHashMap<>(builder.headers));
+        this.retryPolicy = builder.retryPolicy;
     }
 
     protected CICHttpRequest.Builder requestBuilder(String method) {
@@ -91,15 +100,47 @@ public abstract class AbstractHttpClient implements AutoCloseable {
     }
 
     private <T> CICHttpResponse<T> send(CICHttpRequest request, HttpResponse.BodyHandler<T> bodyHandler) {
+        var jdkRequest = toJdkHttpRequest(request);
+        int maxAttempts = retryPolicy.maxAttempts();
+        CICSdkException lastException = null;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                var jdkResponse = client.send(jdkRequest, bodyHandler);
+                var response = fromJdkHttpResponse(jdkResponse);
+                if (attempt < maxAttempts && ErrorUtils.isUnexpectedStatusCode(response.statusCode())) {
+                    var context = new RetryContext(attempt, response.statusCode(), null);
+                    if (retryPolicy.retryCondition().shouldRetry(context)) {
+                        sleepBeforeRetry(context, attempt);
+                        continue;
+                    }
+                }
+                return response;
+            } catch (IOException e) {
+                lastException = new CICSdkException("An error occurred during request execution", e);
+                if (attempt < maxAttempts) {
+                    var context = new RetryContext(attempt, 0, e);
+                    if (retryPolicy.retryCondition().shouldRetry(context)) {
+                        sleepBeforeRetry(context, attempt);
+                        continue;
+                    }
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new CICSdkException("Interrupted while sending the request", e);
+            }
+        }
+        throw lastException;
+    }
+
+    private void sleepBeforeRetry(RetryContext context, int attempt) {
+        var delay = retryPolicy.backoffStrategy().computeDelay(context);
+        LOG.log(Level.FINE, "Retrying request, attempt {0}/{1} after {2}ms delay",
+                new Object[] { attempt + 1, retryPolicy.maxAttempts(), delay.toMillis() });
         try {
-            var jdkRequest = toJdkHttpRequest(request);
-            var jdkResponse = client.send(jdkRequest, bodyHandler);
-            return fromJdkHttpResponse(jdkResponse);
-        } catch (IOException e) {
-            throw new CICSdkException("An error occurred during request execution", e);
-        } catch (InterruptedException e) {
+            Thread.sleep(delay.toMillis());
+        } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
-            throw new CICSdkException("Interrupted while sending the request", e);
+            throw new CICSdkException("Interrupted while waiting to retry the request", ie);
         }
     }
 

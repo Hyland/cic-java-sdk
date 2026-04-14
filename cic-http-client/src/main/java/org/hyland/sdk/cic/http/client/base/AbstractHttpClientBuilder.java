@@ -23,6 +23,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import org.hyland.sdk.cic.http.client.retry.RetryPolicy;
+
 /**
  * @since 1.0.0
  */
@@ -42,6 +44,8 @@ public abstract class AbstractHttpClientBuilder<B extends AbstractHttpClientBuil
 
     protected Duration connectTimeout;
 
+    protected RetryPolicy retryPolicy = RetryPolicy.defaultPolicy();
+
     protected AbstractHttpClientBuilder(String baseUrl) {
         this.baseUrl = baseUrl;
         header("User-Agent", DEFAULT_USER_AGENT);
@@ -49,6 +53,19 @@ public abstract class AbstractHttpClientBuilder<B extends AbstractHttpClientBuil
 
     public B connectTimeout(Duration connectTimeout) {
         this.connectTimeout = connectTimeout;
+        return self();
+    }
+
+    /**
+     * Sets the retry policy for HTTP requests.
+     * <p>
+     * By default, {@link RetryPolicy#defaultPolicy()} is used. Use {@link RetryPolicy#none()} to disable retries.
+     *
+     * @param retryPolicy the retry policy
+     * @return this builder
+     */
+    public B retryPolicy(RetryPolicy retryPolicy) {
+        this.retryPolicy = retryPolicy;
         return self();
     }
 

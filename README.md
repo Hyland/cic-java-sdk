@@ -13,11 +13,17 @@ flowchart TD
         A2(AbstractHttpClientBuilder)
         A3(AbstractAuthenticatedHttpClient)
         A4(AbstractAuthenticatedHttpClientBuilder)
+        R1(RetryPolicy)
+        R2(BackoffStrategy)
+        R3(RetryCondition)
         B1(MapperService)
         B2(SerializerFactory)
         B3(MapperFactory)
         A1 --> A3
         A2 --> A4
+        A1 -.- R1
+        R1 --- R2
+        R1 --- R3
         B1 --- B2
         B1 --- B3
         A1 -.- B1
@@ -73,7 +79,56 @@ public class KnowledgeDiscoveryHttpClient extends AbstractAuthenticatedHttpClien
 
 ---
 
-### 2. Serialization/Mapping Layer
+### 2. Retry Policy
+- **Package:** `org.hyland.sdk.cic.http.client.retry`
+- Pluggable retry mechanism built into `AbstractHttpClient`. All HTTP client modules (cic-ingest, cic-agent, future modules) inherit retry support automatically.
+- **Key classes:**
+  - `RetryPolicy`: Configures retry behavior — max attempts, backoff strategy, and retry condition. Created via builder or static factories.
+  - `BackoffStrategy`: Functional interface for computing delay between retries. Built-in: `fixedDelay(Duration)` and `exponentialDelay(Duration baseDelay, Duration maxDelay)` (full jitter).
+  - `RetryCondition`: Functional interface determining whether a failed request should be retried. Composable via `and()`/`or()`. Built-in: `defaultCondition()` (timeouts on 408, retries on 429, 500, 502, 503, 504, and `IOException`) and `none()`.
+  - `RetryContext`: Immutable context passed to conditions and strategies, containing attempt number, HTTP status code, and exception.
+
+**Default behavior:**
+When no retry policy is explicitly configured, `RetryPolicy.defaultPolicy()` is applied automatically:
+- Max attempts: 3 (1 initial + 2 retries)
+- Backoff: exponential with full jitter (100ms base delay, 20s max delay)
+- Condition: retries on server errors (5xx), rate limiting (429), timeouts (408) and `IOException`
+
+**Example: Default policy (applied automatically)**
+```java
+IngestHttpClient client = IngestHttpClient.builder("https://api.example.com")
+    .clientId("my-client-id")
+    .clientSecret("my-secret")
+    .build(); // default retry policy is applied
+```
+
+**Example: Custom retry policy**
+```java
+RetryPolicy policy = RetryPolicy.builder()
+    .maxAttempts(5)
+    .backoffStrategy(BackoffStrategy.fixedDelay(Duration.ofSeconds(2)))
+    .retryCondition(context -> context.statusCode() == 503)
+    .build();
+
+IngestHttpClient client = IngestHttpClient.builder("https://api.example.com")
+    .clientId("my-client-id")
+    .clientSecret("my-secret")
+    .retryPolicy(policy)
+    .build();
+```
+
+**Example: Disabling retries**
+```java
+IngestHttpClient client = IngestHttpClient.builder("https://api.example.com")
+    .clientId("my-client-id")
+    .clientSecret("my-secret")
+    .retryPolicy(RetryPolicy.none())
+    .build();
+```
+
+---
+
+### 3. Serialization/Mapping Layer
 - **Package:** `org.hyland.sdk.cic.http.client.mapper`
 - Centralized serialization and mapping via `MapperService`:
   - Uses Java SPI (`ServiceLoader`) to discover implementations of `SerializerFactory` (for marshallers like Jackson2) and `MapperFactory` (for business object mappers).
@@ -112,7 +167,7 @@ See the `cic-http-client-jackson2` module for a full implementation.
 
 ---
 
-### 3. CIC Ingest Integration
+### 4. CIC Ingest Integration
 - **Package:** `org.hyland.sdk.cic.ingest`
 - Provides APIs for interacting with the CIC Ingest service:
   - `IngestService`: High-level API for ingest operations (e.g., uploading blobs, managing pre-signed URLs).
