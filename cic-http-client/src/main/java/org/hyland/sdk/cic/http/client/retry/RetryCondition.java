@@ -31,8 +31,8 @@ import java.util.Set;
  * <p>
  * Built-in conditions:
  * <ul>
- * <li>{@link #defaultCondition()} - retries on server errors (500, 502, 503, 504), rate limiting (429), request timeout (408) and
- * {@link IOException}</li>
+ * <li>{@link #defaultCondition()} - retries on server errors (500, 502, 503, 504), rate limiting (429), request timeout
+ * (408) and {@link IOException}</li>
  * <li>{@link #none()} - never retries</li>
  * </ul>
  *
