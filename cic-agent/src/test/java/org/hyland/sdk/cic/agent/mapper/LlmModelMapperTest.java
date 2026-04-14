@@ -54,7 +54,7 @@ class LlmModelMapperTest {
                 ]
                 """;
 
-        var models = MapperService.read(json, LlmModel.ListOf.class);
+        var models = MapperService.read(json, LlmModel.List.class);
 
         assertEquals(2, models.size());
         assertEquals("Mock Model Alpha", models.get(0).displayName());
@@ -92,7 +92,7 @@ class LlmModelMapperTest {
                 ]
                 """;
 
-        var models = MapperService.read(json, LlmModel.ListOf.class);
+        var models = MapperService.read(json, LlmModel.List.class);
 
         assertEquals(3, models.size());
         assertEquals("Mock Model Alpha", models.get(0).displayName());
@@ -117,7 +117,7 @@ class LlmModelMapperTest {
                 ]
                 """;
 
-        var models = MapperService.read(json, LlmModel.ListOf.class);
+        var models = MapperService.read(json, LlmModel.List.class);
 
         assertEquals(1, models.size());
         assertEquals("old-model-v1:0", models.get(0).modelName());

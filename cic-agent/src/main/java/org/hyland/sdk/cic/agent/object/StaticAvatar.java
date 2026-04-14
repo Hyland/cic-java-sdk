@@ -25,6 +25,6 @@ import java.util.ArrayList;
  */
 public record StaticAvatar(String fileName, String preSignedUrl) {
 
-    public static class ListOf extends ArrayList<StaticAvatar> {
+    public static class List extends ArrayList<StaticAvatar> {
     }
 }
