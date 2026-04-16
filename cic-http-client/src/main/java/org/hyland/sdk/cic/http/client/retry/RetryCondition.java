@@ -85,9 +85,9 @@ public interface RetryCondition {
      * Only retries requests using idempotent HTTP methods (GET, HEAD, PUT, DELETE, OPTIONS, TRACE). Non-idempotent
      * methods (POST, PATCH) are never retried.
      * <p>
-     * For idempotent methods, retries when the HTTP status code is one of 408 (Timeout), 429 (Too Many Requests), 500 (Internal Server
-     * Error), 502 (Bad Gateway), 503 (Service Unavailable), or 504 (Gateway Timeout), or when the exception is or is
-     * caused by an {@link IOException}.
+     * For idempotent methods, retries when the HTTP status code is one of 408 (Timeout), 429 (Too Many Requests), 500
+     * (Internal Server Error), 502 (Bad Gateway), 503 (Service Unavailable), or 504 (Gateway Timeout), or when the
+     * exception is or is caused by an {@link IOException}.
      *
      * @return the default retry condition
      */
