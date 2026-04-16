@@ -19,7 +19,11 @@
 package org.hyland.sdk.cic.http.client.mapper.object;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+
+import org.hyland.sdk.cic.http.client.CICSdkException;
 
 /**
  * @since 1.0.0
@@ -57,6 +61,39 @@ public interface CICArray extends CICNode {
     List<CICObject> toListObject();
 
     List<CICNode> getElements();
+
+    static CICArray from(Object[] values) {
+        var array = create();
+        for (var value : values) {
+            if (value instanceof Boolean b) {
+                array.addBoolean(b);
+            } else if (value instanceof Double i) {
+                array.addDouble(i);
+            } else if (value instanceof Integer i) {
+                array.addInt(i);
+            } else if (value instanceof Long l) {
+                array.addLong(l);
+            } else if (value instanceof String s) {
+                array.addString(s);
+            } else if (value != null && value.getClass().isArray()) {
+                array.addArray(from((Object[]) value));
+            } else if (value instanceof Collection<?> collection) {
+                array.addArray(from(collection));
+            } else if (value instanceof Map<?, ?> map) {
+                // We have to assume the keys are strings since we can't represent non-string keys in JSON
+                @SuppressWarnings("unchecked")
+                var nestedObject = CICObject.from((Map<String, Object>) map);
+                array.addObject(nestedObject);
+            } else {
+                throw new CICSdkException("Unsupported value type: %s".formatted(value));
+            }
+        }
+        return array;
+    }
+
+    static CICArray from(Collection<?> collection) {
+        return from(collection.toArray());
+    }
 
     static CICArray create() {
         var array = new ArrayList<CICNode>();
