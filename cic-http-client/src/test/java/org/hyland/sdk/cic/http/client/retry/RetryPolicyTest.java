@@ -44,7 +44,7 @@ public class RetryPolicyTest {
         assertEquals(1, policy.maxAttempts());
         assertNotNull(policy.backoffStrategy());
         // none policy should never retry
-        var context = new RetryContext(1, 500, new RuntimeException());
+        var context = new RetryContext(1, "GET", 500, new RuntimeException());
         assertFalse(policy.retryCondition().shouldRetry(context));
     }
 
@@ -58,6 +58,16 @@ public class RetryPolicyTest {
         assertEquals(5, policy.maxAttempts());
         assertNotNull(policy.backoffStrategy());
         assertNotNull(policy.retryCondition());
+    }
+
+    @Test
+    public void builderRejectsNullBackoffStrategy() {
+        assertThrows(NullPointerException.class, () -> RetryPolicy.builder().backoffStrategy(null));
+    }
+
+    @Test
+    public void builderRejectsNullRetryCondition() {
+        assertThrows(NullPointerException.class, () -> RetryPolicy.builder().retryCondition(null));
     }
 
     @Test

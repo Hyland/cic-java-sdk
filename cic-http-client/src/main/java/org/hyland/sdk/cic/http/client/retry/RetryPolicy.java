@@ -19,6 +19,7 @@
 package org.hyland.sdk.cic.http.client.retry;
 
 import java.time.Duration;
+import java.util.Objects;
 
 /**
  * Configures retry behavior for HTTP requests made by CIC SDK clients.
@@ -189,11 +190,12 @@ public final class RetryPolicy {
         /**
          * Sets the backoff strategy for computing delay between retries.
          *
-         * @param backoffStrategy the backoff strategy
+         * @param backoffStrategy the backoff strategy; must not be null
          * @return this builder
+         * @throws NullPointerException if backoffStrategy is null
          */
         public Builder backoffStrategy(BackoffStrategy backoffStrategy) {
-            this.backoffStrategy = backoffStrategy;
+            this.backoffStrategy = Objects.requireNonNull(backoffStrategy, "backoffStrategy must not be null");
             return this;
         }
 
@@ -202,9 +204,10 @@ public final class RetryPolicy {
          *
          * @param retryCondition the retry condition
          * @return this builder
+         * @throws NullPointerException if retryCondition is null
          */
         public Builder retryCondition(RetryCondition retryCondition) {
-            this.retryCondition = retryCondition;
+            this.retryCondition = Objects.requireNonNull(retryCondition, "retryCondition must not be null");
             return this;
         }
 

@@ -85,14 +85,14 @@ public class KnowledgeDiscoveryHttpClient extends AbstractAuthenticatedHttpClien
 - **Key classes:**
   - `RetryPolicy`: Configures retry behavior — max attempts, backoff strategy, and retry condition. Created via builder or static factories.
   - `BackoffStrategy`: Functional interface for computing delay between retries. Built-in: `fixedDelay(Duration)` and `exponentialDelay(Duration baseDelay, Duration maxDelay)` (full jitter).
-  - `RetryCondition`: Functional interface determining whether a failed request should be retried. Composable via `and()`/`or()`. Built-in: `defaultCondition()` (timeouts on 408, retries on 429, 500, 502, 503, 504, and `IOException`) and `none()`.
-  - `RetryContext`: Immutable context passed to conditions and strategies, containing attempt number, HTTP status code, and exception.
+  - `RetryCondition`: Functional interface determining whether a failed request should be retried. Composable via `and()`/`or()`. Built-in: `defaultCondition()` (retries idempotent methods on 408, 429, 500, 502, 503, 504, and `IOException`; non-idempotent methods are never retried) and `none()`.
+  - `RetryContext`: Immutable context passed to conditions and strategies, containing attempt number, HTTP method, HTTP status code, and exception.
 
 **Default behavior:**
 When no retry policy is explicitly configured, `RetryPolicy.defaultPolicy()` is applied automatically:
 - Max attempts: 3 (1 initial + 2 retries)
 - Backoff: exponential with full jitter (100ms base delay, 20s max delay)
-- Condition: retries on server errors (5xx), rate limiting (429), timeouts (408) and `IOException`
+- Condition: retries idempotent methods on server errors (5xx), rate limiting (429), timeouts (408), and `IOException`; non-idempotent methods (POST, PATCH) are never retried
 
 **Example: Default policy (applied automatically)**
 ```java

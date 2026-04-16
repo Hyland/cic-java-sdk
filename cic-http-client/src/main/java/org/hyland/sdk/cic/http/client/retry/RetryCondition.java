@@ -47,6 +47,11 @@ public interface RetryCondition {
     Set<Integer> DEFAULT_RETRYABLE_STATUS_CODES = Set.of(408, 429, 500, 502, 503, 504);
 
     /**
+     * Idempotent HTTP methods
+     */
+    Set<String> IDEMPOTENT_METHODS = Set.of("GET", "HEAD", "PUT", "DELETE", "OPTIONS", "TRACE");
+
+    /**
      * Determines whether the request should be retried based on the given context.
      *
      * @param context the retry context describing the failed attempt
@@ -77,18 +82,23 @@ public interface RetryCondition {
     /**
      * Returns the default retry condition.
      * <p>
-     * Retries when the HTTP status code is one of 429 (Too Many Requests), 500 (Internal Server Error), 502 (Bad
-     * Gateway), 503 (Service Unavailable), or 504 (Gateway Timeout), or when the exception is or is caused by an
-     * {@link IOException}.
+     * Only retries requests using idempotent HTTP methods (GET, HEAD, PUT, DELETE, OPTIONS, TRACE). Non-idempotent
+     * methods (POST, PATCH) are never retried.
+     * <p>
+     * For idempotent methods, retries when the HTTP status code is one of 408 (Timeout), 429 (Too Many Requests), 500 (Internal Server
+     * Error), 502 (Bad Gateway), 503 (Service Unavailable), or 504 (Gateway Timeout), or when the exception is or is
+     * caused by an {@link IOException}.
      *
      * @return the default retry condition
      */
     static RetryCondition defaultCondition() {
         return context -> {
+            if (!IDEMPOTENT_METHODS.contains(context.httpMethod())) {
+                return false;
+            }
             if (DEFAULT_RETRYABLE_STATUS_CODES.contains(context.statusCode())) {
                 return true;
             }
-            // check if exception chain contains an IOException
             Throwable cause = context.exception();
             while (cause != null) {
                 if (cause instanceof IOException) {

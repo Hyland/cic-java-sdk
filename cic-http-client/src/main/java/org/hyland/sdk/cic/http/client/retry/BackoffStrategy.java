@@ -19,6 +19,7 @@
 package org.hyland.sdk.cic.http.client.retry;
 
 import java.time.Duration;
+import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -51,23 +52,42 @@ public interface BackoffStrategy {
      *
      * @param delay the constant delay between retries
      * @return a fixed-delay backoff strategy
+     * @throws IllegalArgumentException if {@code delay} is negative
      */
     static BackoffStrategy fixedDelay(Duration delay) {
+        Objects.requireNonNull(delay, "delay must not be null");
+        if (delay.isNegative()) {
+            throw new IllegalArgumentException("delay must not be negative, got: " + delay);
+        }
         return context -> delay;
     }
 
     /**
      * Creates a strategy using exponential backoff with full jitter.
      * <p>
-     * The delay is computed as: {@code random(0, min(baseDelay * 2^(attempt-1), maxDelay))}
+     * The delay for attempt {@code n} is computed as: {@code random(0, min(baseDelay * 2^(n-1), maxDelay))}
      * <p>
      * Full jitter helps distribute retry attempts across clients, reducing the likelihood of retry storms.
      *
      * @param baseDelay the base delay for the first retry
      * @param maxDelay the maximum delay cap
      * @return an exponential backoff strategy with full jitter
+     * @throws IllegalArgumentException if {@code baseDelay} is not positive, if {@code maxDelay} is not positive, or if
+     *             {@code maxDelay} is less than {@code baseDelay}
      */
     static BackoffStrategy exponentialDelay(Duration baseDelay, Duration maxDelay) {
+        Objects.requireNonNull(baseDelay, "baseDelay must not be null");
+        Objects.requireNonNull(maxDelay, "maxDelay must not be null");
+        if (baseDelay.isNegative() || baseDelay.isZero()) {
+            throw new IllegalArgumentException("baseDelay must be positive, got: " + baseDelay);
+        }
+        if (maxDelay.isNegative() || maxDelay.isZero()) {
+            throw new IllegalArgumentException("maxDelay must be positive, got: " + maxDelay);
+        }
+        if (maxDelay.compareTo(baseDelay) < 0) {
+            throw new IllegalArgumentException("maxDelay must be greater than or equal to baseDelay, got: maxDelay="
+                    + maxDelay + ", baseDelay=" + baseDelay);
+        }
         return context -> {
             int attempt = context.attemptNumber();
             // cap shift at 30 to prevent overflow

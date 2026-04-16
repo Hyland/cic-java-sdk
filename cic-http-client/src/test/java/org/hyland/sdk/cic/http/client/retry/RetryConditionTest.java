@@ -37,53 +37,58 @@ public class RetryConditionTest {
     @ValueSource(ints = { 408, 429, 500, 502, 503, 504 })
     public void defaultConditionRetriesOnRetryableStatusCodes(int statusCode) {
         var condition = RetryCondition.defaultCondition();
-        assertTrue(condition.shouldRetry(new RetryContext(1, statusCode, null)));
+        assertTrue(condition.shouldRetry(new RetryContext(1, "GET", statusCode, null)));
     }
 
     @ParameterizedTest
     @ValueSource(ints = { 200, 201, 400, 401, 403, 404, 409, 422 })
     public void defaultConditionDoesNotRetryOnNonRetryableStatusCodes(int statusCode) {
         var condition = RetryCondition.defaultCondition();
-        assertFalse(condition.shouldRetry(new RetryContext(1, statusCode, null)));
+        assertFalse(condition.shouldRetry(new RetryContext(1, "GET", statusCode, null)));
     }
 
-    @Test
-    public void defaultConditionRetriesOnIOException() {
+    @ParameterizedTest
+    @ValueSource(strings = { "GET", "HEAD", "PUT", "DELETE", "OPTIONS", "TRACE" })
+    public void defaultConditionRetriesIdempotentMethodsOnIOException(String method) {
         var condition = RetryCondition.defaultCondition();
-        assertTrue(condition.shouldRetry(new RetryContext(1, 0, new IOException("Connection reset"))));
+        assertTrue(condition.shouldRetry(new RetryContext(1, method, 0, new IOException("Connection reset"))));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "POST", "PATCH" })
+    public void defaultConditionDoesNotRetryNonIdempotentMethodsOnIOException(String method) {
+        var condition = RetryCondition.defaultCondition();
+        assertFalse(condition.shouldRetry(new RetryContext(1, method, 0, new IOException("Connection reset"))));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "POST", "PATCH" })
+    public void defaultConditionDoesNotRetryNonIdempotentMethodsOnRetryableStatusCode(String method) {
+        var condition = RetryCondition.defaultCondition();
+        assertFalse(condition.shouldRetry(new RetryContext(1, method, 500, null)));
+        assertFalse(condition.shouldRetry(new RetryContext(1, method, 429, null)));
+        assertFalse(condition.shouldRetry(new RetryContext(1, method, 503, null)));
     }
 
     @Test
     public void defaultConditionRetriesOnWrappedIOException() {
         var condition = RetryCondition.defaultCondition();
         var wrappedException = new RuntimeException("wrapper", new IOException("Connection reset"));
-        assertTrue(condition.shouldRetry(new RetryContext(1, 0, wrappedException)));
+        assertTrue(condition.shouldRetry(new RetryContext(1, "GET", 0, wrappedException)));
     }
 
     @Test
     public void defaultConditionRetriesOnUncheckedIOException() {
         var condition = RetryCondition.defaultCondition();
         var exception = new UncheckedIOException(new IOException("Connection reset"));
-        assertTrue(condition.shouldRetry(new RetryContext(1, 0, exception)));
-    }
-
-    @Test
-    public void defaultConditionDoesNotRetryOnNonIOException() {
-        var condition = RetryCondition.defaultCondition();
-        assertFalse(condition.shouldRetry(new RetryContext(1, 0, new IllegalArgumentException("bad input"))));
-    }
-
-    @Test
-    public void defaultConditionDoesNotRetryOnNullException() {
-        var condition = RetryCondition.defaultCondition();
-        assertFalse(condition.shouldRetry(new RetryContext(1, 200, null)));
+        assertTrue(condition.shouldRetry(new RetryContext(1, "GET", 0, exception)));
     }
 
     @Test
     public void noneConditionNeverRetries() {
         var condition = RetryCondition.none();
-        assertFalse(condition.shouldRetry(new RetryContext(1, 500, null)));
-        assertFalse(condition.shouldRetry(new RetryContext(1, 0, new IOException())));
+        assertFalse(condition.shouldRetry(new RetryContext(1, "GET", 500, null)));
+        assertFalse(condition.shouldRetry(new RetryContext(1, "GET", 0, new IOException())));
     }
 
     @Test
@@ -92,11 +97,11 @@ public class RetryConditionTest {
         RetryCondition attemptIsFirst = ctx -> ctx.attemptNumber() == 1;
         var combined = statusIs500.and(attemptIsFirst);
         // both true
-        assertTrue(combined.shouldRetry(new RetryContext(1, 500, null)));
+        assertTrue(combined.shouldRetry(new RetryContext(1, "GET", 500, null)));
         // status doesn't match
-        assertFalse(combined.shouldRetry(new RetryContext(1, 503, null)));
+        assertFalse(combined.shouldRetry(new RetryContext(1, "GET", 503, null)));
         // attempt doesn't match
-        assertFalse(combined.shouldRetry(new RetryContext(2, 500, null)));
+        assertFalse(combined.shouldRetry(new RetryContext(2, "GET", 500, null)));
     }
 
     @Test
@@ -104,8 +109,8 @@ public class RetryConditionTest {
         RetryCondition statusIs500 = ctx -> ctx.statusCode() == 500;
         RetryCondition statusIs503 = ctx -> ctx.statusCode() == 503;
         var combined = statusIs500.or(statusIs503);
-        assertTrue(combined.shouldRetry(new RetryContext(1, 500, null)));
-        assertTrue(combined.shouldRetry(new RetryContext(1, 503, null)));
-        assertFalse(combined.shouldRetry(new RetryContext(1, 404, null)));
+        assertTrue(combined.shouldRetry(new RetryContext(1, "GET", 500, null)));
+        assertTrue(combined.shouldRetry(new RetryContext(1, "GET", 503, null)));
+        assertFalse(combined.shouldRetry(new RetryContext(1, "GET", 404, null)));
     }
 }

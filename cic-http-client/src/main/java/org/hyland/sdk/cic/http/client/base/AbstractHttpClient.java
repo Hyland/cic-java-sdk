@@ -108,7 +108,7 @@ public abstract class AbstractHttpClient implements AutoCloseable {
                 var jdkResponse = client.send(jdkRequest, bodyHandler);
                 var response = fromJdkHttpResponse(jdkResponse);
                 if (attempt < maxAttempts && ErrorUtils.isUnexpectedStatusCode(response.statusCode())) {
-                    var context = new RetryContext(attempt, response.statusCode(), null);
+                    var context = new RetryContext(attempt, request.method(), response.statusCode(), null);
                     if (retryPolicy.retryCondition().shouldRetry(context)) {
                         sleepBeforeRetry(context, attempt);
                         continue;
@@ -118,12 +118,13 @@ public abstract class AbstractHttpClient implements AutoCloseable {
             } catch (IOException e) {
                 lastException = new CICSdkException("An error occurred during request execution", e);
                 if (attempt < maxAttempts) {
-                    var context = new RetryContext(attempt, 0, e);
+                    var context = new RetryContext(attempt, request.method(), 0, e);
                     if (retryPolicy.retryCondition().shouldRetry(context)) {
                         sleepBeforeRetry(context, attempt);
                         continue;
                     }
                 }
+                break;
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new CICSdkException("Interrupted while sending the request", e);
@@ -134,10 +135,11 @@ public abstract class AbstractHttpClient implements AutoCloseable {
 
     private void sleepBeforeRetry(RetryContext context, int attempt) {
         var delay = retryPolicy.backoffStrategy().computeDelay(context);
+        long delayMillis = Math.max(0, delay.toMillis());
         LOG.log(Level.FINE, "Retrying request, attempt {0}/{1} after {2}ms delay",
-                new Object[] { attempt + 1, retryPolicy.maxAttempts(), delay.toMillis() });
+                new Object[] { attempt + 1, retryPolicy.maxAttempts(), delayMillis });
         try {
-            Thread.sleep(delay.toMillis());
+            Thread.sleep(delayMillis);
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
             throw new CICSdkException("Interrupted while waiting to retry the request", ie);

@@ -22,10 +22,11 @@ package org.hyland.sdk.cic.http.client.retry;
  * Provides context about a failed HTTP request attempt to {@link RetryCondition} and {@link BackoffStrategy}.
  *
  * @param attemptNumber the 1-based attempt number that just failed
+ * @param httpMethod the HTTP method of the request (e.g. {@code "GET"}, {@code "POST"})
  * @param statusCode the HTTP status code returned, or {@code 0} if the failure occurred before a response was received
  * @param exception the exception that caused the failure
  * @since 1.0.0
  */
-public record RetryContext(int attemptNumber, int statusCode, Exception exception) {
+public record RetryContext(int attemptNumber, String httpMethod, int statusCode, Exception exception) {
 
 }

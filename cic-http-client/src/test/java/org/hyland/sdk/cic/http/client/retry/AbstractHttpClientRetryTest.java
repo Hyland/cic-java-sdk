@@ -217,8 +217,22 @@ public class AbstractHttpClientRetryTest {
     }
 
     @Test
-    public void retriesOnIOExceptionAndRecovers() throws IOException {
-        // Connect to a port that nothing is listening on - will cause IOException
+    public void doesNotRetryOnIOExceptionWhenConditionReturnsFalse() {
+        var conditionCallCount = new AtomicInteger();
+        var client = new TestHttpClient.Builder("http://localhost:1").retryPolicy(
+                RetryPolicy.builder().maxAttempts(3).retryCondition(ctx -> {
+                    conditionCallCount.incrementAndGet();
+                    return false;
+                }).backoffStrategy(BackoffStrategy.fixedDelay(Duration.ZERO)).build())
+                                                                     .connectTimeout(Duration.ofMillis(100))
+                                                                     .build();
+
+        assertThrows(CICSdkException.class, () -> client.doGet("/test"));
+        assertEquals(1, conditionCallCount.get());
+    }
+
+    @Test
+    public void throwsAfterExhaustingRetriesOnIOException() {
         var client = new TestHttpClient.Builder("http://localhost:1").retryPolicy(
                 RetryPolicy.builder().maxAttempts(2).backoffStrategy(BackoffStrategy.fixedDelay(Duration.ZERO)).build())
                                                                      .connectTimeout(Duration.ofMillis(100))
@@ -287,6 +301,80 @@ public class AbstractHttpClientRetryTest {
         assertTrue(elapsed >= 150, "Expected backoff delay of ~200ms, but elapsed was " + elapsed + "ms");
     }
 
+    @Test
+    public void negativeDelayFromCustomStrategyIsClamped() {
+        var attemptCount = new AtomicInteger();
+        server.createContext("/test", exchange -> {
+            int attempt = attemptCount.incrementAndGet();
+            if (attempt < 2) {
+                exchange.sendResponseHeaders(500, 0);
+            } else {
+                var body = "ok".getBytes();
+                exchange.sendResponseHeaders(200, body.length);
+                exchange.getResponseBody().write(body);
+            }
+            exchange.close();
+        });
+        server.start();
+
+        // A custom strategy returning a negative duration must not throw or mask the original failure
+        var client = new TestHttpClient.Builder(baseUrl).retryPolicy(
+                RetryPolicy.builder().maxAttempts(2).backoffStrategy(ctx -> Duration.ofMillis(-500)).build()).build();
+
+        var response = client.doGet("/test");
+        assertEquals(200, response.statusCode());
+        assertEquals(2, attemptCount.get());
+    }
+
+    @Test
+    public void doesNotRetryPostOnIOException() {
+        var attemptCount = new AtomicInteger();
+        server.createContext("/test", exchange -> {
+            attemptCount.incrementAndGet();
+            // Close without sending response headers — causes IOException on the client side
+            exchange.close();
+        });
+        server.start();
+
+        // Default policy: POST + IOException should not retry
+        var client = new TestHttpClient.Builder(baseUrl)
+                                                        .retryPolicy(
+                                                                RetryPolicy.builder()
+                                                                           .maxAttempts(3)
+                                                                           .backoffStrategy(BackoffStrategy.fixedDelay(
+                                                                                   Duration.ZERO))
+                                                                           .build())
+                                                        .build();
+
+        assertThrows(CICSdkException.class, () -> client.doPost("/test"));
+        assertEquals(1, attemptCount.get());
+    }
+
+    @Test
+    public void doesNotRetryPostOnRetryableStatusCode() {
+        var attemptCount = new AtomicInteger();
+        server.createContext("/test", exchange -> {
+            attemptCount.incrementAndGet();
+            exchange.sendResponseHeaders(503, 0);
+            exchange.close();
+        });
+        server.start();
+
+        // Default policy: POST + 503 should not retry — non-idempotent methods are never retried
+        var client = new TestHttpClient.Builder(baseUrl)
+                                                        .retryPolicy(
+                                                                RetryPolicy.builder()
+                                                                           .maxAttempts(3)
+                                                                           .backoffStrategy(BackoffStrategy.fixedDelay(
+                                                                                   Duration.ZERO))
+                                                                           .build())
+                                                        .build();
+
+        var response = client.doPost("/test");
+        assertEquals(503, response.statusCode());
+        assertEquals(1, attemptCount.get());
+    }
+
     static class TestHttpClient extends AbstractHttpClient {
 
         TestHttpClient(Builder builder) {
@@ -295,6 +383,11 @@ public class AbstractHttpClientRetryTest {
 
         public CICHttpResponse<String> doGet(String path) {
             var request = requestBuilder(CICHttpRequest.GET, path).build();
+            return sendThenReadAsString(request);
+        }
+
+        public CICHttpResponse<String> doPost(String path) {
+            var request = requestBuilder(CICHttpRequest.POST, path).build();
             return sendThenReadAsString(request);
         }
 

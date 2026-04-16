@@ -21,6 +21,7 @@ package org.hyland.sdk.cic.http.client.base;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.hyland.sdk.cic.http.client.retry.RetryPolicy;
@@ -65,6 +66,7 @@ public abstract class AbstractHttpClientBuilder<B extends AbstractHttpClientBuil
      * @return this builder
      */
     public B retryPolicy(RetryPolicy retryPolicy) {
+        Objects.requireNonNull(retryPolicy, "retryPolicy cannot be null");
         this.retryPolicy = retryPolicy;
         return self();
     }
