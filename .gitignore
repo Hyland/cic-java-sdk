@@ -1,3 +1,8 @@
+# project artifacts
+.classpath
+.project
+.settings
+
 # build artifacts
 target/
 

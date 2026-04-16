@@ -19,6 +19,7 @@
 package org.hyland.sdk.cic.http.client.mapper.object;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -67,6 +68,8 @@ public interface CICObject extends CICNode {
 
     void putLong(String key, long value);
 
+    void putNode(String key, CICNode value);
+
     void putObject(String key, CICObject value);
 
     void putString(String key, String value);
@@ -78,6 +81,37 @@ public interface CICObject extends CICNode {
     void putNull(String key);
 
     double getDouble(String key, double defaultValue);
+
+    static CICObject from(Map<String, ?> value) {
+        var cicObject = create();
+        value.forEach((k, v) -> {
+            if (v instanceof Boolean bool) {
+                cicObject.putBoolean(k, bool);
+            } else if (v instanceof Double dbl) {
+                cicObject.putDouble(k, dbl);
+            } else if (v instanceof Integer integer) {
+                cicObject.putInt(k, integer);
+            } else if (v instanceof Long aLong) {
+                cicObject.putLong(k, aLong);
+            } else if (v instanceof String str) {
+                cicObject.putString(k, str);
+            } else if (v instanceof Map<?, ?> map) {
+                // We have to assume the keys are strings since we can't represent non-string keys in JSON
+                @SuppressWarnings("unchecked")
+                var nestedObject = from((Map<String, Object>) map);
+                cicObject.putObject(k, nestedObject);
+            } else if (v == null) {
+                cicObject.putNull(k);
+            } else if (v.getClass().isArray()) {
+                cicObject.putArray(k, CICArray.from((Object[]) v));
+            } else if (v instanceof Collection<?> collection) {
+                cicObject.putArray(k, CICArray.from(collection.toArray()));
+            } else {
+                throw new CICSdkException("Unsupported value type: %s for key: %s".formatted(v.getClass(), k));
+            }
+        });
+        return cicObject;
+    }
 
     static CICObject create() {
         var properties = new LinkedHashMap<String, CICNode>();
@@ -240,6 +274,11 @@ public interface CICObject extends CICNode {
             @Override
             public void putLong(String key, long value) {
                 properties.put(key, new CICPrimitive.CICLong(value));
+            }
+
+            @Override
+            public void putNode(String key, CICNode value) {
+                properties.put(key, value);
             }
 
             @Override
