@@ -18,28 +18,28 @@
  */
 package org.hyland.sdk.cic.qna.mapper;
 
+import java.util.List;
+
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
-import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
-import org.hyland.sdk.cic.qna.object.SetAnswerRequest;
+import org.hyland.sdk.cic.qna.object.FilterExpression;
 
 /**
  * @since 1.0.0
  */
-class SetAnswerRequestMapper implements CICMapper<SetAnswerRequest> {
+abstract class AbstractConversationRequestMapper<T> implements CICMapper<T> {
 
-    private final SetAnswerReferenceMapper referenceMapper = new SetAnswerReferenceMapper();
+    private final FilterExpressionMapper filterExpressionMapper = new FilterExpressionMapper();
 
-    @Override
-    public CICNode toCICNode(SetAnswerRequest request) {
+    protected CICObject toCICObject(String question, List<String> contextObjectIds, FilterExpression dynamicFilter) {
         var obj = CICObject.create();
-        obj.putString("answer", request.answer());
-        if (!request.references().isEmpty()) {
-            // TODO: Make CICArray.from supporting CICObject instances
-            var references = CICArray.create();
-            request.references().stream().map(referenceMapper::toCICNode).forEach(references::addObject);
-            obj.putArray("references", references);
+        obj.putString("question", question);
+        if (!contextObjectIds.isEmpty()) {
+            obj.putArray("contextObjectIds", CICArray.from(contextObjectIds));
+        }
+        if (dynamicFilter != null) {
+            obj.putObject("dynamicFilter", filterExpressionMapper.toCICNode(dynamicFilter));
         }
         return obj;
     }

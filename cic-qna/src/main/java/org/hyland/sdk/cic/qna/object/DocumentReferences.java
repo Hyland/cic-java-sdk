@@ -23,7 +23,7 @@ import java.util.List;
 /**
  * @since 1.0.0
  */
-public record DocumentReferences(String documentId, List<DocumentReferenceItem> references) {
+public record DocumentReferences(String documentId, List<ReferenceItem> references) {
 
     public DocumentReferences {
         references = references != null ? List.copyOf(references) : List.of();

@@ -23,7 +23,7 @@ import java.util.List;
 /**
  * @since 1.0.0
  */
-public record AnswerObjectReferences(String objectId, List<AnswerReferenceItem> references) {
+public record AnswerObjectReferences(String objectId, List<ReferenceItem> references) {
 
     public AnswerObjectReferences {
         references = references != null ? List.copyOf(references) : List.of();

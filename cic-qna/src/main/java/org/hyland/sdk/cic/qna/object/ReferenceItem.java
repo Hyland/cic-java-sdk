@@ -23,9 +23,9 @@ import java.util.Objects;
 /**
  * @since 1.0.0
  */
-public record AnswerReferenceItem(String referenceId, double rankScore, Integer rank) {
+public record ReferenceItem(String referenceId, double rankScore, Integer rank) {
 
-    public AnswerReferenceItem {
+    public ReferenceItem {
         Objects.requireNonNull(referenceId, "referenceId cannot be null");
     }
 }

@@ -18,16 +18,11 @@
  */
 package org.hyland.sdk.cic.qna.mapper;
 
-import static org.hyland.sdk.cic.qna.mapper.QnaMapperUtils.readAnswerObjectReferences;
-import static org.hyland.sdk.cic.qna.mapper.QnaMapperUtils.readDocumentReferences;
-import static org.hyland.sdk.cic.qna.mapper.QnaMapperUtils.readFeedbackTypeOrNull;
-import static org.hyland.sdk.cic.qna.mapper.QnaMapperUtils.readFilterExpressionOrNull;
-import static org.hyland.sdk.cic.qna.mapper.QnaMapperUtils.readStringOrNull;
-
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 import org.hyland.sdk.cic.qna.object.Answer;
+import org.hyland.sdk.cic.qna.object.FeedbackType;
 import org.hyland.sdk.cic.qna.object.ResponseCompleteness;
 
 /**
@@ -35,17 +30,32 @@ import org.hyland.sdk.cic.qna.object.ResponseCompleteness;
  */
 class AnswerMapper implements CICMapper<Answer> {
 
+    private final AnswerObjectReferencesMapper answerObjectReferencesMapper = new AnswerObjectReferencesMapper();
+
+    private final DocumentReferencesMapper documentReferencesMapper = new DocumentReferencesMapper();
+
+    private final FilterExpressionMapper filterExpressionMapper = new FilterExpressionMapper();
+
     @Override
     public Answer fromCICNode(CICNode cicNode) {
         if (!(cicNode instanceof CICObject obj)) {
             throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
         }
-        return new Answer(readStringOrNull(obj, "answer"), obj.getStringOrThrow("agentId"),
-                obj.getInt("agentVersion", 0),
-                ResponseCompleteness.fromValue(obj.getStringOrThrow("responseCompleteness")),
-                readAnswerObjectReferences(obj), readDocumentReferences(obj, "graphDocumentReferences"),
-                readStringOrNull(obj, "question"), readFeedbackTypeOrNull(obj, "feedback"),
-                readFilterExpressionOrNull(obj, "staticFilter"), readFilterExpressionOrNull(obj, "dynamicFilter"),
-                readStringOrNull(obj, "hxqlFilter"));
+        return new Answer( //
+                obj.getStringOrNull("answer"), //
+                obj.getStringOrThrow("agentId"), //
+                obj.getInt("agentVersion", 0), //
+                ResponseCompleteness.fromValue(obj.getStringOrThrow("responseCompleteness")), //
+                obj.getOptionalArray("objectReferences") //
+                   .map(a -> a.toListObject().stream().map(answerObjectReferencesMapper::fromCICNode).toList()) //
+                   .orElse(null), //
+                obj.getOptionalArray("graphDocumentReferences")
+                   .map(a -> a.toListObject().stream().map(documentReferencesMapper::fromCICNode).toList()) //
+                   .orElse(null), //
+                obj.getStringOrNull("question"), //
+                obj.getOptionalString("feedback").map(FeedbackType::fromValue).orElse(null), //
+                obj.getOptionalObject("staticFilter").map(filterExpressionMapper::fromCICNode).orElse(null), //
+                obj.getOptionalObject("dynamicFilter").map(filterExpressionMapper::fromCICNode).orElse(null), //
+                obj.getStringOrNull("hxqlFilter"));
     }
 }

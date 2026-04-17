@@ -179,6 +179,11 @@ public interface CICArray extends CICNode {
             public List<CICNode> getElements() {
                 return List.copyOf(array);
             }
+
+            @Override
+            public Object toJavaValue() {
+                return array.stream().map(CICNode::toJavaValue).toList();
+            }
         };
     }
 }

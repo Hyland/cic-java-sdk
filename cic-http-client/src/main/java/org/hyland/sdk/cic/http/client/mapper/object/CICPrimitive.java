@@ -70,4 +70,9 @@ public sealed interface CICPrimitive<T> extends CICNode {
     }
 
     T getValue();
+
+    @Override
+    default Object toJavaValue() {
+        return getValue();
+    }
 }

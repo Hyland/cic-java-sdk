@@ -18,16 +18,24 @@
  */
 package org.hyland.sdk.cic.qna.mapper;
 
+import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
-import org.hyland.sdk.cic.qna.object.StartConversationRequest;
+import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
+import org.hyland.sdk.cic.qna.object.ReferenceItem;
 
 /**
  * @since 1.0.0
  */
-class StartConversationRequestMapper extends AbstractConversationRequestMapper<StartConversationRequest> {
+class ReferenceItemMapper implements CICMapper<ReferenceItem> {
 
     @Override
-    public CICNode toCICNode(StartConversationRequest request) {
-        return toCICObject(request.question(), request.contextObjectIds(), request.dynamicFilter());
+    public ReferenceItem fromCICNode(CICNode cicNode) {
+        if (!(cicNode instanceof CICObject obj)) {
+            throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
+        }
+        return new ReferenceItem( //
+                obj.getStringOrThrow("referenceId"), //
+                obj.getDouble("rankScore", 0.0), //
+                obj.getIntegerOrNull("rank"));
     }
 }

@@ -18,43 +18,43 @@
  */
 package org.hyland.sdk.cic.qna.mapper;
 
-import static org.hyland.sdk.cic.qna.mapper.QnaMapperUtils.readFeedbackTypeOrNull;
-import static org.hyland.sdk.cic.qna.mapper.QnaMapperUtils.readFilterExpressionOrNull;
-import static org.hyland.sdk.cic.qna.mapper.QnaMapperUtils.readPagination;
-import static org.hyland.sdk.cic.qna.mapper.QnaMapperUtils.readResponseCompletenessOrNull;
-import static org.hyland.sdk.cic.qna.mapper.QnaMapperUtils.readStringOrNull;
-
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
-import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
+import org.hyland.sdk.cic.http.client.pagination.Pagination;
+import org.hyland.sdk.cic.qna.object.FeedbackType;
 import org.hyland.sdk.cic.qna.object.QuestionHistory;
 import org.hyland.sdk.cic.qna.object.QuestionHistoryPage;
+import org.hyland.sdk.cic.qna.object.ResponseCompleteness;
 
 /**
  * @since 1.0.0
  */
 class QuestionHistoryPageMapper implements CICMapper<QuestionHistoryPage> {
 
+    private final FilterExpressionMapper filterExpressionMapper = new FilterExpressionMapper();
+
     @Override
     public QuestionHistoryPage fromCICNode(CICNode cicNode) {
         if (!(cicNode instanceof CICObject obj)) {
             throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
         }
-        var dataNode = obj.getProperties().get("data");
-        if (!(dataNode instanceof CICArray dataArray)) {
-            throw new IllegalArgumentException("Expected CICArray for data");
-        }
-        var data = dataArray.toListObject().stream().map(this::readQuestionHistory).toList();
-        var pagination = readPagination(obj);
+        var data = obj.getArrayOrThrow("data").toListObject().stream().map(this::readQuestionHistory).toList();
+        var pagination = Pagination.from(obj);
         return new QuestionHistoryPage(data, pagination);
     }
 
     private QuestionHistory readQuestionHistory(CICObject obj) {
-        return new QuestionHistory(obj.getStringOrThrow("id"), obj.getStringOrThrow("question"),
-                readStringOrNull(obj, "answer"), readStringOrNull(obj, "dateCreated"),
-                readStringOrNull(obj, "dateAnswered"), obj.getInt("agentVersion", 0),
-                readResponseCompletenessOrNull(obj, "responseCompleteness"), readFeedbackTypeOrNull(obj, "feedback"),
-                readFilterExpressionOrNull(obj, "staticFilter"), readFilterExpressionOrNull(obj, "dynamicFilter"));
+        return new QuestionHistory( //
+                obj.getStringOrThrow("id"), //
+                obj.getStringOrThrow("question"), //
+                obj.getStringOrNull("answer"), //
+                obj.getStringOrNull("dateCreated"), //
+                obj.getStringOrNull("dateAnswered"), //
+                obj.getInt("agentVersion", 0), //
+                obj.getOptionalString("responseCompleteness").map(ResponseCompleteness::fromValue).orElse(null), //
+                obj.getOptionalString("feedback").map(FeedbackType::fromValue).orElse(null), //
+                obj.getOptionalObject("staticFilter").map(filterExpressionMapper::fromCICNode).orElse(null), //
+                obj.getOptionalObject("dynamicFilter").map(filterExpressionMapper::fromCICNode).orElse(null));
     }
 }

@@ -18,10 +18,21 @@
  */
 package org.hyland.sdk.cic.http.client.pagination;
 
+import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
+
 /**
  * Offset-based pagination metadata returned by the API.
  *
  * @since 1.0.0
  */
 public record Pagination(int pageSize, int pageNumber, int totalItems, int totalPages) {
+
+    public static Pagination from(CICObject obj) {
+        var paginationObj = obj.getObjectOrThrow("pagination");
+        return new Pagination( //
+                paginationObj.getInt("pageSize", 0), //
+                paginationObj.getInt("pageNumber", 0), //
+                paginationObj.getInt("totalItems", 0), //
+                paginationObj.getInt("totalPages", 0));
+    }
 }

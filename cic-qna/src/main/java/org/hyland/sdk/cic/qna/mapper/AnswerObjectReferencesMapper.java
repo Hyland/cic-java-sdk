@@ -18,29 +18,28 @@
  */
 package org.hyland.sdk.cic.qna.mapper;
 
+import java.util.List;
+
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
-import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
-import org.hyland.sdk.cic.qna.object.SetAnswerRequest;
+import org.hyland.sdk.cic.qna.object.AnswerObjectReferences;
 
 /**
  * @since 1.0.0
  */
-class SetAnswerRequestMapper implements CICMapper<SetAnswerRequest> {
+class AnswerObjectReferencesMapper implements CICMapper<AnswerObjectReferences> {
 
-    private final SetAnswerReferenceMapper referenceMapper = new SetAnswerReferenceMapper();
+    private final ReferenceItemMapper itemMapper = new ReferenceItemMapper();
 
     @Override
-    public CICNode toCICNode(SetAnswerRequest request) {
-        var obj = CICObject.create();
-        obj.putString("answer", request.answer());
-        if (!request.references().isEmpty()) {
-            // TODO: Make CICArray.from supporting CICObject instances
-            var references = CICArray.create();
-            request.references().stream().map(referenceMapper::toCICNode).forEach(references::addObject);
-            obj.putArray("references", references);
+    public AnswerObjectReferences fromCICNode(CICNode cicNode) {
+        if (!(cicNode instanceof CICObject obj)) {
+            throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
         }
-        return obj;
+        var items = obj.getOptionalArray("references")
+                       .map(array -> array.toListObject().stream().map(itemMapper::fromCICNode).toList())
+                       .orElse(List.of());
+        return new AnswerObjectReferences(obj.getStringOrNull("objectId"), items);
     }
 }

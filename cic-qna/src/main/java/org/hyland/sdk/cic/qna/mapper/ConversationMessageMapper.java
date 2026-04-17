@@ -18,32 +18,43 @@
  */
 package org.hyland.sdk.cic.qna.mapper;
 
-import static org.hyland.sdk.cic.qna.mapper.QnaMapperUtils.readDocumentReferences;
-import static org.hyland.sdk.cic.qna.mapper.QnaMapperUtils.readFeedbackTypeOrNull;
-import static org.hyland.sdk.cic.qna.mapper.QnaMapperUtils.readFilterExpressionOrNull;
-import static org.hyland.sdk.cic.qna.mapper.QnaMapperUtils.readMessageStatus;
-import static org.hyland.sdk.cic.qna.mapper.QnaMapperUtils.readStringOrNull;
-
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 import org.hyland.sdk.cic.qna.object.ConversationMessage;
+import org.hyland.sdk.cic.qna.object.FeedbackType;
+import org.hyland.sdk.cic.qna.object.MessageStatus;
 
 /**
  * @since 1.0.0
  */
 class ConversationMessageMapper implements CICMapper<ConversationMessage> {
 
+    private final DocumentReferencesMapper documentReferencesMapper = new DocumentReferencesMapper();
+
+    private final FilterExpressionMapper filterExpressionMapper = new FilterExpressionMapper();
+
     @Override
     public ConversationMessage fromCICNode(CICNode cicNode) {
         if (!(cicNode instanceof CICObject obj)) {
             throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
         }
-        return new ConversationMessage(obj.getStringOrThrow("id"), obj.getStringOrThrow("question"),
-                readStringOrNull(obj, "answer"), readDocumentReferences(obj),
-                readDocumentReferences(obj, "graphDocumentReferences"), readFeedbackTypeOrNull(obj, "feedback"),
-                readFilterExpressionOrNull(obj, "staticFilter"), readFilterExpressionOrNull(obj, "dynamicFilter"),
-                readStringOrNull(obj, "dateCreated"), readStringOrNull(obj, "dateAnswered"),
-                obj.getInt("agentVersion", 0), readMessageStatus(obj, "status"));
+        return new ConversationMessage( //
+                obj.getStringOrThrow("id"), //
+                obj.getStringOrThrow("question"), //
+                obj.getStringOrNull("answer"), //
+                obj.getOptionalArray("documentReferences") //
+                   .map(a -> a.toListObject().stream().map(documentReferencesMapper::fromCICNode).toList()) //
+                   .orElse(null), //
+                obj.getOptionalArray("graphDocumentReferences") //
+                   .map(a -> a.toListObject().stream().map(documentReferencesMapper::fromCICNode).toList()) //
+                   .orElse(null), //
+                obj.getOptionalString("feedback").map(FeedbackType::fromValue).orElse(null), //
+                obj.getOptionalObject("staticFilter").map(filterExpressionMapper::fromCICNode).orElse(null), //
+                obj.getOptionalObject("dynamicFilter").map(filterExpressionMapper::fromCICNode).orElse(null), //
+                obj.getStringOrNull("dateCreated"), //
+                obj.getStringOrNull("dateAnswered"), //
+                obj.getInt("agentVersion", 0), //
+                MessageStatus.fromValue(obj.getStringOrThrow("status")));
     }
 }

@@ -18,12 +18,10 @@
  */
 package org.hyland.sdk.cic.qna.mapper;
 
-import static org.hyland.sdk.cic.qna.mapper.QnaMapperUtils.readCursorPagination;
-
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
-import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
+import org.hyland.sdk.cic.http.client.pagination.CursorPagination;
 import org.hyland.sdk.cic.qna.object.ConversationPage;
 
 /**
@@ -38,12 +36,8 @@ class ConversationCursorPageMapper implements CICMapper<ConversationPage> {
         if (!(cicNode instanceof CICObject obj)) {
             throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
         }
-        var dataNode = obj.getProperties().get("data");
-        if (!(dataNode instanceof CICArray dataArray)) {
-            throw new IllegalArgumentException("Expected CICArray for data");
-        }
-        var data = dataArray.toListObject().stream().map(innerMapper::fromCICNode).toList();
-        var pagination = readCursorPagination(obj);
+        var data = obj.getArrayOrThrow("data").toListObject().stream().map(innerMapper::fromCICNode).toList();
+        var pagination = CursorPagination.from(obj);
         return new ConversationPage(data, pagination);
     }
 }

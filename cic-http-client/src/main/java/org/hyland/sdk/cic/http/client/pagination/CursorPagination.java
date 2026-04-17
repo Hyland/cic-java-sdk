@@ -18,6 +18,8 @@
  */
 package org.hyland.sdk.cic.http.client.pagination;
 
+import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
+
 /**
  * Cursor-based pagination metadata returned by the API.
  *
@@ -26,4 +28,11 @@ package org.hyland.sdk.cic.http.client.pagination;
  * @since 1.0.0
  */
 public record CursorPagination(String nextCursor, boolean hasMore) {
+
+    public static CursorPagination from(CICObject obj) {
+        var paginationObj = obj.getObjectOrThrow("pagination");
+        return new CursorPagination( //
+                paginationObj.getString("nextCursor", null), //
+                paginationObj.getBoolean("hasMore", false));
+    }
 }

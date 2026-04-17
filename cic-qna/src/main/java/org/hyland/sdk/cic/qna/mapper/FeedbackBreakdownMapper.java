@@ -33,7 +33,11 @@ class FeedbackBreakdownMapper implements CICMapper<FeedbackBreakdown> {
         if (!(cicNode instanceof CICObject obj)) {
             throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
         }
-        return new FeedbackBreakdown(obj.getInt("good", 0), obj.getInt("bad", 0), obj.getInt("regenerate", 0),
-                obj.getInt("none", 0), obj.getInt("totalAnswers", 0));
+        return new FeedbackBreakdown( //
+                obj.getInt("good", 0), //
+                obj.getInt("bad", 0), //
+                obj.getInt("regenerate", 0), //
+                obj.getInt("none", 0), //
+                obj.getInt("totalAnswers", 0));
     }
 }

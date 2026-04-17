@@ -16,16 +16,23 @@
  * Contributors:
  *     Damian Ujma <damian.ujma@hyland.com>
  */
-package org.hyland.sdk.cic.qna.object;
+package org.hyland.sdk.cic.qna.mapper;
 
-import java.util.Objects;
+import org.hyland.sdk.cic.http.client.mapper.CICMapper;
+import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
+import org.hyland.sdk.cic.qna.object.SetAnswerReference;
 
 /**
  * @since 1.0.0
  */
-public record DocumentReferenceItem(String referenceId, double rankScore, Integer rank) {
+class SetAnswerReferenceMapper implements CICMapper<SetAnswerReference> {
 
-    public DocumentReferenceItem {
-        Objects.requireNonNull(referenceId, "referenceId cannot be null");
+    @Override
+    public CICObject toCICNode(SetAnswerReference reference) {
+        var obj = CICObject.create();
+        obj.putString("referenceId", reference.referenceId());
+        obj.putString("objectId", reference.objectId());
+        obj.putDouble("rankScore", reference.rankScore());
+        return obj;
     }
 }

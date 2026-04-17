@@ -18,29 +18,16 @@
  */
 package org.hyland.sdk.cic.qna.mapper;
 
-import static org.hyland.sdk.cic.qna.mapper.QnaMapperUtils.toCICObject;
-import static org.hyland.sdk.cic.qna.mapper.QnaMapperUtils.writeStringList;
-
-import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
-import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 import org.hyland.sdk.cic.qna.object.ContinueConversationRequest;
 
 /**
  * @since 1.0.0
  */
-class ContinueConversationRequestMapper implements CICMapper<ContinueConversationRequest> {
+class ContinueConversationRequestMapper extends AbstractConversationRequestMapper<ContinueConversationRequest> {
 
     @Override
     public CICNode toCICNode(ContinueConversationRequest request) {
-        var obj = CICObject.create();
-        obj.putString("question", request.question());
-        if (!request.contextObjectIds().isEmpty()) {
-            obj.putArray("contextObjectIds", writeStringList(request.contextObjectIds()));
-        }
-        if (request.dynamicFilter() != null) {
-            obj.putObject("dynamicFilter", toCICObject(request.dynamicFilter()));
-        }
-        return obj;
+        return toCICObject(request.question(), request.contextObjectIds(), request.dynamicFilter());
     }
 }

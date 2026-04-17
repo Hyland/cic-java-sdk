@@ -41,13 +41,19 @@ public final class ErrorUtils {
     }
 
     public static void throwException(CICHttpResponse<String> response, String exceptionMessage) {
-        CICError remoteCause = null;
+        throw buildServiceException(response, exceptionMessage);
+    }
+
+    private static CICServiceException buildServiceException(CICHttpResponse<String> response,
+            String exceptionMessage) {
         try {
-            remoteCause = MapperService.read(response.body(), CICError.class);
-        } catch (Exception e) {
-            // ignore parsing error
+            var remoteCause = MapperService.read(response.body(), CICError.class);
+            return new CICServiceException(exceptionMessage, response.statusCode(), remoteCause);
+        } catch (Exception parseError) {
+            var exception = new CICServiceException(exceptionMessage, response.statusCode());
+            exception.addSuppressed(parseError);
+            return exception;
         }
-        throw new CICServiceException(exceptionMessage, response.statusCode(), remoteCause);
     }
 
     public static boolean isUnexpectedStatusCode(int statusCode) {

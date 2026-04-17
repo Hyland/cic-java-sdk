@@ -18,16 +18,26 @@
  */
 package org.hyland.sdk.cic.qna.mapper;
 
+import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
-import org.hyland.sdk.cic.qna.object.StartConversationRequest;
+import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
+import org.hyland.sdk.cic.qna.object.FilterExpression;
 
 /**
  * @since 1.0.0
  */
-class StartConversationRequestMapper extends AbstractConversationRequestMapper<StartConversationRequest> {
+class FilterExpressionMapper implements CICMapper<FilterExpression> {
 
     @Override
-    public CICNode toCICNode(StartConversationRequest request) {
-        return toCICObject(request.question(), request.contextObjectIds(), request.dynamicFilter());
+    public FilterExpression fromCICNode(CICNode cicNode) {
+        if (!(cicNode instanceof CICObject obj)) {
+            throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
+        }
+        return FilterExpression.of(obj.toMap());
+    }
+
+    @Override
+    public CICObject toCICNode(FilterExpression expression) {
+        return CICObject.from(expression.properties());
     }
 }

@@ -18,8 +18,6 @@
  */
 package org.hyland.sdk.cic.qna.mapper;
 
-import static org.hyland.sdk.cic.qna.mapper.QnaMapperUtils.readStringOrNull;
-
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
@@ -35,7 +33,10 @@ class ConversationMapper implements CICMapper<Conversation> {
         if (!(cicNode instanceof CICObject obj)) {
             throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
         }
-        return new Conversation(obj.getStringOrThrow("id"), readStringOrNull(obj, "name"),
-                readStringOrNull(obj, "description"), readStringOrNull(obj, "lastModified"));
+        return new Conversation( //
+                obj.getStringOrThrow("id"), //
+                obj.getStringOrNull("name"), //
+                obj.getStringOrNull("description"), //
+                obj.getStringOrNull("lastModified"));
     }
 }

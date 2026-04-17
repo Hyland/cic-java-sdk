@@ -26,6 +26,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
@@ -136,6 +139,28 @@ public class CICObjectTest {
     }
 
     @Test
+    public void nullableScalars() {
+        var cicObject = CICObject.create();
+        assertNull(cicObject.getStringOrNull("string"));
+        assertNull(cicObject.getIntegerOrNull("int"));
+        assertNull(cicObject.getDoubleOrNull("double"));
+
+        cicObject.putNull("string");
+        cicObject.putNull("int");
+        cicObject.putNull("double");
+        assertNull(cicObject.getStringOrNull("string"));
+        assertNull(cicObject.getIntegerOrNull("int"));
+        assertNull(cicObject.getDoubleOrNull("double"));
+
+        cicObject.putString("string", "test");
+        cicObject.putInt("int", 42);
+        cicObject.putDouble("double", 3.14);
+        assertEquals("test", cicObject.getStringOrNull("string"));
+        assertEquals(42, cicObject.getIntegerOrNull("int"));
+        assertEquals(3.14, cicObject.getDoubleOrNull("double"));
+    }
+
+    @Test
     public void object() {
         var nestedObject = CICObject.create();
         nestedObject.putString("string", "test");
@@ -143,5 +168,105 @@ public class CICObjectTest {
         cicObject.putObject("nested", nestedObject);
         assertEquals(nestedObject, cicObject.getObjectOrThrow("nested"));
         assertSame(nestedObject, cicObject.getObjectOrThrow("nested"));
+    }
+
+    @Test
+    public void optionalString() {
+        var cicObject = CICObject.create();
+        assertEquals(Optional.empty(), cicObject.getOptionalString("string"));
+
+        cicObject.putNull("string");
+        assertEquals(Optional.empty(), cicObject.getOptionalString("string"));
+
+        cicObject.putString("string", "test");
+        assertEquals(Optional.of("test"), cicObject.getOptionalString("string"));
+    }
+
+    @Test
+    public void optionalObject() {
+        var cicObject = CICObject.create();
+        assertEquals(Optional.empty(), cicObject.getOptionalObject("nested"));
+
+        cicObject.putNull("nested");
+        assertEquals(Optional.empty(), cicObject.getOptionalObject("nested"));
+
+        var nestedObject = CICObject.create();
+        cicObject.putObject("nested", nestedObject);
+        assertEquals(Optional.of(nestedObject), cicObject.getOptionalObject("nested"));
+
+        cicObject.putString("string", "test");
+        assertThrows(CICSdkException.class, () -> cicObject.getOptionalObject("string"));
+    }
+
+    @Test
+    public void optionalArray() {
+        var cicObject = CICObject.create();
+        assertEquals(Optional.empty(), cicObject.getOptionalArray("array"));
+
+        cicObject.putNull("array");
+        assertEquals(Optional.empty(), cicObject.getOptionalArray("array"));
+
+        var array = CICArray.create();
+        array.addString("element");
+        cicObject.putArray("array", array);
+        assertEquals(Optional.of(array), cicObject.getOptionalArray("array"));
+
+        cicObject.putString("string", "test");
+        assertThrows(CICSdkException.class, () -> cicObject.getOptionalArray("string"));
+    }
+
+    @Test
+    public void toMapFlatPrimitives() {
+        var cicObject = CICObject.create();
+        cicObject.putString("name", "alice");
+        cicObject.putInt("age", 30);
+        cicObject.putLong("score", 100L);
+        cicObject.putDouble("ratio", 0.5);
+        cicObject.putBoolean("active", true);
+        cicObject.putNull("missing");
+
+        var map = cicObject.toMap();
+        assertEquals("alice", map.get("name"));
+        assertEquals(30, map.get("age"));
+        assertEquals(100L, map.get("score"));
+        assertEquals(0.5, map.get("ratio"));
+        assertEquals(true, map.get("active"));
+        assertNull(map.get("missing"));
+    }
+
+    @Test
+    public void toMapNestedObject() {
+        var nested = CICObject.create();
+        nested.putString("key", "value");
+        var cicObject = CICObject.create();
+        cicObject.putObject("nested", nested);
+
+        var map = cicObject.toMap();
+        assertEquals(Map.of("key", "value"), map.get("nested"));
+    }
+
+    @Test
+    public void toMapNestedArray() {
+        var array = CICArray.create();
+        array.addString("a");
+        array.addInt(1);
+        var cicObject = CICObject.create();
+        cicObject.putArray("list", array);
+
+        var map = cicObject.toMap();
+        assertEquals(List.of("a", 1), map.get("list"));
+    }
+
+    @Test
+    public void toMapDeeplyNested() {
+        var inner = CICObject.create();
+        inner.putString("leaf", "value");
+        var innerArray = CICArray.create();
+        innerArray.addObject(inner);
+        var outer = CICObject.create();
+        outer.putArray("items", innerArray);
+
+        var map = outer.toMap();
+        assertEquals(List.of(Map.of("leaf", "value")), map.get("items"));
     }
 }
