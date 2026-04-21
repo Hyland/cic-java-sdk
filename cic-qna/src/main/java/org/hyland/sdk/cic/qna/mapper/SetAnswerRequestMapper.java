@@ -36,9 +36,7 @@ class SetAnswerRequestMapper implements CICMapper<SetAnswerRequest> {
         var obj = CICObject.create();
         obj.putString("answer", request.answer());
         if (!request.references().isEmpty()) {
-            // TODO: Make CICArray.from supporting CICObject instances
-            var references = CICArray.create();
-            request.references().stream().map(referenceMapper::toCICNode).forEach(references::addObject);
+            var references = CICArray.from(request.references().stream().map(referenceMapper::toCICNode).toList());
             obj.putArray("references", references);
         }
         return obj;

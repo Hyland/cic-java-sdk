@@ -79,6 +79,8 @@ public interface CICArray extends CICNode {
                 array.addArray(from((Object[]) value));
             } else if (value instanceof Collection<?> collection) {
                 array.addArray(from(collection));
+            } else if (value instanceof CICObject obj) {
+                array.addObject(obj);
             } else if (value instanceof Map<?, ?> map) {
                 // We have to assume the keys are strings since we can't represent non-string keys in JSON
                 @SuppressWarnings("unchecked")
