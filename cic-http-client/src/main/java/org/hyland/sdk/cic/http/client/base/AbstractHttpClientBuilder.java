@@ -80,8 +80,7 @@ public abstract class AbstractHttpClientBuilder<B extends AbstractHttpClientBuil
     }
 
     /**
-     * Configures the retry policy for HTTP requests using a builder consumer.
-     * Example:
+     * Configures the retry policy for HTTP requests using a builder consumer. Example:
      *
      * <pre>{@code
      * client.retryPolicy(
