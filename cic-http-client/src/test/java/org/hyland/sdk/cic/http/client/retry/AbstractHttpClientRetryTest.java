@@ -351,6 +351,57 @@ public class AbstractHttpClientRetryTest {
     }
 
     @Test
+    public void retryPolicyConsumerConfiguresMaxAttempts() {
+        var attemptCount = new AtomicInteger();
+        server.createContext("/test", exchange -> {
+            int attempt = attemptCount.incrementAndGet();
+            if (attempt < 4) {
+                exchange.sendResponseHeaders(500, 0);
+            } else {
+                var body = "ok".getBytes();
+                exchange.sendResponseHeaders(200, body.length);
+                exchange.getResponseBody().write(body);
+            }
+            exchange.close();
+        });
+        server.start();
+
+        var client = new TestHttpClient.Builder(baseUrl).retryPolicy(
+                policy -> policy.maxAttempts(4).backoffStrategy(BackoffStrategy.fixedDelay(Duration.ZERO))).build();
+
+        var response = client.doGet("/test");
+        assertEquals(200, response.statusCode());
+        assertEquals(4, attemptCount.get());
+    }
+
+    @Test
+    public void retryPolicyConsumerConfiguresCustomCondition() {
+        var attemptCount = new AtomicInteger();
+        server.createContext("/test", exchange -> {
+            attemptCount.incrementAndGet();
+            exchange.sendResponseHeaders(500, 0);
+            exchange.close();
+        });
+        server.start();
+
+        // consumer sets a condition that does not match 500 — no retries expected
+        var client = new TestHttpClient.Builder(baseUrl).retryPolicy(
+                policy -> policy.maxAttempts(3)
+                                .retryCondition(ctx -> ctx.statusCode() == 503)
+                                .backoffStrategy(BackoffStrategy.fixedDelay(Duration.ZERO))).build();
+
+        var response = client.doGet("/test");
+        assertEquals(500, response.statusCode());
+        assertEquals(1, attemptCount.get());
+    }
+
+    @Test
+    public void retryPolicyConsumerRejectsNull() {
+        assertThrows(NullPointerException.class, () -> new TestHttpClient.Builder(baseUrl).retryPolicy(
+                (java.util.function.Consumer<RetryPolicy.Builder>) null));
+    }
+
+    @Test
     public void doesNotRetryPostOnRetryableStatusCode() {
         var attemptCount = new AtomicInteger();
         server.createContext("/test", exchange -> {
