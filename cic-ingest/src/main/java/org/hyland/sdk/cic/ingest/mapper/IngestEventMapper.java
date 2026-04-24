@@ -51,7 +51,9 @@ class IngestEventMapper implements CICMapper<IngestEvent> {
     }
 
     private void putValue(CICObject target, String key, Object value) {
-        if (value instanceof String s) {
+        if (value == null) {
+            target.putNull(key);
+        } else if (value instanceof String s) {
             target.putString(key, s);
         } else if (value instanceof Integer i) {
             target.putInt(key, i);
