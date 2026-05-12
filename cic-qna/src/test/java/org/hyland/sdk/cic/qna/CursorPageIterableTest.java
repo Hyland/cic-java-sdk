@@ -316,6 +316,20 @@ class CursorPageIterableTest {
     }
 
     @Test
+    void testHasMoreTrueWithNullCursorThrows() {
+        var iterable = new CursorPageIterable<>(cursor -> page(List.of("a"), null, true));
+
+        assertThrows(IllegalStateException.class, () -> iterable.stream().toList());
+    }
+
+    @Test
+    void testHasMoreTrueWithBlankCursorThrows() {
+        var iterable = new CursorPageIterable<>(cursor -> page(List.of("a"), "  ", true));
+
+        assertThrows(IllegalStateException.class, () -> iterable.stream().toList());
+    }
+
+    @Test
     void testNullPageSupplierThrows() {
         assertThrows(NullPointerException.class, () -> new CursorPageIterable<>(null));
     }

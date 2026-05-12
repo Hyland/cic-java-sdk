@@ -18,6 +18,8 @@
  */
 package org.hyland.sdk.cic.agent.object;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -44,7 +46,11 @@ public record FilterExpression(Map<String, Object> properties) {
 
     public FilterExpression {
         Objects.requireNonNull(properties, "properties cannot be null");
-        properties = Map.copyOf(properties);
+        var copy = new LinkedHashMap<>(properties);
+        if (copy.containsKey(null)) {
+            throw new NullPointerException("property key cannot be null");
+        }
+        properties = Collections.unmodifiableMap(copy);
     }
 
     /**

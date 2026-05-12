@@ -89,6 +89,9 @@ public final class CursorPageIterable<T> implements Iterable<T> {
             current = page.data().iterator();
             nextCursor = page.pagination().nextCursor();
             hasMore = page.pagination().hasMore();
+            if (hasMore && (nextCursor == null || nextCursor.isBlank())) {
+                throw new IllegalStateException("Server returned hasMore=true but nextCursor is null or blank");
+            }
         }
 
         @Override
