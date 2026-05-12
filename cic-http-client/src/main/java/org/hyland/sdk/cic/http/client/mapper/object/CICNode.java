@@ -28,6 +28,8 @@ import org.hyland.sdk.cic.http.client.CICSdkException;
  */
 public interface CICNode {
 
+    Object toJavaValue();
+
     static CICNode from(Object value) {
         if (value == null) {
             return new CICPrimitive.CICNull();

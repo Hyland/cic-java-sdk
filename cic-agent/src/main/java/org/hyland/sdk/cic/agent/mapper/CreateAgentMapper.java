@@ -50,12 +50,12 @@ class CreateAgentMapper implements CICMapper<CreateAgent> {
         } else {
             obj.putNull("instructions");
         }
-        if (agent.sourceIds() != null) {
+        if (!agent.sourceIds().isEmpty()) {
             obj.putArray("sourceIds", writeStringList(agent.sourceIds()));
         } else {
             obj.putNull("sourceIds");
         }
-        if (agent.accessRights() != null) {
+        if (!agent.accessRights().isEmpty()) {
             obj.putArray("accessRights", writeAccessRights(agent.accessRights()));
         } else {
             obj.putNull("accessRights");
@@ -70,7 +70,7 @@ class CreateAgentMapper implements CICMapper<CreateAgent> {
         } else {
             obj.putNull("dynamicFilterTemplate");
         }
-        if (agent.guardrails() != null) {
+        if (!agent.guardrails().isEmpty()) {
             obj.putArray("guardrails", writeGuardrails(agent.guardrails()));
         } else {
             obj.putNull("guardrails");

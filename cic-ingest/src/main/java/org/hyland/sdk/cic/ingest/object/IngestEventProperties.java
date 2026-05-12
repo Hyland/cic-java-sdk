@@ -110,6 +110,12 @@ public final class IngestEventProperties {
             return this;
         }
 
+        public Builder putNull(String key) {
+            Objects.requireNonNull(key, "key cannot be null");
+            properties.put(key, null);
+            return this;
+        }
+
         public Builder put(String key, Consumer<IngestEventProperties.Builder> propertiesConsumer) {
             Objects.requireNonNull(key, "key cannot be null");
             Objects.requireNonNull(propertiesConsumer, "propertiesConsumer cannot be null");

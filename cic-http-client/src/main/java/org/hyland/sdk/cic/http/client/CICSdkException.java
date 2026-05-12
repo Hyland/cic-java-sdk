@@ -23,20 +23,11 @@ package org.hyland.sdk.cic.http.client;
  */
 public class CICSdkException extends RuntimeException {
 
-    protected final CICError remoteCause;
-
     public CICSdkException(String message) {
         super(message);
-        this.remoteCause = null;
     }
 
     public CICSdkException(String message, Throwable cause) {
         super(message, cause);
-        this.remoteCause = null;
-    }
-
-    public CICSdkException(String message, CICError remoteCause) {
-        super(message);
-        this.remoteCause = remoteCause;
     }
 }

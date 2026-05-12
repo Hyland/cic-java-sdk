@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import org.hyland.sdk.cic.http.client.CICSdkException;
 import org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive.CICDouble;
@@ -59,6 +60,20 @@ public interface CICObject extends CICNode {
     String getStringOrThrow(String key);
 
     LocalDate getLocalDateOrThrow(String key);
+
+    Optional<CICObject> getOptionalObject(String key);
+
+    Optional<CICArray> getOptionalArray(String key);
+
+    Optional<String> getOptionalString(String key);
+
+    String getStringOrNull(String key);
+
+    Integer getIntegerOrNull(String key);
+
+    Double getDoubleOrNull(String key);
+
+    Map<String, Object> toMap();
 
     void putArray(String key, CICArray value);
 
@@ -244,6 +259,68 @@ public interface CICObject extends CICNode {
                     return value;
                 }
                 throw new CICSdkException("Property: %s does not exist or is not a date".formatted(key));
+            }
+
+            @Override
+            public Optional<CICObject> getOptionalObject(String key) {
+                var node = properties.get(key);
+                if (node == null || node instanceof CICPrimitive.CICNull) {
+                    return Optional.empty();
+                }
+                return Optional.of(getObjectOrThrow(key));
+            }
+
+            @Override
+            public Optional<CICArray> getOptionalArray(String key) {
+                var node = properties.get(key);
+                if (node == null || node instanceof CICPrimitive.CICNull) {
+                    return Optional.empty();
+                }
+                return Optional.of(getArrayOrThrow(key));
+            }
+
+            @Override
+            public Optional<String> getOptionalString(String key) {
+                return Optional.ofNullable(getStringOrNull(key));
+            }
+
+            @Override
+            public String getStringOrNull(String key) {
+                var node = properties.get(key);
+                if (node == null || node instanceof CICPrimitive.CICNull) {
+                    return null;
+                }
+                return getString(key, null);
+            }
+
+            @Override
+            public Integer getIntegerOrNull(String key) {
+                var node = properties.get(key);
+                if (node == null || node instanceof CICPrimitive.CICNull) {
+                    return null;
+                }
+                return getInt(key, 0);
+            }
+
+            @Override
+            public Double getDoubleOrNull(String key) {
+                var node = properties.get(key);
+                if (node == null || node instanceof CICPrimitive.CICNull) {
+                    return null;
+                }
+                return getDouble(key, 0.0);
+            }
+
+            @Override
+            public Map<String, Object> toMap() {
+                var map = new LinkedHashMap<String, Object>();
+                properties.forEach((k, v) -> map.put(k, v.toJavaValue()));
+                return map;
+            }
+
+            @Override
+            public Object toJavaValue() {
+                return toMap();
             }
 
             @Override

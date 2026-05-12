@@ -30,7 +30,7 @@ public record IntegrationSubmitQuestionRequest(String question, String userId, L
     public IntegrationSubmitQuestionRequest {
         Objects.requireNonNull(question, "question cannot be null");
         Objects.requireNonNull(userId, "userId cannot be null");
-        contextObjectIds = contextObjectIds != null ? List.copyOf(contextObjectIds) : null;
+        contextObjectIds = contextObjectIds != null ? List.copyOf(contextObjectIds) : List.of();
     }
 
     public static Builder builder() {

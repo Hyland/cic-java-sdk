@@ -34,9 +34,9 @@ public record CreateAgent(String name, String description, String modelName, Str
         Objects.requireNonNull(name, "name cannot be null");
         Objects.requireNonNull(description, "description cannot be null");
         Objects.requireNonNull(modelName, "modelName cannot be null");
-        sourceIds = sourceIds != null ? List.copyOf(sourceIds) : null;
-        accessRights = accessRights != null ? List.copyOf(accessRights) : null;
-        guardrails = guardrails != null ? List.copyOf(guardrails) : null;
+        sourceIds = sourceIds != null ? List.copyOf(sourceIds) : List.of();
+        accessRights = accessRights != null ? List.copyOf(accessRights) : List.of();
+        guardrails = guardrails != null ? List.copyOf(guardrails) : List.of();
     }
 
     public static Builder builder() {

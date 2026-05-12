@@ -19,7 +19,7 @@
 package org.hyland.sdk.cic.http.client.util;
 
 import org.hyland.sdk.cic.http.client.CICError;
-import org.hyland.sdk.cic.http.client.CICSdkException;
+import org.hyland.sdk.cic.http.client.CICServiceException;
 import org.hyland.sdk.cic.http.client.base.CICHttpResponse;
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
 
@@ -41,14 +41,18 @@ public final class ErrorUtils {
     }
 
     public static void throwException(CICHttpResponse<String> response, String exceptionMessage) {
+        throw buildServiceException(response, exceptionMessage);
+    }
+
+    private static CICServiceException buildServiceException(CICHttpResponse<String> response,
+            String exceptionMessage) {
         try {
-            // try to read response as error object
-            var errorCause = MapperService.read(response.body(), CICError.class);
-            throw new CICSdkException(exceptionMessage, errorCause);
-        } catch (CICSdkException e) {
-            var exception = new CICSdkException(exceptionMessage);
-            exception.addSuppressed(e);
-            throw exception;
+            var remoteCause = MapperService.read(response.body(), CICError.class);
+            return new CICServiceException(exceptionMessage, response.statusCode(), remoteCause);
+        } catch (Exception parseError) {
+            var exception = new CICServiceException(exceptionMessage, response.statusCode());
+            exception.addSuppressed(parseError);
+            return exception;
         }
     }
 

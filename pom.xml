@@ -27,6 +27,7 @@
     <module>cic-http-client-jackson2</module>
     <module>cic-ingest</module>
     <module>cic-agent</module>
+    <module>cic-qna</module>
   </modules>
 
   <scm>
@@ -77,6 +78,11 @@
       <dependency>
         <groupId>org.hyland.sdk</groupId>
         <artifactId>cic-agent</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.hyland.sdk</groupId>
+        <artifactId>cic-qna</artifactId>
         <version>${project.version}</version>
       </dependency>
       <!-- External dependencies - POM imports -->

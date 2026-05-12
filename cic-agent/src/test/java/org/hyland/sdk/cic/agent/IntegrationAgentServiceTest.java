@@ -45,7 +45,7 @@ class IntegrationAgentServiceTest {
     @BeforeEach
     void setUp() {
         httpClient = new TestAgentHttpClient();
-        service = new IntegrationAgentService(httpClient);
+        service = new AgentService(httpClient).integrations();
     }
 
     @Test

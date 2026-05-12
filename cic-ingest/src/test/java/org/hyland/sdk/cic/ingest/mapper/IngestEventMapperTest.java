@@ -86,6 +86,9 @@ class IngestEventMapperTest {
                       "value": "2021-01-21T11:14:15.695Z",
                       "annotation": "dateCreated"
                     },
+                    "nullValue": {
+                      "value": null
+                    },
                     "name": {
                       "value": "purchase-order-scan.pdf",
                       "annotation": "name"
@@ -134,6 +137,7 @@ class IngestEventMapperTest {
                                     .put("createdAt",
                                             b -> b.put("value", "2021-01-21T11:14:15.695Z")
                                                   .put("annotation", "dateCreated"))
+                                    .put("nullValue", b -> b.putNull("value"))
                                     .put("name",
                                             b -> b.put("value", "purchase-order-scan.pdf").put("annotation", "name"))
                                     .put("aspectsNames",

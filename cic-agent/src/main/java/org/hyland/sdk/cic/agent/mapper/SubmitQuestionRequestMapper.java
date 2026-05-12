@@ -35,7 +35,7 @@ class SubmitQuestionRequestMapper implements CICMapper<SubmitQuestionRequest> {
     public CICNode toCICNode(SubmitQuestionRequest request) {
         var obj = CICObject.create();
         obj.putString("question", request.question());
-        if (request.contextObjectIds() != null) {
+        if (!request.contextObjectIds().isEmpty()) {
             obj.putArray("contextObjectIds", writeStringList(request.contextObjectIds()));
         }
         if (request.dynamicFilter() != null) {
