@@ -18,15 +18,9 @@
  */
 package org.hyland.sdk.cic.agent.mapper;
 
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.readAccessRights;
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.readFilterExpressionOrNull;
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.readGuardrails;
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.readRagParameters;
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.readStringList;
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.readStringOrNull;
-
 import org.hyland.sdk.cic.agent.object.AgentConfiguration;
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
+import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 
@@ -35,19 +29,42 @@ import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
  */
 class AgentConfigurationMapper implements CICMapper<AgentConfiguration> {
 
+    private final AccessRightMapper accessRightMapper = new AccessRightMapper();
+
+    private final FilterExpressionMapper filterExpressionMapper = new FilterExpressionMapper();
+
+    private final GuardrailMapper guardrailMapper = new GuardrailMapper();
+
+    private final RagParametersMapper ragParametersMapper = new RagParametersMapper();
+
     @Override
     public AgentConfiguration fromCICNode(CICNode cicNode) {
         if (!(cicNode instanceof CICObject obj)) {
             throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
         }
-        return new AgentConfiguration(obj.getStringOrThrow("id"), obj.getStringOrThrow("name"),
-                obj.getStringOrThrow("description"), obj.getStringOrThrow("modelName"),
-                obj.getString("avatarUrl", null), obj.getString("avatarPresignedUrl", null),
-                obj.getString("instructions", null), readStringList(obj, "sourceIds"), readAccessRights(obj),
-                obj.getInt("version", 0), obj.getBoolean("latest", false),
-                readFilterExpressionOrNull(obj, "staticFilterExpression"),
-                readFilterExpressionOrNull(obj, "dynamicFilterTemplate"), readStringOrNull(obj, "agentPlatformAgentId"),
-                readStringOrNull(obj, "agentPlatformAgentVersionId"), readGuardrails(obj), readRagParameters(obj),
-                obj.getString("agentType", null), readStringOrNull(obj, "knowledgeGraphDomainId"));
+        return new AgentConfiguration( //
+                obj.getStringOrThrow("id"), //
+                obj.getStringOrThrow("name"), //
+                obj.getStringOrThrow("description"), //
+                obj.getStringOrThrow("modelName"), //
+                obj.getStringOrNull("avatarUrl"), //
+                obj.getStringOrNull("avatarPresignedUrl"), //
+                obj.getStringOrNull("instructions"), //
+                obj.getOptionalArray("sourceIds").map(CICArray::toListString).orElse(null), //
+                obj.getOptionalArray("accessRights")
+                   .map(a -> a.toListObject().stream().map(accessRightMapper::fromCICNode).toList())
+                   .orElse(null), //
+                obj.getInt("version", 0), //
+                obj.getBoolean("latest", false), //
+                obj.getOptionalObject("staticFilterExpression").map(filterExpressionMapper::fromCICNode).orElse(null), //
+                obj.getOptionalObject("dynamicFilterTemplate").map(filterExpressionMapper::fromCICNode).orElse(null), //
+                obj.getStringOrNull("agentPlatformAgentId"), //
+                obj.getStringOrNull("agentPlatformAgentVersionId"), //
+                obj.getOptionalArray("guardrails")
+                   .map(a -> a.toListObject().stream().map(guardrailMapper::fromCICNode).toList())
+                   .orElse(null), //
+                obj.getOptionalObject("ragParameters").map(ragParametersMapper::fromCICNode).orElse(null), //
+                obj.getStringOrNull("agentType"), //
+                obj.getStringOrNull("knowledgeGraphDomainId"));
     }
 }

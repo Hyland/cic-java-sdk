@@ -60,6 +60,8 @@ public interface CICArray extends CICNode {
 
     List<CICObject> toListObject();
 
+    List<String> toListString();
+
     List<CICNode> getElements();
 
     static CICArray from(Object[] values) {
@@ -175,6 +177,11 @@ public interface CICArray extends CICNode {
             @SuppressWarnings("unchecked")
             public List<CICObject> toListObject() {
                 return (List<CICObject>) ((List<?>) List.copyOf(array));
+            }
+
+            @Override
+            public List<String> toListString() {
+                return array.stream().map(el -> ((CICPrimitive.CICString) el).value()).toList();
             }
 
             @Override

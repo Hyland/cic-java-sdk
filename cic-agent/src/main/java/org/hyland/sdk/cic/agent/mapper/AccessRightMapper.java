@@ -18,28 +18,31 @@
  */
 package org.hyland.sdk.cic.agent.mapper;
 
-import org.hyland.sdk.cic.agent.object.SubmitQuestionRequest;
+import org.hyland.sdk.cic.agent.object.AccessRight;
+import org.hyland.sdk.cic.agent.object.PrincipalType;
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
-import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 
 /**
  * @since 1.0.0
  */
-class SubmitQuestionRequestMapper implements CICMapper<SubmitQuestionRequest> {
-
-    private final FilterExpressionMapper filterExpressionMapper = new FilterExpressionMapper();
+class AccessRightMapper implements CICMapper<AccessRight> {
 
     @Override
-    public CICNode toCICNode(SubmitQuestionRequest request) {
-        var obj = CICObject.create();
-        obj.putString("question", request.question());
-        if (!request.contextObjectIds().isEmpty()) {
-            obj.putArray("contextObjectIds", CICArray.from(request.contextObjectIds()));
+    public AccessRight fromCICNode(CICNode cicNode) {
+        if (!(cicNode instanceof CICObject obj)) {
+            throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
         }
-        if (request.dynamicFilter() != null) {
-            obj.putObject("dynamicFilter", filterExpressionMapper.toCICNode(request.dynamicFilter()));
+        return new AccessRight(PrincipalType.fromValue(obj.getStringOrThrow("type")), obj.getStringOrNull("id"));
+    }
+
+    @Override
+    public CICObject toCICNode(AccessRight accessRight) {
+        var obj = CICObject.create();
+        obj.putString("type", accessRight.type().value());
+        if (accessRight.id() != null) {
+            obj.putString("id", accessRight.id());
         }
         return obj;
     }

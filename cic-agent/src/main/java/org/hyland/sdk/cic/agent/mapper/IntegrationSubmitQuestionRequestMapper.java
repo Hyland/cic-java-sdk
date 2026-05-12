@@ -18,10 +18,9 @@
  */
 package org.hyland.sdk.cic.agent.mapper;
 
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.writeStringList;
-
 import org.hyland.sdk.cic.agent.object.IntegrationSubmitQuestionRequest;
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
+import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 
@@ -36,7 +35,7 @@ class IntegrationSubmitQuestionRequestMapper implements CICMapper<IntegrationSub
         obj.putString("question", request.question());
         obj.putString("userId", request.userId().toString());
         if (!request.contextObjectIds().isEmpty()) {
-            obj.putArray("contextObjectIds", writeStringList(request.contextObjectIds()));
+            obj.putArray("contextObjectIds", CICArray.from(request.contextObjectIds()));
         }
         return obj;
     }
