@@ -21,7 +21,12 @@ package org.hyland.sdk.cic.http.client.base;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Consumer;
+
+import org.hyland.sdk.cic.http.client.retry.RetryPolicy;
+import org.hyland.sdk.cic.http.client.retry.RetryPolicy.Builder;
 
 /**
  * @since 1.0.0
@@ -42,21 +47,78 @@ public abstract class AbstractHttpClientBuilder<B extends AbstractHttpClientBuil
 
     protected Duration connectTimeout;
 
+    protected RetryPolicy retryPolicy = RetryPolicy.defaultPolicy();
+
     protected AbstractHttpClientBuilder(String baseUrl) {
         this.baseUrl = baseUrl;
         header("User-Agent", DEFAULT_USER_AGENT);
     }
 
+    /**
+     * Sets the connection timeout for HTTP requests.
+     *
+     * @param connectTimeout the connection timeout duration; {@code null} means no timeout is set
+     * @return this builder
+     */
     public B connectTimeout(Duration connectTimeout) {
         this.connectTimeout = connectTimeout;
         return self();
     }
 
+    /**
+     * Sets the retry policy for HTTP requests.
+     * <p>
+     * By default, {@link RetryPolicy#defaultPolicy()} is used. Use {@link RetryPolicy#none()} to disable retries.
+     *
+     * @param retryPolicy the retry policy
+     * @return this builder
+     */
+    public B retryPolicy(RetryPolicy retryPolicy) {
+        Objects.requireNonNull(retryPolicy, "retryPolicy cannot be null");
+        this.retryPolicy = retryPolicy;
+        return self();
+    }
+
+    /**
+     * Configures the retry policy for HTTP requests using a builder consumer. Example:
+     *
+     * <pre>{@code
+     * client.retryPolicy(
+     *         policy -> policy.maxAttempts(5).backoffStrategy(BackoffStrategy.fixedDelay(Duration.ofSeconds(2))));
+     * }</pre>
+     *
+     * @param consumer a consumer that configures the {@link RetryPolicy.Builder}; must not be null
+     * @return this builder
+     */
+    public B retryPolicy(Consumer<Builder> consumer) {
+        Objects.requireNonNull(consumer, "consumer cannot be null");
+        var builder = RetryPolicy.builder();
+        consumer.accept(builder);
+        this.retryPolicy = builder.build();
+        return self();
+    }
+
+    /**
+     * Sets an HTTP request header.
+     * <p>
+     *
+     * @param name the header name
+     * @param value the header value
+     * @return this builder
+     */
     public B header(String name, String value) {
         headers.put(name, value);
         return self();
     }
 
+    /**
+     * Overrides the {@code User-Agent} header sent with every request.
+     * <p>
+     * By default, the SDK sets {@code User-Agent} to {@code CICJavaSDK/<version>}.
+     *
+     * @param userAgent the user agent string
+     * @return this builder
+     */
     public B userAgent(String userAgent) {
         return header("User-Agent", userAgent);
     }
