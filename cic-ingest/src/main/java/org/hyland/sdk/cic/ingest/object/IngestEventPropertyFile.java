@@ -51,7 +51,7 @@ public final class IngestEventPropertyFile implements IngestEventProperty {
         this.digest = builder.digest;
     }
 
-    public Optional<CICBlob> getBlob() {
+    public Optional<CICBlob> blob() {
         return Optional.ofNullable(blob);
     }
 
@@ -161,6 +161,9 @@ public final class IngestEventPropertyFile implements IngestEventProperty {
 
         public IngestEventPropertyFile build() {
             // validate
+            if (blob != null && contentType == null) {
+                throw new IllegalArgumentException("contentType must be provided if blob is");
+            }
             if ((size != null && (name == null || contentType == null)) //
                     || (name != null && (size == null || contentType == null))) {
                 throw new IllegalArgumentException(

@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.BiFunction;
 
 import org.hyland.sdk.cic.http.client.util.StringUtils;
 
@@ -201,6 +202,12 @@ public final class IngestEvent {
 
         public Builder putProperty(String key, String value, String... values) {
             return putProperty(key, IngestEventPropertyValue.builder(value, values).build());
+        }
+
+        public Builder replaceProperties(
+                BiFunction<? super String, ? super IngestEventProperty, ? extends IngestEventProperty> function) {
+            this.properties.replaceAll(function);
+            return this;
         }
 
         public IngestEvent build() {

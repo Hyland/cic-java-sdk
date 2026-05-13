@@ -22,11 +22,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalLong;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +34,7 @@ import org.junit.jupiter.api.Test;
 import org.hyland.sdk.cic.http.client.auth.AuthenticationHttpClient;
 import org.hyland.sdk.cic.http.client.mapper.object.CICBlob;
 import org.hyland.sdk.cic.ingest.object.IngestEvent;
+import org.hyland.sdk.cic.ingest.object.IngestEventPropertyFile;
 import org.hyland.sdk.cic.ingest.object.PreSignedUrl;
 
 /**
@@ -61,7 +62,87 @@ class IngestServiceTest {
         service.ingest(event);
 
         assertEquals(1, httpClient.ingestCalls.size());
-        assertEquals(event, httpClient.ingestCalls.get(0));
+        var batch = httpClient.ingestCalls.get(0);
+        assertEquals(1, batch.size());
+        assertEquals(event, batch.get(0));
+    }
+
+    @Test
+    void testIngestBatch() {
+        var event = IngestEvent.builder(IngestEvent.Type.CREATE, "doc123")
+                               .date(Instant.ofEpochMilli(1609459200000L))
+                               .putProperty("title", "Test Document")
+                               .build();
+
+        service.ingest(IngestEvent.Batch.of(event));
+
+        assertEquals(1, httpClient.ingestCalls.size());
+        var batch = httpClient.ingestCalls.get(0);
+        assertEquals(1, batch.size());
+        assertEquals(event, batch.get(0));
+    }
+
+    @Test
+    void testIngestBatchWithMultipleEvents() {
+        var event1 = IngestEvent.builder(IngestEvent.Type.CREATE, "doc1")
+                                .date(Instant.ofEpochMilli(1609459200000L))
+                                .putProperty("title", "First")
+                                .build();
+        var event2 = IngestEvent.builder(IngestEvent.Type.UPDATE, "doc2")
+                                .sourceId("custom-source")
+                                .date(Instant.ofEpochMilli(1609459200000L))
+                                .putProperty("title", "Second")
+                                .build();
+
+        service.ingest(IngestEvent.Batch.of(event1, event2));
+
+        assertEquals(1, httpClient.ingestCalls.size());
+        var batch = httpClient.ingestCalls.get(0);
+        assertEquals(2, batch.size());
+        assertEquals(event1, batch.get(0));
+        assertEquals(event2, batch.get(1));
+    }
+
+    @Test
+    void testIngestBatchUploadsBlobsForEachEvent() {
+        CICBlob blob1 = CICBlob.builder(new ByteArrayInputStream("test content".getBytes())).build();
+        CICBlob blob2 = CICBlob.builder(new ByteArrayInputStream("test content".getBytes())).build();
+        var event1 = IngestEvent.builder(IngestEvent.Type.CREATE, "doc1")
+                                .putProperty("file:content",
+                                        IngestEventPropertyFile.builder(blob1)
+                                                               .contentType("text/plain")
+                                                               .name("first.txt")
+                                                               .size(11L)
+                                                               .build())
+                                .build();
+        var event2 = IngestEvent.builder(IngestEvent.Type.CREATE, "doc2")
+                                .putProperty("file:content",
+                                        IngestEventPropertyFile.builder(blob2)
+                                                               .contentType("application/json")
+                                                               .name("second.json")
+                                                               .size(22L)
+                                                               .build())
+                                .build();
+
+        httpClient.preSignedUrls.add(new PreSignedUrl("id-1", "https://localhost/upload1"));
+        httpClient.preSignedUrls.add(new PreSignedUrl("id-2", "https://localhost/upload2"));
+
+        service.ingest(IngestEvent.Batch.of(event1, event2));
+
+        assertEquals(2, httpClient.uploadCalls.size());
+        assertEquals(1, httpClient.ingestCalls.size());
+        var batch = httpClient.ingestCalls.get(0);
+        assertEquals(2, batch.size());
+        var ingestedFile1 = (IngestEventPropertyFile) batch.get(0).properties().get("file:content");
+        assertEquals(Optional.of("id-1"), ingestedFile1.id());
+        assertEquals(Optional.of("text/plain"), ingestedFile1.contentType());
+        assertEquals(Optional.of("first.txt"), ingestedFile1.name());
+        assertEquals(OptionalLong.of(11L), ingestedFile1.size());
+        var ingestedFile2 = (IngestEventPropertyFile) batch.get(1).properties().get("file:content");
+        assertEquals(Optional.of("id-2"), ingestedFile2.id());
+        assertEquals(Optional.of("application/json"), ingestedFile2.contentType());
+        assertEquals(Optional.of("second.json"), ingestedFile2.name());
+        assertEquals(OptionalLong.of(22L), ingestedFile2.size());
     }
 
     @Test
@@ -81,9 +162,85 @@ class IngestServiceTest {
     }
 
     @Test
+    void testIngestUploadsBlobsAndSetsId() {
+        CICBlob blob = CICBlob.builder(new ByteArrayInputStream("test content".getBytes())).build();
+        var fileProperty = IngestEventPropertyFile.builder(blob)
+                                                  .contentType("text/plain")
+                                                  .name("test.txt")
+                                                  .size(12L)
+                                                  .build();
+        var event = IngestEvent.builder(IngestEvent.Type.CREATE, "doc123")
+                               .date(Instant.ofEpochMilli(1609459200000L))
+                               .putProperty("file:content", fileProperty)
+                               .build();
+
+        httpClient.preSignedUrls.add(new PreSignedUrl("uploaded-id", "https://localhost/upload1"));
+
+        service.ingest(event);
+
+        assertEquals(1, httpClient.uploadCalls.size());
+        assertEquals("https://localhost/upload1", httpClient.uploadCalls.get(0).url());
+        assertEquals(blob, httpClient.uploadCalls.get(0).blob());
+
+        assertEquals(1, httpClient.ingestCalls.size());
+        var ingestedEvent = httpClient.ingestCalls.get(0).get(0);
+        var ingestedFile = (IngestEventPropertyFile) ingestedEvent.properties().get("file:content");
+        assertEquals(Optional.of("uploaded-id"), ingestedFile.id());
+        assertEquals(Optional.of("text/plain"), ingestedFile.contentType());
+        assertEquals(Optional.of("test.txt"), ingestedFile.name());
+        assertEquals(OptionalLong.of(12L), ingestedFile.size());
+        assertTrue(ingestedFile.blob().isEmpty(), "Blob should not be carried over to the ingested event");
+    }
+
+    @Test
+    void testIngestPropagatesMetadataFromBlob() {
+        CICBlob blob = CICBlob.builder(new ByteArrayInputStream("test content".getBytes()))
+                              .contentType("text/markdown")
+                              .name("readme.md")
+                              .size(42L)
+                              .digest("sha256:abc")
+                              .build();
+        var fileProperty = IngestEventPropertyFile.builder(blob).build();
+        var event = IngestEvent.builder(IngestEvent.Type.CREATE, "doc123")
+                               .putProperty("file:content", fileProperty)
+                               .build();
+
+        httpClient.preSignedUrls.add(new PreSignedUrl("uploaded-id", "https://localhost/upload1"));
+
+        service.ingest(event);
+
+        assertEquals(1, httpClient.ingestCalls.size());
+        var ingestedFile = (IngestEventPropertyFile) httpClient.ingestCalls.get(0)
+                                                                           .get(0)
+                                                                           .properties()
+                                                                           .get("file:content");
+        assertEquals(Optional.of("uploaded-id"), ingestedFile.id());
+        assertEquals(Optional.of("text/markdown"), ingestedFile.contentType());
+        assertEquals(Optional.of("readme.md"), ingestedFile.name());
+        assertEquals(OptionalLong.of(42L), ingestedFile.size());
+        assertEquals(Optional.of("sha256:abc"), ingestedFile.digest());
+    }
+
+    @Test
+    void testIngestSkipsUploadForFilePropertyWithoutBlob() {
+        var fileProperty = IngestEventPropertyFile.builder().id("existing-id").contentType("text/plain").build();
+        var event = IngestEvent.builder(IngestEvent.Type.CREATE, "doc123")
+                               .date(Instant.ofEpochMilli(1609459200000L))
+                               .putProperty("file:content", fileProperty)
+                               .build();
+
+        service.ingest(event);
+
+        assertTrue(httpClient.uploadCalls.isEmpty(), "Upload should not be called when no blob is present");
+        assertEquals(1, httpClient.ingestCalls.size());
+    }
+
+    @Test
     void testUploadBlobIfNeededWithEvent() {
         var event = IngestEvent.builder(IngestEvent.Type.CREATE, "doc123").build();
-        CICBlob blob = createTestBlob("sha256:abc123");
+        CICBlob blob = CICBlob.builder(new ByteArrayInputStream("test content".getBytes()))
+                              .digest("sha256:abc123")
+                              .build();
 
         httpClient.digestCheckResult = false;
         httpClient.preSignedUrls.add(new PreSignedUrl("url-1", "https://localhost/upload1"));
@@ -101,7 +258,7 @@ class IngestServiceTest {
         String sourceId = "source-1";
         String objectId = "doc123";
         String digest = "sha256:abc123";
-        CICBlob blob = createTestBlob(digest);
+        CICBlob blob = CICBlob.builder(new ByteArrayInputStream("test content".getBytes())).digest(digest).build();
 
         httpClient.digestCheckResult = true;
 
@@ -119,7 +276,7 @@ class IngestServiceTest {
         String sourceId = "source-1";
         String objectId = "doc123";
         String digest = "sha256:xyz789";
-        CICBlob blob = createTestBlob(digest);
+        CICBlob blob = CICBlob.builder(new ByteArrayInputStream("test content".getBytes())).digest(digest).build();
 
         httpClient.digestCheckResult = false;
         httpClient.preSignedUrls.add(new PreSignedUrl("url-1", "https://localhost/upload1"));
@@ -136,7 +293,7 @@ class IngestServiceTest {
     void testUploadBlobIfNeededWithoutDigest() {
         String sourceId = "source-1";
         String objectId = "doc123";
-        CICBlob blob = createTestBlob(null);
+        CICBlob blob = CICBlob.builder(new ByteArrayInputStream("test content".getBytes())).build();
 
         httpClient.preSignedUrls.add(new PreSignedUrl("url-1", "https://localhost/upload1"));
 
@@ -152,8 +309,8 @@ class IngestServiceTest {
         httpClient.preSignedUrls.add(new PreSignedUrl("url-1", "https://localhost/upload1"));
         httpClient.preSignedUrls.add(new PreSignedUrl("url-2", "https://localhost/upload2"));
 
-        CICBlob blob1 = createTestBlob(null);
-        CICBlob blob2 = createTestBlob(null);
+        CICBlob blob1 = CICBlob.builder(new ByteArrayInputStream("test content".getBytes())).build();
+        CICBlob blob2 = CICBlob.builder(new ByteArrayInputStream("test content".getBytes())).build();
 
         service.uploadBlobIfNeeded("source-1", "doc1", blob1);
         service.uploadBlobIfNeeded("source-1", "doc2", blob2);
@@ -168,8 +325,8 @@ class IngestServiceTest {
     void testGetPreSignedUrlRetrievesMoreWhenExhausted() {
         httpClient.preSignedUrls.add(new PreSignedUrl("url-1", "https://localhost/upload1"));
 
-        CICBlob blob1 = createTestBlob(null);
-        CICBlob blob2 = createTestBlob(null);
+        CICBlob blob1 = CICBlob.builder(new ByteArrayInputStream("test content".getBytes())).build();
+        CICBlob blob2 = CICBlob.builder(new ByteArrayInputStream("test content".getBytes())).build();
 
         service.uploadBlobIfNeeded("source-1", "doc1", blob1);
 
@@ -178,25 +335,6 @@ class IngestServiceTest {
         service.uploadBlobIfNeeded("source-1", "doc2", blob2);
 
         assertEquals(2, httpClient.retrievePreSignedUrlsCalls, "Should fetch pre-signed URLs again when exhausted");
-    }
-
-    private CICBlob createTestBlob(String digest) {
-        return new CICBlob() {
-            @Override
-            public InputStream getInputStream() {
-                return new ByteArrayInputStream("test content".getBytes());
-            }
-
-            @Override
-            public Optional<String> getDigest() {
-                return Optional.ofNullable(digest);
-            }
-
-            @Override
-            public Optional<String> getContentType() {
-                return Optional.of("application/pdf");
-            }
-        };
     }
 
     private record CheckDigestCall(String sourceId, String objectId, String digest) {

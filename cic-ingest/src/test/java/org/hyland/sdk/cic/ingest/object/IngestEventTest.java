@@ -127,4 +127,22 @@ class IngestEventTest {
         assertThrows(NullPointerException.class,
                 () -> IngestEvent.builder(IngestEvent.Type.CREATE, "doc1").putProperties(null));
     }
+
+    @Test
+    void testReplaceProperties() {
+        var event = IngestEvent.builder(IngestEvent.Type.CREATE, "doc1")
+                               .putProperty("key1", "value1")
+                               .putProperty("key2", "value2")
+                               .build();
+
+        var replaced = event.toBuilder()
+                            .replaceProperties(
+                                    (key, property) -> IngestEventPropertyValue.builder("replaced-" + key).build())
+                            .build();
+
+        assertEquals("replaced-key1",
+                ((IngestEventPropertyValue) replaced.properties().get("key1")).value().toJavaValue());
+        assertEquals("replaced-key2",
+                ((IngestEventPropertyValue) replaced.properties().get("key2")).value().toJavaValue());
+    }
 }

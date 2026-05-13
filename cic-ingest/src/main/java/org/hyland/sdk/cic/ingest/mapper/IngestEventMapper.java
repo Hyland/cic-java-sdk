@@ -57,7 +57,7 @@ class IngestEventMapper implements CICMapper<IngestEvent> {
                 propertyValue.extras().forEach(propertyObject::putNode);
                 cicObject.putObject(key, propertyObject);
             } else if (property instanceof IngestEventPropertyFile propertyBlob) {
-                if (propertyBlob.getBlob().isPresent() && propertyBlob.id().isEmpty()) {
+                if (propertyBlob.blob().isPresent() && propertyBlob.id().isEmpty()) {
                     throw new IllegalStateException("the file has not been uploaded");
                 }
                 var propertyObject = CICObject.create();
