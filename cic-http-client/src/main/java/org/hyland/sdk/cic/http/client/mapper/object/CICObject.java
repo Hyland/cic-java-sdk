@@ -71,6 +71,8 @@ public interface CICObject extends CICNode {
 
     Integer getIntegerOrNull(String key);
 
+    Boolean getBooleanOrNull(String key);
+
     Double getDoubleOrNull(String key);
 
     Map<String, Object> toMap();
@@ -300,6 +302,15 @@ public interface CICObject extends CICNode {
                     return null;
                 }
                 return getInt(key, 0);
+            }
+
+            @Override
+            public Boolean getBooleanOrNull(String key) {
+                var node = properties.get(key);
+                if (node == null || node instanceof CICPrimitive.CICNull) {
+                    return null;
+                }
+                return getBoolean(key, false);
             }
 
             @Override

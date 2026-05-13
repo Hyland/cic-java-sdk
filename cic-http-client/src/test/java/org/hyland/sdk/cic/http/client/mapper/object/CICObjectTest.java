@@ -144,20 +144,28 @@ public class CICObjectTest {
         assertNull(cicObject.getStringOrNull("string"));
         assertNull(cicObject.getIntegerOrNull("int"));
         assertNull(cicObject.getDoubleOrNull("double"));
+        assertNull(cicObject.getBooleanOrNull("boolean"));
 
         cicObject.putNull("string");
         cicObject.putNull("int");
         cicObject.putNull("double");
+        cicObject.putNull("boolean");
         assertNull(cicObject.getStringOrNull("string"));
         assertNull(cicObject.getIntegerOrNull("int"));
         assertNull(cicObject.getDoubleOrNull("double"));
+        assertNull(cicObject.getBooleanOrNull("boolean"));
 
         cicObject.putString("string", "test");
         cicObject.putInt("int", 42);
         cicObject.putDouble("double", 3.14);
+        cicObject.putBoolean("boolean", true);
         assertEquals("test", cicObject.getStringOrNull("string"));
         assertEquals(42, cicObject.getIntegerOrNull("int"));
         assertEquals(3.14, cicObject.getDoubleOrNull("double"));
+        assertEquals(true, cicObject.getBooleanOrNull("boolean"));
+
+        cicObject.putBoolean("boolean", false);
+        assertEquals(false, cicObject.getBooleanOrNull("boolean"));
     }
 
     @Test

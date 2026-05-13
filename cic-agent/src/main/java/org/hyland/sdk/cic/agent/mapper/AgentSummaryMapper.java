@@ -18,11 +18,6 @@
  */
 package org.hyland.sdk.cic.agent.mapper;
 
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.readAccessRights;
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.readFilterExpressionOrNull;
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.readStringList;
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.readStringOrNull;
-
 import java.util.stream.Collectors;
 
 import org.hyland.sdk.cic.agent.object.AgentSummary;
@@ -36,19 +31,33 @@ import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
  */
 class AgentSummaryMapper implements CICMapper<AgentSummary> {
 
+    private final AccessRightMapper accessRightMapper = new AccessRightMapper();
+
+    private final FilterExpressionMapper filterExpressionMapper = new FilterExpressionMapper();
+
     @Override
     public AgentSummary fromCICNode(CICNode cicNode) {
         if (!(cicNode instanceof CICObject obj)) {
             throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
         }
-        return new AgentSummary(obj.getStringOrThrow("id"), obj.getStringOrThrow("name"),
-                obj.getStringOrThrow("description"), obj.getStringOrThrow("modelName"),
-                obj.getString("avatarUrl", null), obj.getString("avatarPresignedUrl", null),
-                obj.getString("instructions", null), readStringList(obj, "sourceIds"), readAccessRights(obj),
-                obj.getInt("version", 0), obj.getBoolean("latest", false),
-                readFilterExpressionOrNull(obj, "staticFilterExpression"),
-                readFilterExpressionOrNull(obj, "dynamicFilterTemplate"), obj.getString("agentType", null),
-                readStringOrNull(obj, "knowledgeGraphDomainId"));
+        return new AgentSummary( //
+                obj.getStringOrThrow("id"), //
+                obj.getStringOrThrow("name"), //
+                obj.getStringOrThrow("description"), //
+                obj.getStringOrThrow("modelName"), //
+                obj.getStringOrNull("avatarUrl"), //
+                obj.getStringOrNull("avatarPresignedUrl"), //
+                obj.getStringOrNull("instructions"), //
+                obj.getOptionalArray("sourceIds").map(CICArray::toListString).orElse(null), //
+                obj.getOptionalArray("accessRights")
+                   .map(a -> a.toListObject().stream().map(accessRightMapper::fromCICNode).toList())
+                   .orElse(null), //
+                obj.getInt("version", 0), //
+                obj.getBoolean("latest", false), //
+                obj.getOptionalObject("staticFilterExpression").map(filterExpressionMapper::fromCICNode).orElse(null), //
+                obj.getOptionalObject("dynamicFilterTemplate").map(filterExpressionMapper::fromCICNode).orElse(null), //
+                obj.getStringOrNull("agentType"), //
+                obj.getStringOrNull("knowledgeGraphDomainId"));
     }
 
     static class ListMapper implements CICMapper<AgentSummary.ListOf> {

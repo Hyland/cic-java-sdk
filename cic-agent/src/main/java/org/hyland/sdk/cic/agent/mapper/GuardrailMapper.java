@@ -18,29 +18,28 @@
  */
 package org.hyland.sdk.cic.agent.mapper;
 
-import org.hyland.sdk.cic.agent.object.SubmitQuestionRequest;
+import org.hyland.sdk.cic.agent.object.Guardrail;
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
-import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 
 /**
  * @since 1.0.0
  */
-class SubmitQuestionRequestMapper implements CICMapper<SubmitQuestionRequest> {
-
-    private final FilterExpressionMapper filterExpressionMapper = new FilterExpressionMapper();
+class GuardrailMapper implements CICMapper<Guardrail> {
 
     @Override
-    public CICNode toCICNode(SubmitQuestionRequest request) {
+    public Guardrail fromCICNode(CICNode cicNode) {
+        if (!(cicNode instanceof CICObject obj)) {
+            throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
+        }
+        return new Guardrail(obj.getStringOrThrow("name"));
+    }
+
+    @Override
+    public CICObject toCICNode(Guardrail guardrail) {
         var obj = CICObject.create();
-        obj.putString("question", request.question());
-        if (!request.contextObjectIds().isEmpty()) {
-            obj.putArray("contextObjectIds", CICArray.from(request.contextObjectIds()));
-        }
-        if (request.dynamicFilter() != null) {
-            obj.putObject("dynamicFilter", filterExpressionMapper.toCICNode(request.dynamicFilter()));
-        }
+        obj.putString("name", guardrail.name());
         return obj;
     }
 }

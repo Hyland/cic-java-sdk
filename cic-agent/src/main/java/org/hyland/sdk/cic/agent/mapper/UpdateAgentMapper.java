@@ -18,14 +18,9 @@
  */
 package org.hyland.sdk.cic.agent.mapper;
 
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.toCICObject;
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.writeAccessRights;
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.writeGuardrails;
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.writeRagParameters;
-import static org.hyland.sdk.cic.agent.mapper.AgentMapperUtils.writeStringList;
-
 import org.hyland.sdk.cic.agent.object.UpdateAgent;
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
+import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 
@@ -33,6 +28,14 @@ import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
  * @since 1.0.0
  */
 class UpdateAgentMapper implements CICMapper<UpdateAgent> {
+
+    private final AccessRightMapper accessRightMapper = new AccessRightMapper();
+
+    private final FilterExpressionMapper filterExpressionMapper = new FilterExpressionMapper();
+
+    private final GuardrailMapper guardrailMapper = new GuardrailMapper();
+
+    private final RagParametersMapper ragParametersMapper = new RagParametersMapper();
 
     @Override
     public CICNode toCICNode(UpdateAgent agent) {
@@ -51,32 +54,34 @@ class UpdateAgentMapper implements CICMapper<UpdateAgent> {
             obj.putNull("instructions");
         }
         if (agent.sourceIds() != null) {
-            obj.putArray("sourceIds", writeStringList(agent.sourceIds()));
+            obj.putArray("sourceIds", CICArray.from(agent.sourceIds()));
         } else {
             obj.putNull("sourceIds");
         }
         if (agent.accessRights() != null) {
-            obj.putArray("accessRights", writeAccessRights(agent.accessRights()));
+            obj.putArray("accessRights",
+                    CICArray.from(agent.accessRights().stream().map(accessRightMapper::toCICNode).toList()));
         } else {
             obj.putNull("accessRights");
         }
         if (agent.staticFilterExpression() != null) {
-            obj.putObject("staticFilterExpression", toCICObject(agent.staticFilterExpression()));
+            obj.putObject("staticFilterExpression", filterExpressionMapper.toCICNode(agent.staticFilterExpression()));
         } else {
             obj.putNull("staticFilterExpression");
         }
         if (agent.dynamicFilterTemplate() != null) {
-            obj.putObject("dynamicFilterTemplate", toCICObject(agent.dynamicFilterTemplate()));
+            obj.putObject("dynamicFilterTemplate", filterExpressionMapper.toCICNode(agent.dynamicFilterTemplate()));
         } else {
             obj.putNull("dynamicFilterTemplate");
         }
         if (agent.guardrails() != null) {
-            obj.putArray("guardrails", writeGuardrails(agent.guardrails()));
+            obj.putArray("guardrails",
+                    CICArray.from(agent.guardrails().stream().map(guardrailMapper::toCICNode).toList()));
         } else {
             obj.putNull("guardrails");
         }
         if (agent.ragParameters() != null) {
-            obj.putObject("ragParameters", writeRagParameters(agent.ragParameters()));
+            obj.putObject("ragParameters", ragParametersMapper.toCICNode(agent.ragParameters()));
         } else {
             obj.putNull("ragParameters");
         }
