@@ -21,7 +21,6 @@ package org.hyland.sdk.cic.ingest;
 import static org.hyland.sdk.cic.http.client.base.CICHttpRequest.GET;
 import static org.hyland.sdk.cic.http.client.base.CICHttpRequest.POST;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -151,28 +150,28 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
     }
 
     /**
-     * Uploads a blob to the given pre-signed URL.
+     * Uploads a blob to the given pre-signed URL with retry support.
+     * <p>
+     * Retries are governed by the {@link org.hyland.sdk.cic.http.client.retry.RetryPolicy} configured on this client.
+     * The upload uses PUT (idempotent), so it is safe to retry on transient failures.
+     * <p>
+     * <b>Important:</b> The blob's {@link CICBlob#getInputStream()} must return a fresh, fully readable stream on each
+     * invocation to support retries. Implementations that return the same stream instance may cause silent data
+     * corruption on retry.
      *
      * @param preSignedUrl the pre-signed URL
      * @param blob the blob to upload
-     * @throws CICSdkException if upload fails or is interrupted
+     * @throws CICSdkException if upload fails after all retry attempts or is interrupted
      */
     public void upload(String preSignedUrl, CICBlob blob) {
-        try {
-            // presigned url could be anywhere, so build a request from the ground
-            var jdkRequest = HttpRequest.newBuilder(URI.create(preSignedUrl))
-                                        .PUT(HttpRequest.BodyPublishers.ofInputStream(blob::getInputStream))
-                                        .build();
-            var jdkResponse = client.send(jdkRequest, HttpResponse.BodyHandlers.ofString());
-            if (jdkResponse.statusCode() != 200) {
-                throw new CICSdkException("Couldn't upload the blob, HTTP response returned with status code: "
-                        + jdkResponse.statusCode());
-            }
-        } catch (IOException e) {
-            throw new CICSdkException("An error occurred during request execution", e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new CICSdkException("Interrupted while sending the request", e);
+        var response = sendRawWithRetry(
+                () -> HttpRequest.newBuilder(URI.create(preSignedUrl))
+                                 .PUT(HttpRequest.BodyPublishers.ofInputStream(blob::getInputStream))
+                                 .build(),
+                "PUT", HttpResponse.BodyHandlers.ofString(), statusCode -> statusCode == 200);
+        if (response.statusCode() != 200) {
+            throw new CICSdkException(
+                    "Couldn't upload the blob, HTTP response returned with status code: " + response.statusCode());
         }
     }
 
