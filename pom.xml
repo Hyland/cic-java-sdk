@@ -28,6 +28,7 @@
     <module>cic-ingest</module>
     <module>cic-agent</module>
     <module>cic-qna</module>
+    <module>cic-nucleus</module>
   </modules>
 
   <scm>
@@ -83,6 +84,11 @@
       <dependency>
         <groupId>org.hyland.sdk</groupId>
         <artifactId>cic-qna</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.hyland.sdk</groupId>
+        <artifactId>cic-nucleus</artifactId>
         <version>${project.version}</version>
       </dependency>
       <!-- External dependencies - POM imports -->
