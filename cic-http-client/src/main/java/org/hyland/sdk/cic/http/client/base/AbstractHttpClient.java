@@ -36,6 +36,8 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.IntPredicate;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -101,34 +103,55 @@ public abstract class AbstractHttpClient implements AutoCloseable {
 
     private <T> CICHttpResponse<T> send(CICHttpRequest request, HttpResponse.BodyHandler<T> bodyHandler) {
         var jdkRequest = toJdkHttpRequest(request);
+        var jdkResponse = sendRawWithRetry(() -> jdkRequest, request.method(), bodyHandler,
+                statusCode -> !ErrorUtils.isUnexpectedStatusCode(statusCode));
+        return fromJdkHttpResponse(jdkResponse);
+    }
+
+    protected <T> HttpResponse<T> sendRawWithRetry(Supplier<HttpRequest> requestSupplier, String httpMethod,
+            HttpResponse.BodyHandler<T> bodyHandler, IntPredicate successCondition) {
         int maxAttempts = retryPolicy.maxAttempts();
         CICSdkException lastException = null;
+        HttpResponse<T> lastResponse = null;
+
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
+                var jdkRequest = requestSupplier.get();
                 var jdkResponse = client.send(jdkRequest, bodyHandler);
-                var response = fromJdkHttpResponse(jdkResponse);
-                if (attempt < maxAttempts && ErrorUtils.isUnexpectedStatusCode(response.statusCode())) {
-                    var context = new RetryContext(attempt, request.method(), response.statusCode(), null);
+                int statusCode = jdkResponse.statusCode();
+
+                if (successCondition.test(statusCode)) {
+                    return jdkResponse;
+                }
+
+                lastResponse = jdkResponse;
+                lastException = new CICSdkException("HTTP request failed with status code: " + statusCode);
+
+                if (attempt < maxAttempts) {
+                    var context = new RetryContext(attempt, httpMethod, statusCode, null);
                     if (retryPolicy.retryCondition().shouldRetry(context)) {
                         sleepBeforeRetry(context, attempt);
                         continue;
                     }
                 }
-                return response;
+                return jdkResponse;
             } catch (IOException e) {
                 lastException = new CICSdkException("An error occurred during request execution", e);
                 if (attempt < maxAttempts) {
-                    var context = new RetryContext(attempt, request.method(), 0, e);
+                    var context = new RetryContext(attempt, httpMethod, 0, e);
                     if (retryPolicy.retryCondition().shouldRetry(context)) {
                         sleepBeforeRetry(context, attempt);
                         continue;
                     }
                 }
-                break;
+                throw lastException;
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new CICSdkException("Interrupted while sending the request", e);
             }
+        }
+        if (lastResponse != null) {
+            return lastResponse;
         }
         throw lastException;
     }

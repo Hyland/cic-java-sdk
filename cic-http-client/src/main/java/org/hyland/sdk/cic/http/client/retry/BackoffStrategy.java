@@ -63,7 +63,7 @@ public interface BackoffStrategy {
     }
 
     /**
-     * Creates a strategy using exponential backoff with full jitter.
+     * Creates a strategy using exponential backoff with full jitter and a default multiplier of 2.
      * <p>
      * The delay for attempt {@code n} is computed as: {@code random(0, min(baseDelay * 2^(n-1), maxDelay))}
      * <p>
@@ -76,6 +76,24 @@ public interface BackoffStrategy {
      *             {@code maxDelay} is less than {@code baseDelay}
      */
     static BackoffStrategy exponentialDelay(Duration baseDelay, Duration maxDelay) {
+        return exponentialDelay(baseDelay, maxDelay, 2.0);
+    }
+
+    /**
+     * Creates a strategy using exponential backoff with full jitter and a configurable multiplier.
+     * <p>
+     * The delay for attempt {@code n} is computed as: {@code random(0, min(baseDelay * multiplier^(n-1), maxDelay))}
+     * <p>
+     * Full jitter helps distribute retry attempts across clients, reducing the likelihood of retry storms.
+     *
+     * @param baseDelay the base delay for the first retry
+     * @param maxDelay the maximum delay cap
+     * @param multiplier the factor by which the delay grows per attempt; must be greater than or equal to 1.0
+     * @return an exponential backoff strategy with full jitter
+     * @throws IllegalArgumentException if {@code baseDelay} is not positive, if {@code maxDelay} is not positive, if
+     *             {@code maxDelay} is less than {@code baseDelay}, or if {@code multiplier} is less than 1.0
+     */
+    static BackoffStrategy exponentialDelay(Duration baseDelay, Duration maxDelay, double multiplier) {
         Objects.requireNonNull(baseDelay, "baseDelay must not be null");
         Objects.requireNonNull(maxDelay, "maxDelay must not be null");
         if (baseDelay.isNegative() || baseDelay.isZero()) {
@@ -88,11 +106,15 @@ public interface BackoffStrategy {
             throw new IllegalArgumentException("maxDelay must be greater than or equal to baseDelay, got: maxDelay="
                     + maxDelay + ", baseDelay=" + baseDelay);
         }
+        if (multiplier < 1.0 || !Double.isFinite(multiplier)) {
+            throw new IllegalArgumentException(
+                    "multiplier must be a finite value greater than or equal to 1.0, got: " + multiplier);
+        }
         return context -> {
             int attempt = context.attemptNumber();
-            // cap shift at 30 to prevent overflow
-            int shift = Math.min(attempt - 1, 30);
-            long exponentialMillis = baseDelay.toMillis() * (1L << shift);
+            double rawMillis = baseDelay.toMillis() * Math.pow(multiplier, attempt - 1);
+            // cap to maxDelay to prevent overflow when casting to long
+            long exponentialMillis = rawMillis >= maxDelay.toMillis() ? maxDelay.toMillis() : (long) rawMillis;
             long cappedMillis = Math.min(Math.max(exponentialMillis, baseDelay.toMillis()), maxDelay.toMillis());
             long jitteredMillis = ThreadLocalRandom.current().nextLong(cappedMillis + 1);
             return Duration.ofMillis(jitteredMillis);

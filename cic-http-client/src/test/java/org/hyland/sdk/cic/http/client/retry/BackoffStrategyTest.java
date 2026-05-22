@@ -146,9 +146,77 @@ public class BackoffStrategyTest {
     @Test
     public void exponentialDelayHandlesHighAttemptNumbers() {
         var strategy = BackoffStrategy.exponentialDelay(Duration.ofMillis(100), Duration.ofSeconds(20));
-        // attempt 50 should not overflow, capped at shift=30
+        // attempt 50 should not overflow, capped at maxDelay
         var delay = strategy.computeDelay(new RetryContext(50, "GET", 500, null));
         assertTrue(delay.toMillis() >= 0, "Delay should be non-negative");
         assertTrue(delay.toMillis() <= 20000, "Delay should be capped at maxDelay");
+    }
+
+    @Test
+    public void exponentialDelayWithMultiplierRejectsLessThanOne() {
+        assertThrows(IllegalArgumentException.class,
+                () -> BackoffStrategy.exponentialDelay(Duration.ofMillis(100), Duration.ofSeconds(10), 0.5));
+    }
+
+    @Test
+    public void exponentialDelayWithMultiplierRejectsNaN() {
+        assertThrows(IllegalArgumentException.class,
+                () -> BackoffStrategy.exponentialDelay(Duration.ofMillis(100), Duration.ofSeconds(10), Double.NaN));
+    }
+
+    @Test
+    public void exponentialDelayWithMultiplierRejectsPositiveInfinity() {
+        assertThrows(IllegalArgumentException.class, () -> BackoffStrategy.exponentialDelay(Duration.ofMillis(100),
+                Duration.ofSeconds(10), Double.POSITIVE_INFINITY));
+    }
+
+    @Test
+    public void exponentialDelayWithMultiplierOneProducesConstantDelay() {
+        var strategy = BackoffStrategy.exponentialDelay(Duration.ofMillis(100), Duration.ofSeconds(10), 1.0);
+        // multiplier=1.0 means delay is always random(0, 100) regardless of attempt
+        for (int attempt = 1; attempt <= 5; attempt++) {
+            var delay = strategy.computeDelay(new RetryContext(attempt, "GET", 500, null));
+            assertTrue(delay.toMillis() >= 0, "Delay should be non-negative");
+            assertTrue(delay.toMillis() <= 100,
+                    "Delay with multiplier=1 should be at most baseDelay, got: " + delay.toMillis());
+        }
+    }
+
+    @Test
+    public void exponentialDelayWithCustomMultiplierGrowsFaster() {
+        var strategyDefault = BackoffStrategy.exponentialDelay(Duration.ofMillis(100), Duration.ofSeconds(60), 2.0);
+        var strategyFaster = BackoffStrategy.exponentialDelay(Duration.ofMillis(100), Duration.ofSeconds(60), 3.0);
+        // at attempt 4: multiplier=2 gives max 100*8=800, multiplier=3 gives max 100*27=2700
+        long sumDefault = 0;
+        long sumFaster = 0;
+        int iterations = 1000;
+        for (int i = 0; i < iterations; i++) {
+            sumDefault += strategyDefault.computeDelay(new RetryContext(4, "GET", 500, null)).toMillis();
+            sumFaster += strategyFaster.computeDelay(new RetryContext(4, "GET", 500, null)).toMillis();
+        }
+        assertTrue(sumFaster > sumDefault, "Multiplier=3 should produce higher average delay than multiplier=2");
+    }
+
+    @Test
+    public void exponentialDelayWithMultiplierRespectsCap() {
+        var strategy = BackoffStrategy.exponentialDelay(Duration.ofMillis(100), Duration.ofSeconds(1), 3.0);
+        // at attempt 5: 100 * 3^4 = 8100ms, capped to 1000ms
+        for (int i = 0; i < 100; i++) {
+            var delay = strategy.computeDelay(new RetryContext(5, "GET", 500, null));
+            assertTrue(delay.toMillis() <= 1000, "Delay should be capped at maxDelay, got: " + delay.toMillis());
+        }
+    }
+
+    @Test
+    public void exponentialDelayDefaultOverloadUsesMultiplierTwo() {
+        var strategyDefault = BackoffStrategy.exponentialDelay(Duration.ofMillis(100), Duration.ofSeconds(20));
+        var strategyExplicit = BackoffStrategy.exponentialDelay(Duration.ofMillis(100), Duration.ofSeconds(20), 2.0);
+        // Both should produce delays within the same bounds for attempt 3: max = 100 * 2^2 = 400ms
+        for (int i = 0; i < 100; i++) {
+            var delayDefault = strategyDefault.computeDelay(new RetryContext(3, "GET", 500, null));
+            var delayExplicit = strategyExplicit.computeDelay(new RetryContext(3, "GET", 500, null));
+            assertTrue(delayDefault.toMillis() >= 0 && delayDefault.toMillis() <= 400);
+            assertTrue(delayExplicit.toMillis() >= 0 && delayExplicit.toMillis() <= 400);
+        }
     }
 }
