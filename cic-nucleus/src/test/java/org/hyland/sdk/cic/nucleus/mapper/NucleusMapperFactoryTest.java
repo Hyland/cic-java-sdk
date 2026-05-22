@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.hyland.sdk.cic.nucleus.object.Attribute;
 import org.hyland.sdk.cic.nucleus.object.GroupMember;
 import org.hyland.sdk.cic.nucleus.object.GroupOutput;
+import org.hyland.sdk.cic.nucleus.object.InteractiveUser;
 import org.hyland.sdk.cic.nucleus.object.PrincipalUserMapping;
 import org.hyland.sdk.cic.nucleus.object.PrincipalUserMembership;
 import org.hyland.sdk.cic.nucleus.object.SystemOutput;
@@ -42,6 +43,17 @@ class NucleusMapperFactoryTest {
     @Test
     void testGetMapperForAttribute() {
         assertInstanceOf(AttributeMapper.class, factory.getMapper(Attribute.class));
+    }
+
+    @Test
+    void testGetMapperForInteractiveUserPaginatedList() {
+        assertInstanceOf(InteractiveUserMapper.PaginatedListMapper.class,
+                factory.getMapper(InteractiveUser.PaginatedListOf.class));
+    }
+
+    @Test
+    void testGetMapperForInteractiveUser() {
+        assertInstanceOf(InteractiveUserMapper.class, factory.getMapper(InteractiveUser.class));
     }
 
     @Test

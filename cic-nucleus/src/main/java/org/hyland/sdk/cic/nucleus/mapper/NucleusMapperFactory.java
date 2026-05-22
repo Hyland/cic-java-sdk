@@ -29,6 +29,7 @@ import org.hyland.sdk.cic.nucleus.object.GroupCreateInput;
 import org.hyland.sdk.cic.nucleus.object.GroupMember;
 import org.hyland.sdk.cic.nucleus.object.GroupMemberAssignmentInput;
 import org.hyland.sdk.cic.nucleus.object.GroupOutput;
+import org.hyland.sdk.cic.nucleus.object.InteractiveUser;
 import org.hyland.sdk.cic.nucleus.object.PrincipalUserMapping;
 import org.hyland.sdk.cic.nucleus.object.PrincipalUserMembership;
 import org.hyland.sdk.cic.nucleus.object.SystemOutput;
@@ -44,6 +45,8 @@ public class NucleusMapperFactory implements MapperService.MapperFactory {
     private static final List<Map.Entry<Class<?>, CICMapper<?>>> MAPPERS = List.of(
             Map.entry(Attribute.ListOf.class, new AttributeMapper.ListMapper()),
             Map.entry(Attribute.class, new AttributeMapper()),
+            Map.entry(InteractiveUser.PaginatedListOf.class, new InteractiveUserMapper.PaginatedListMapper()),
+            Map.entry(InteractiveUser.class, new InteractiveUserMapper()),
             Map.entry(AttributeInput.ListOf.class, new AttributeInputMapper.ListMapper()),
             Map.entry(AttributeInput.class, new AttributeInputMapper()),
             Map.entry(SystemOutput.PaginatedListOf.class, new SystemOutputMapper.PaginatedListMapper()),

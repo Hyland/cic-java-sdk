@@ -37,6 +37,7 @@ import org.hyland.sdk.cic.nucleus.object.GroupCreateInput;
 import org.hyland.sdk.cic.nucleus.object.GroupMember;
 import org.hyland.sdk.cic.nucleus.object.GroupMemberAssignmentInput;
 import org.hyland.sdk.cic.nucleus.object.GroupOutput;
+import org.hyland.sdk.cic.nucleus.object.InteractiveUser;
 import org.hyland.sdk.cic.nucleus.object.PrincipalUserMapping;
 import org.hyland.sdk.cic.nucleus.object.PrincipalUserMembership;
 import org.hyland.sdk.cic.nucleus.object.SystemOutput;
@@ -54,6 +55,8 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
     private static final String SYSTEMS_PATH = "/system-integrations/systems";
 
     private static final String PRINCIPAL_USERS_PATH = "/system-integrations/principal-users";
+
+    private static final String USERS_PATH = "/api/users";
 
     protected NucleusHttpClient(Builder builder) {
         super(builder);
@@ -371,6 +374,27 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
             requestBuilder.queryParameter("Limit", limit.toString());
         }
         return sendThenMapAs(requestBuilder.build(), PrincipalUserMembership.PaginatedListOf.class);
+    }
+
+    // --- Users ---
+
+    public InteractiveUser.PaginatedListOf listUsers(String externalId, String cursor, Integer limit) {
+        var requestBuilder = this.requestBuilder(GET, USERS_PATH);
+        if (externalId != null) {
+            requestBuilder.queryParameter("externalid", externalId);
+        }
+        if (cursor != null) {
+            requestBuilder.queryParameter("cursor", cursor);
+        }
+        if (limit != null) {
+            requestBuilder.queryParameter("limit", limit.toString());
+        }
+        return sendThenMapAs(requestBuilder.build(), InteractiveUser.PaginatedListOf.class);
+    }
+
+    public InteractiveUser getUser(UUID userId) {
+        var request = this.requestBuilder(GET, USERS_PATH + "/" + userId).build();
+        return sendThenMapAs(request, InteractiveUser.class);
     }
 
     public static class Builder extends AbstractAuthenticatedHttpClientBuilder<Builder, NucleusHttpClient> {
