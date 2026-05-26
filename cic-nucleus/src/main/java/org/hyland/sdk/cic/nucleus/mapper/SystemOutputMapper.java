@@ -18,8 +18,6 @@
  */
 package org.hyland.sdk.cic.nucleus.mapper;
 
-import java.util.UUID;
-
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
@@ -36,11 +34,9 @@ class SystemOutputMapper implements CICMapper<SystemOutput> {
         if (!(cicNode instanceof CICObject obj)) {
             throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
         }
-        var systemIdStr = obj.getString("systemId", null);
-        var environmentIdStr = obj.getString("environmentId", null);
         var systemTypeStr = obj.getString("systemType", null);
-        return new SystemOutput(systemIdStr != null ? UUID.fromString(systemIdStr) : null, obj.getString("name", null),
-                environmentIdStr != null ? UUID.fromString(environmentIdStr) : null,
+        return new SystemOutput(obj.getString("systemId", null), obj.getString("name", null),
+                obj.getString("environmentId", null),
                 systemTypeStr != null ? SystemIntegrationType.fromValue(systemTypeStr) : null);
     }
 

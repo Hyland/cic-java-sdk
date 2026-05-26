@@ -18,8 +18,6 @@
  */
 package org.hyland.sdk.cic.nucleus.mapper;
 
-import java.util.UUID;
-
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
@@ -37,8 +35,7 @@ class PrincipalUserMappingMapper implements CICMapper<PrincipalUserMapping> {
         if (!(cicNode instanceof CICObject obj)) {
             throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
         }
-        return new PrincipalUserMapping(UUID.fromString(obj.getStringOrThrow("systemId")),
-                obj.getStringOrThrow("externalUserId"),
+        return new PrincipalUserMapping(obj.getStringOrThrow("systemId"), obj.getStringOrThrow("externalUserId"),
                 obj.getOptionalArray("attributes")
                    .map(a -> a.toListObject().stream().map(attributeMapper::fromCICNode).toList())
                    .orElse(java.util.List.of()));

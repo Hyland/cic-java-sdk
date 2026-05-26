@@ -21,8 +21,6 @@ package org.hyland.sdk.cic.nucleus.mapper;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-import java.util.UUID;
-
 import org.junit.jupiter.api.Test;
 import org.skyscreamer.jsonassert.JSONAssert;
 
@@ -49,7 +47,7 @@ class UserMappingMapperTest {
 
         var result = MapperService.read(json, UserMapping.class);
 
-        assertEquals(UUID.fromString("a1b2c3d4-e5f6-7890-abcd-ef1234567890"), result.userId());
+        assertEquals("a1b2c3d4-e5f6-7890-abcd-ef1234567890", result.userId());
         assertEquals("ext-user-1", result.externalUserId());
         assertEquals(1, result.attributes().size());
         assertEquals("email", result.attributes().get(0).key());
@@ -79,7 +77,7 @@ class UserMappingMapperTest {
 
     @Test
     void testSerializeUserMappingReplaceInput() throws Exception {
-        var input = UserMappingReplaceInput.of(UUID.fromString("a1b2c3d4-e5f6-7890-abcd-ef1234567890"));
+        var input = UserMappingReplaceInput.of("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
 
         var json = MapperService.writeAsString(input);
 

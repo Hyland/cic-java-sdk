@@ -19,18 +19,17 @@
 package org.hyland.sdk.cic.nucleus.object;
 
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * @since 1.0.0
  */
-public record UserMappingReplaceInput(UUID userId) {
+public record UserMappingReplaceInput(String userId) {
 
     public UserMappingReplaceInput {
         Objects.requireNonNull(userId, "userId cannot be null");
     }
 
-    public static UserMappingReplaceInput of(UUID userId) {
+    public static UserMappingReplaceInput of(String userId) {
         return new UserMappingReplaceInput(userId);
     }
 }

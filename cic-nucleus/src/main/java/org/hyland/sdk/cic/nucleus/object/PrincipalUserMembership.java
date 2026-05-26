@@ -20,12 +20,11 @@ package org.hyland.sdk.cic.nucleus.object;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * @since 1.0.0
  */
-public record PrincipalUserMembership(String externalGroupId, UUID systemId, MembershipType membershipType,
+public record PrincipalUserMembership(String externalGroupId, String systemId, MembershipType membershipType,
         List<Attribute> attributes) {
 
     public PrincipalUserMembership {

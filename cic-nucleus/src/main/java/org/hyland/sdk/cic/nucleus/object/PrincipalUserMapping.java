@@ -20,12 +20,11 @@ package org.hyland.sdk.cic.nucleus.object;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * @since 1.0.0
  */
-public record PrincipalUserMapping(UUID systemId, String externalUserId, List<Attribute> attributes) {
+public record PrincipalUserMapping(String systemId, String externalUserId, List<Attribute> attributes) {
 
     public PrincipalUserMapping {
         Objects.requireNonNull(systemId, "systemId cannot be null");

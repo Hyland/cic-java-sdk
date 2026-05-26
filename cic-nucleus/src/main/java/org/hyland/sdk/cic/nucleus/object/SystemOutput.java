@@ -18,12 +18,10 @@
  */
 package org.hyland.sdk.cic.nucleus.object;
 
-import java.util.UUID;
-
 /**
  * @since 1.0.0
  */
-public record SystemOutput(UUID systemId, String name, UUID environmentId, SystemIntegrationType systemType) {
+public record SystemOutput(String systemId, String name, String environmentId, SystemIntegrationType systemType) {
 
     public static class PaginatedListOf extends PaginatedList<SystemOutput> {
 

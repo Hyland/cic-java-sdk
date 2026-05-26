@@ -19,7 +19,6 @@
 package org.hyland.sdk.cic.nucleus.mapper;
 
 import java.util.List;
-import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.skyscreamer.jsonassert.JSONAssert;
@@ -67,8 +66,7 @@ class InputMapperTest {
 
     @Test
     void testSerializeUserMappingCreateInput() throws Exception {
-        var userId = UUID.fromString("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
-        var input = UserMappingCreateInput.of(userId, "ext-user-1");
+        var input = UserMappingCreateInput.of("a1b2c3d4-e5f6-7890-abcd-ef1234567890", "ext-user-1");
 
         var json = MapperService.writeAsString(input);
 
@@ -78,8 +76,7 @@ class InputMapperTest {
 
     @Test
     void testSerializeUserMappingCreateInputWithAttributes() throws Exception {
-        var userId = UUID.fromString("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
-        var input = UserMappingCreateInput.of(userId, "ext-user-1",
+        var input = UserMappingCreateInput.of("a1b2c3d4-e5f6-7890-abcd-ef1234567890", "ext-user-1",
                 List.of(AttributeInput.of("email", List.of("user@localhost"))));
 
         var json = MapperService.writeAsString(input);

@@ -23,7 +23,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,7 +35,7 @@ import org.hyland.sdk.cic.nucleus.object.InteractiveUser;
  */
 class UsersServiceTest {
 
-    private static final UUID USER_ID = UUID.randomUUID();
+    private static final String USER_ID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
 
     private TestNucleusHttpClient httpClient;
 
@@ -85,8 +84,8 @@ class UsersServiceTest {
 
     @Test
     void testListUsersPaginatorMultiplePages() {
-        var user1 = new InteractiveUser(UUID.randomUUID(), "alice", "alice@localhost", null, null);
-        var user2 = new InteractiveUser(UUID.randomUUID(), "bob", "bob@localhost", null, null);
+        var user1 = new InteractiveUser("user-id-1", "alice", "alice@localhost", null, null);
+        var user2 = new InteractiveUser("user-id-2", "bob", "bob@localhost", null, null);
 
         httpClient.usersPaginatedPages = List.of(new InteractiveUser.PaginatedListOf(List.of(user1), "cursor-2"),
                 new InteractiveUser.PaginatedListOf(List.of(user2), null));
@@ -141,7 +140,7 @@ class UsersServiceTest {
 
         Integer lastLimit;
 
-        UUID lastUserId;
+        String lastUserId;
 
         public TestNucleusHttpClient() {
             super(NucleusHttpClient.from("https://localhost",
@@ -160,7 +159,7 @@ class UsersServiceTest {
         }
 
         @Override
-        public InteractiveUser getUser(UUID userId) {
+        public InteractiveUser getUser(String userId) {
             lastUserId = userId;
             return user;
         }

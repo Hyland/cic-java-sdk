@@ -19,7 +19,6 @@
 package org.hyland.sdk.cic.nucleus.mapper;
 
 import java.util.List;
-import java.util.UUID;
 
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
@@ -39,8 +38,7 @@ class PrincipalUserMembershipMapper implements CICMapper<PrincipalUserMembership
         if (!(cicNode instanceof CICObject obj)) {
             throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
         }
-        return new PrincipalUserMembership(obj.getStringOrThrow("externalGroupId"),
-                UUID.fromString(obj.getStringOrThrow("systemId")),
+        return new PrincipalUserMembership(obj.getStringOrThrow("externalGroupId"), obj.getStringOrThrow("systemId"),
                 MembershipType.fromValue(obj.getStringOrThrow("membershipType")),
                 obj.getOptionalArray("attributes")
                    .map(a -> a.toListObject().stream().map(attributeMapper::fromCICNode).toList())

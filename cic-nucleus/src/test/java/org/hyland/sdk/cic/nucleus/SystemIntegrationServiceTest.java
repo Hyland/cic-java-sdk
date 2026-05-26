@@ -23,7 +23,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,11 +48,11 @@ import org.hyland.sdk.cic.nucleus.object.UserMappingReplaceInput;
  */
 class SystemIntegrationServiceTest {
 
-    private static final UUID SYSTEM_ID = UUID.randomUUID();
+    private static final String SYSTEM_ID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
 
-    private static final UUID PRINCIPAL_USER_ID = UUID.randomUUID();
+    private static final String PRINCIPAL_USER_ID = "b2c3d4e5-f6a7-8901-bcde-f12345678901";
 
-    private static final UUID USER_ID = UUID.randomUUID();
+    private static final String USER_ID = "c3d4e5f6-a7b8-9012-cdef-123456789012";
 
     private TestNucleusHttpClient httpClient;
 
@@ -70,8 +69,7 @@ class SystemIntegrationServiceTest {
     @Test
     void testListSystems() {
         httpClient.systemsPaginated = new SystemOutput.PaginatedListOf(
-                List.of(new SystemOutput(SYSTEM_ID, "TestSystem", UUID.randomUUID(), SystemIntegrationType.ON_BASE)),
-                null);
+                List.of(new SystemOutput(SYSTEM_ID, "TestSystem", "env-id-1", SystemIntegrationType.ON_BASE)), null);
 
         var result = service.listSystems();
 
@@ -92,8 +90,7 @@ class SystemIntegrationServiceTest {
     @Test
     void testListSystemsPaginator() {
         httpClient.systemsPaginated = new SystemOutput.PaginatedListOf(
-                List.of(new SystemOutput(SYSTEM_ID, "TestSystem", UUID.randomUUID(), SystemIntegrationType.ON_BASE)),
-                null);
+                List.of(new SystemOutput(SYSTEM_ID, "TestSystem", "env-id-1", SystemIntegrationType.ON_BASE)), null);
 
         var items = new ArrayList<SystemOutput>();
         service.listSystemsPaginator().forEach(items::add);
@@ -104,8 +101,7 @@ class SystemIntegrationServiceTest {
 
     @Test
     void testGetSystem() {
-        httpClient.systemOutput = new SystemOutput(SYSTEM_ID, "TestSystem", UUID.randomUUID(),
-                SystemIntegrationType.ON_BASE);
+        httpClient.systemOutput = new SystemOutput(SYSTEM_ID, "TestSystem", "env-id-1", SystemIntegrationType.ON_BASE);
 
         var result = service.getSystem(SYSTEM_ID);
 
@@ -127,8 +123,7 @@ class SystemIntegrationServiceTest {
 
     @Test
     void testSystemGet() {
-        httpClient.systemOutput = new SystemOutput(SYSTEM_ID, "TestSystem", UUID.randomUUID(),
-                SystemIntegrationType.LOCAL);
+        httpClient.systemOutput = new SystemOutput(SYSTEM_ID, "TestSystem", "env-id-1", SystemIntegrationType.LOCAL);
 
         var result = service.system(SYSTEM_ID).get();
 
@@ -562,9 +557,9 @@ class SystemIntegrationServiceTest {
 
         List<Attribute> attributes;
 
-        UUID lastSystemId;
+        String lastSystemId;
 
-        UUID lastPrincipalUserId;
+        String lastPrincipalUserId;
 
         String lastExternalGroupId;
 
@@ -607,13 +602,13 @@ class SystemIntegrationServiceTest {
         }
 
         @Override
-        public SystemOutput getSystem(UUID systemId) {
+        public SystemOutput getSystem(String systemId) {
             lastSystemId = systemId;
             return systemOutput;
         }
 
         @Override
-        public GroupOutput.PaginatedListOf listGroups(UUID systemId, String cursor, Integer limit) {
+        public GroupOutput.PaginatedListOf listGroups(String systemId, String cursor, Integer limit) {
             lastSystemId = systemId;
             lastCursor = cursor;
             lastLimit = limit;
@@ -621,26 +616,26 @@ class SystemIntegrationServiceTest {
         }
 
         @Override
-        public GroupOutput getGroup(UUID systemId, String externalGroupId) {
+        public GroupOutput getGroup(String systemId, String externalGroupId) {
             lastSystemId = systemId;
             lastExternalGroupId = externalGroupId;
             return groupOutput;
         }
 
         @Override
-        public void createGroups(UUID systemId, List<GroupCreateInput> groups) {
+        public void createGroups(String systemId, List<GroupCreateInput> groups) {
             lastSystemId = systemId;
             lastGroupCreateInputs = groups;
         }
 
         @Override
-        public void deleteGroup(UUID systemId, String externalGroupId) {
+        public void deleteGroup(String systemId, String externalGroupId) {
             lastSystemId = systemId;
             lastExternalGroupId = externalGroupId;
         }
 
         @Override
-        public List<Attribute> getGroupAttributes(UUID systemId, String externalGroupId, List<String> keys) {
+        public List<Attribute> getGroupAttributes(String systemId, String externalGroupId, List<String> keys) {
             lastSystemId = systemId;
             lastExternalGroupId = externalGroupId;
             lastKeys = keys;
@@ -648,21 +643,21 @@ class SystemIntegrationServiceTest {
         }
 
         @Override
-        public void createGroupAttributes(UUID systemId, String externalGroupId, List<AttributeInput> attrs) {
+        public void createGroupAttributes(String systemId, String externalGroupId, List<AttributeInput> attrs) {
             lastSystemId = systemId;
             lastExternalGroupId = externalGroupId;
             lastAttributeInputs = attrs;
         }
 
         @Override
-        public void replaceGroupAttributes(UUID systemId, String externalGroupId, List<AttributeInput> attrs) {
+        public void replaceGroupAttributes(String systemId, String externalGroupId, List<AttributeInput> attrs) {
             lastSystemId = systemId;
             lastExternalGroupId = externalGroupId;
             lastAttributeInputs = attrs;
         }
 
         @Override
-        public void replaceGroupAttributeValues(UUID systemId, String externalGroupId, String key,
+        public void replaceGroupAttributeValues(String systemId, String externalGroupId, String key,
                 List<String> values) {
             lastSystemId = systemId;
             lastExternalGroupId = externalGroupId;
@@ -671,14 +666,14 @@ class SystemIntegrationServiceTest {
         }
 
         @Override
-        public void deleteGroupAttribute(UUID systemId, String externalGroupId, String key) {
+        public void deleteGroupAttribute(String systemId, String externalGroupId, String key) {
             lastSystemId = systemId;
             lastExternalGroupId = externalGroupId;
             lastKey = key;
         }
 
         @Override
-        public GroupMember.PaginatedListOf getGroupMembers(UUID systemId, String externalGroupId, String cursor,
+        public GroupMember.PaginatedListOf getGroupMembers(String systemId, String externalGroupId, String cursor,
                 Integer limit) {
             lastSystemId = systemId;
             lastExternalGroupId = externalGroupId;
@@ -688,21 +683,21 @@ class SystemIntegrationServiceTest {
         }
 
         @Override
-        public void assignGroupMembers(UUID systemId, List<GroupMemberAssignmentInput> assignments) {
+        public void assignGroupMembers(String systemId, List<GroupMemberAssignmentInput> assignments) {
             lastSystemId = systemId;
             lastGroupMemberAssignmentInputs = assignments;
         }
 
         @Override
-        public void removeGroupMembers(UUID systemId, String parentExternalGroupId, List<String> memberExternalUserIds,
-                List<String> memberExternalGroupIds) {
+        public void removeGroupMembers(String systemId, String parentExternalGroupId,
+                List<String> memberExternalUserIds, List<String> memberExternalGroupIds) {
             lastSystemId = systemId;
             lastParentExternalGroupId = parentExternalGroupId;
             lastMemberExternalUserIds = memberExternalUserIds;
         }
 
         @Override
-        public UserMapping.PaginatedListOf listUserMappings(UUID systemId, String cursor, Integer limit) {
+        public UserMapping.PaginatedListOf listUserMappings(String systemId, String cursor, Integer limit) {
             lastSystemId = systemId;
             lastCursor = cursor;
             lastLimit = limit;
@@ -710,33 +705,33 @@ class SystemIntegrationServiceTest {
         }
 
         @Override
-        public UserMapping getUserMapping(UUID systemId, String externalUserId) {
+        public UserMapping getUserMapping(String systemId, String externalUserId) {
             lastSystemId = systemId;
             lastExternalUserId = externalUserId;
             return userMapping;
         }
 
         @Override
-        public void createUserMappings(UUID systemId, List<UserMappingCreateInput> mappings) {
+        public void createUserMappings(String systemId, List<UserMappingCreateInput> mappings) {
             lastSystemId = systemId;
             lastUserMappingCreateInputs = mappings;
         }
 
         @Override
-        public void updateUserMapping(UUID systemId, String externalUserId, UserMappingReplaceInput input) {
+        public void updateUserMapping(String systemId, String externalUserId, UserMappingReplaceInput input) {
             lastSystemId = systemId;
             lastExternalUserId = externalUserId;
             lastUserMappingReplaceInput = input;
         }
 
         @Override
-        public void deleteUserMapping(UUID systemId, String externalUserId) {
+        public void deleteUserMapping(String systemId, String externalUserId) {
             lastSystemId = systemId;
             lastExternalUserId = externalUserId;
         }
 
         @Override
-        public List<Attribute> getUserMappingAttributes(UUID systemId, String externalUserId, List<String> keys) {
+        public List<Attribute> getUserMappingAttributes(String systemId, String externalUserId, List<String> keys) {
             lastSystemId = systemId;
             lastExternalUserId = externalUserId;
             lastKeys = keys;
@@ -744,21 +739,21 @@ class SystemIntegrationServiceTest {
         }
 
         @Override
-        public void createUserMappingAttributes(UUID systemId, String externalUserId, List<AttributeInput> attrs) {
+        public void createUserMappingAttributes(String systemId, String externalUserId, List<AttributeInput> attrs) {
             lastSystemId = systemId;
             lastExternalUserId = externalUserId;
             lastAttributeInputs = attrs;
         }
 
         @Override
-        public void replaceUserMappingAttributes(UUID systemId, String externalUserId, List<AttributeInput> attrs) {
+        public void replaceUserMappingAttributes(String systemId, String externalUserId, List<AttributeInput> attrs) {
             lastSystemId = systemId;
             lastExternalUserId = externalUserId;
             lastAttributeInputs = attrs;
         }
 
         @Override
-        public void replaceUserMappingAttributeValues(UUID systemId, String externalUserId, String key,
+        public void replaceUserMappingAttributeValues(String systemId, String externalUserId, String key,
                 List<String> values) {
             lastSystemId = systemId;
             lastExternalUserId = externalUserId;
@@ -767,14 +762,14 @@ class SystemIntegrationServiceTest {
         }
 
         @Override
-        public void deleteUserMappingAttribute(UUID systemId, String externalUserId, String key) {
+        public void deleteUserMappingAttribute(String systemId, String externalUserId, String key) {
             lastSystemId = systemId;
             lastExternalUserId = externalUserId;
             lastKey = key;
         }
 
         @Override
-        public PrincipalUserMapping.PaginatedListOf getPrincipalUserMappings(UUID principalUserId, String cursor,
+        public PrincipalUserMapping.PaginatedListOf getPrincipalUserMappings(String principalUserId, String cursor,
                 Integer limit) {
             lastPrincipalUserId = principalUserId;
             lastCursor = cursor;
@@ -783,7 +778,7 @@ class SystemIntegrationServiceTest {
         }
 
         @Override
-        public PrincipalUserMembership.PaginatedListOf getPrincipalUserMembership(UUID principalUserId, String cursor,
+        public PrincipalUserMembership.PaginatedListOf getPrincipalUserMembership(String principalUserId, String cursor,
                 Integer limit) {
             lastPrincipalUserId = principalUserId;
             lastCursor = cursor;

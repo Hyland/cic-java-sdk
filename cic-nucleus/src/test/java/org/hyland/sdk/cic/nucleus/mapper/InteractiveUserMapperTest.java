@@ -22,8 +22,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-import java.util.UUID;
-
 import org.junit.jupiter.api.Test;
 
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
@@ -48,7 +46,7 @@ class InteractiveUserMapperTest {
 
         var result = MapperService.read(json, InteractiveUser.class);
 
-        assertEquals(UUID.fromString("a1b2c3d4-e5f6-7890-abcd-ef1234567890"), result.userId());
+        assertEquals("a1b2c3d4-e5f6-7890-abcd-ef1234567890", result.userId());
         assertEquals("john.doe", result.userName());
         assertEquals("john.doe@example.com", result.email());
         assertEquals("ext-123", result.externalId());
@@ -69,7 +67,7 @@ class InteractiveUserMapperTest {
 
         var result = MapperService.read(json, InteractiveUser.class);
 
-        assertEquals(UUID.fromString("a1b2c3d4-e5f6-7890-abcd-ef1234567890"), result.userId());
+        assertEquals("a1b2c3d4-e5f6-7890-abcd-ef1234567890", result.userId());
         assertNull(result.userName());
         assertNull(result.email());
         assertNull(result.externalId());

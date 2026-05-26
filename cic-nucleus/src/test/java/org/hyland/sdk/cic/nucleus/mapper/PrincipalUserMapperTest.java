@@ -21,8 +21,6 @@ package org.hyland.sdk.cic.nucleus.mapper;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.util.UUID;
-
 import org.junit.jupiter.api.Test;
 
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
@@ -49,7 +47,7 @@ class PrincipalUserMapperTest {
 
         var result = MapperService.read(json, PrincipalUserMapping.class);
 
-        assertEquals(UUID.fromString("a1b2c3d4-e5f6-7890-abcd-ef1234567890"), result.systemId());
+        assertEquals("a1b2c3d4-e5f6-7890-abcd-ef1234567890", result.systemId());
         assertEquals("ext-user-1", result.externalUserId());
         assertEquals(1, result.attributes().size());
     }
@@ -91,7 +89,7 @@ class PrincipalUserMapperTest {
         var result = MapperService.read(json, PrincipalUserMembership.class);
 
         assertEquals("ext-group-1", result.externalGroupId());
-        assertEquals(UUID.fromString("a1b2c3d4-e5f6-7890-abcd-ef1234567890"), result.systemId());
+        assertEquals("a1b2c3d4-e5f6-7890-abcd-ef1234567890", result.systemId());
         assertEquals(MembershipType.DIRECT, result.membershipType());
         assertEquals(1, result.attributes().size());
     }

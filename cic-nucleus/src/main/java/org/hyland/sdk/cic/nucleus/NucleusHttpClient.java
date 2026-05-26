@@ -24,7 +24,6 @@ import static org.hyland.sdk.cic.http.client.base.CICHttpRequest.POST;
 import static org.hyland.sdk.cic.http.client.base.CICHttpRequest.PUT;
 
 import java.util.List;
-import java.util.UUID;
 
 import org.hyland.sdk.cic.http.client.auth.AbstractAuthenticatedHttpClient;
 import org.hyland.sdk.cic.http.client.auth.AbstractAuthenticatedHttpClientBuilder;
@@ -81,12 +80,12 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         return sendThenMapAs(requestBuilder.build(), SystemOutput.PaginatedListOf.class);
     }
 
-    public SystemOutput getSystem(UUID systemId) {
+    public SystemOutput getSystem(String systemId) {
         var request = this.requestBuilder(GET, SYSTEMS_PATH + "/" + systemId).build();
         return sendThenMapAs(request, SystemOutput.class);
     }
 
-    public GroupOutput.PaginatedListOf listGroups(UUID systemId, String cursor, Integer limit) {
+    public GroupOutput.PaginatedListOf listGroups(String systemId, String cursor, Integer limit) {
         var requestBuilder = this.requestBuilder(GET, SYSTEMS_PATH + "/" + systemId + "/groups");
         if (cursor != null) {
             requestBuilder.queryParameter("Cursor", cursor);
@@ -97,12 +96,12 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         return sendThenMapAs(requestBuilder.build(), GroupOutput.PaginatedListOf.class);
     }
 
-    public GroupOutput getGroup(UUID systemId, String externalGroupId) {
+    public GroupOutput getGroup(String systemId, String externalGroupId) {
         var request = this.requestBuilder(GET, SYSTEMS_PATH + "/" + systemId + "/groups/" + externalGroupId).build();
         return sendThenMapAs(request, GroupOutput.class);
     }
 
-    public void createGroups(UUID systemId, List<GroupCreateInput> groups) {
+    public void createGroups(String systemId, List<GroupCreateInput> groups) {
         var request = this.requestBuilder(POST, SYSTEMS_PATH + "/" + systemId + "/groups")
                           .header("Content-Type", "application/json")
                           .entity(new CICEntity(groups))
@@ -114,7 +113,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         }
     }
 
-    public void deleteGroup(UUID systemId, String externalGroupId) {
+    public void deleteGroup(String systemId, String externalGroupId) {
         var request = this.requestBuilder(DELETE, SYSTEMS_PATH + "/" + systemId + "/groups/" + externalGroupId).build();
         var response = sendThenReadAsString(request);
         if (response.statusCode() != 204) {
@@ -123,7 +122,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         }
     }
 
-    public List<Attribute> getGroupAttributes(UUID systemId, String externalGroupId, List<String> keys) {
+    public List<Attribute> getGroupAttributes(String systemId, String externalGroupId, List<String> keys) {
         var requestBuilder = this.requestBuilder(GET,
                 SYSTEMS_PATH + "/" + systemId + "/groups/" + externalGroupId + "/attributes");
         if (keys != null) {
@@ -132,7 +131,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         return sendThenMapAs(requestBuilder.build(), Attribute.ListOf.class);
     }
 
-    public void createGroupAttributes(UUID systemId, String externalGroupId, List<AttributeInput> attributes) {
+    public void createGroupAttributes(String systemId, String externalGroupId, List<AttributeInput> attributes) {
         var request = this.requestBuilder(POST,
                 SYSTEMS_PATH + "/" + systemId + "/groups/" + externalGroupId + "/attributes")
                           .header("Content-Type", "application/json")
@@ -146,7 +145,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         }
     }
 
-    public void replaceGroupAttributes(UUID systemId, String externalGroupId, List<AttributeInput> attributes) {
+    public void replaceGroupAttributes(String systemId, String externalGroupId, List<AttributeInput> attributes) {
         var request = this.requestBuilder(PUT,
                 SYSTEMS_PATH + "/" + systemId + "/groups/" + externalGroupId + "/attributes")
                           .header("Content-Type", "application/json")
@@ -160,7 +159,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         }
     }
 
-    public void replaceGroupAttributeValues(UUID systemId, String externalGroupId, String key, List<String> values) {
+    public void replaceGroupAttributeValues(String systemId, String externalGroupId, String key, List<String> values) {
         var request = this.requestBuilder(PUT,
                 SYSTEMS_PATH + "/" + systemId + "/groups/" + externalGroupId + "/attributes/" + key)
                           .header("Content-Type", "application/json")
@@ -174,7 +173,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         }
     }
 
-    public void deleteGroupAttribute(UUID systemId, String externalGroupId, String key) {
+    public void deleteGroupAttribute(String systemId, String externalGroupId, String key) {
         var request = this.requestBuilder(DELETE,
                 SYSTEMS_PATH + "/" + systemId + "/groups/" + externalGroupId + "/attributes/" + key).build();
         var response = sendThenReadAsString(request);
@@ -185,7 +184,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         }
     }
 
-    public GroupMember.PaginatedListOf getGroupMembers(UUID systemId, String externalGroupId, String cursor,
+    public GroupMember.PaginatedListOf getGroupMembers(String systemId, String externalGroupId, String cursor,
             Integer limit) {
         var requestBuilder = this.requestBuilder(GET, SYSTEMS_PATH + "/" + systemId + "/group-members");
         if (externalGroupId != null) {
@@ -200,7 +199,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         return sendThenMapAs(requestBuilder.build(), GroupMember.PaginatedListOf.class);
     }
 
-    public void assignGroupMembers(UUID systemId, List<GroupMemberAssignmentInput> assignments) {
+    public void assignGroupMembers(String systemId, List<GroupMemberAssignmentInput> assignments) {
         var request = this.requestBuilder(POST, SYSTEMS_PATH + "/" + systemId + "/group-members")
                           .header("Content-Type", "application/json")
                           .entity(new CICEntity(assignments))
@@ -213,7 +212,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         }
     }
 
-    public void removeGroupMembers(UUID systemId, String parentExternalGroupId, List<String> memberExternalUserIds,
+    public void removeGroupMembers(String systemId, String parentExternalGroupId, List<String> memberExternalUserIds,
             List<String> memberExternalGroupIds) {
         var requestBuilder = this.requestBuilder(DELETE, SYSTEMS_PATH + "/" + systemId + "/group-members");
         if (parentExternalGroupId != null) {
@@ -233,7 +232,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         }
     }
 
-    public UserMapping.PaginatedListOf listUserMappings(UUID systemId, String cursor, Integer limit) {
+    public UserMapping.PaginatedListOf listUserMappings(String systemId, String cursor, Integer limit) {
         var requestBuilder = this.requestBuilder(GET, SYSTEMS_PATH + "/" + systemId + "/user-mappings");
         if (cursor != null) {
             requestBuilder.queryParameter("Cursor", cursor);
@@ -244,13 +243,13 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         return sendThenMapAs(requestBuilder.build(), UserMapping.PaginatedListOf.class);
     }
 
-    public UserMapping getUserMapping(UUID systemId, String externalUserId) {
+    public UserMapping getUserMapping(String systemId, String externalUserId) {
         var request = this.requestBuilder(GET, SYSTEMS_PATH + "/" + systemId + "/user-mappings/" + externalUserId)
                           .build();
         return sendThenMapAs(request, UserMapping.class);
     }
 
-    public void createUserMappings(UUID systemId, List<UserMappingCreateInput> mappings) {
+    public void createUserMappings(String systemId, List<UserMappingCreateInput> mappings) {
         var request = this.requestBuilder(POST, SYSTEMS_PATH + "/" + systemId + "/user-mappings")
                           .header("Content-Type", "application/json")
                           .entity(new CICEntity(mappings))
@@ -263,7 +262,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         }
     }
 
-    public void updateUserMapping(UUID systemId, String externalUserId, UserMappingReplaceInput input) {
+    public void updateUserMapping(String systemId, String externalUserId, UserMappingReplaceInput input) {
         var request = this.requestBuilder(PUT, SYSTEMS_PATH + "/" + systemId + "/user-mappings/" + externalUserId)
                           .header("Content-Type", "application/json")
                           .entity(new CICEntity(input))
@@ -275,7 +274,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         }
     }
 
-    public void deleteUserMapping(UUID systemId, String externalUserId) {
+    public void deleteUserMapping(String systemId, String externalUserId) {
         var request = this.requestBuilder(DELETE, SYSTEMS_PATH + "/" + systemId + "/user-mappings/" + externalUserId)
                           .build();
         var response = sendThenReadAsString(request);
@@ -287,7 +286,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
 
     // --- User Mapping Attributes ---
 
-    public List<Attribute> getUserMappingAttributes(UUID systemId, String externalUserId, List<String> keys) {
+    public List<Attribute> getUserMappingAttributes(String systemId, String externalUserId, List<String> keys) {
         var requestBuilder = this.requestBuilder(GET,
                 SYSTEMS_PATH + "/" + systemId + "/user-mappings/" + externalUserId + "/attributes");
         if (keys != null) {
@@ -296,7 +295,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         return sendThenMapAs(requestBuilder.build(), Attribute.ListOf.class);
     }
 
-    public void createUserMappingAttributes(UUID systemId, String externalUserId, List<AttributeInput> attributes) {
+    public void createUserMappingAttributes(String systemId, String externalUserId, List<AttributeInput> attributes) {
         var request = this.requestBuilder(POST,
                 SYSTEMS_PATH + "/" + systemId + "/user-mappings/" + externalUserId + "/attributes")
                           .header("Content-Type", "application/json")
@@ -310,7 +309,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         }
     }
 
-    public void replaceUserMappingAttributes(UUID systemId, String externalUserId, List<AttributeInput> attributes) {
+    public void replaceUserMappingAttributes(String systemId, String externalUserId, List<AttributeInput> attributes) {
         var request = this.requestBuilder(PUT,
                 SYSTEMS_PATH + "/" + systemId + "/user-mappings/" + externalUserId + "/attributes")
                           .header("Content-Type", "application/json")
@@ -324,7 +323,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         }
     }
 
-    public void replaceUserMappingAttributeValues(UUID systemId, String externalUserId, String key,
+    public void replaceUserMappingAttributeValues(String systemId, String externalUserId, String key,
             List<String> values) {
         var request = this.requestBuilder(PUT,
                 SYSTEMS_PATH + "/" + systemId + "/user-mappings/" + externalUserId + "/attributes/" + key)
@@ -339,7 +338,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         }
     }
 
-    public void deleteUserMappingAttribute(UUID systemId, String externalUserId, String key) {
+    public void deleteUserMappingAttribute(String systemId, String externalUserId, String key) {
         var request = this.requestBuilder(DELETE,
                 SYSTEMS_PATH + "/" + systemId + "/user-mappings/" + externalUserId + "/attributes/" + key).build();
         var response = sendThenReadAsString(request);
@@ -352,7 +351,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
 
     // --- Principal Users ---
 
-    public PrincipalUserMapping.PaginatedListOf getPrincipalUserMappings(UUID principalUserId, String cursor,
+    public PrincipalUserMapping.PaginatedListOf getPrincipalUserMappings(String principalUserId, String cursor,
             Integer limit) {
         var requestBuilder = this.requestBuilder(GET, PRINCIPAL_USERS_PATH + "/" + principalUserId + "/user-mappings");
         if (cursor != null) {
@@ -364,7 +363,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         return sendThenMapAs(requestBuilder.build(), PrincipalUserMapping.PaginatedListOf.class);
     }
 
-    public PrincipalUserMembership.PaginatedListOf getPrincipalUserMembership(UUID principalUserId, String cursor,
+    public PrincipalUserMembership.PaginatedListOf getPrincipalUserMembership(String principalUserId, String cursor,
             Integer limit) {
         var requestBuilder = this.requestBuilder(GET, PRINCIPAL_USERS_PATH + "/" + principalUserId + "/membership");
         if (cursor != null) {
@@ -392,7 +391,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         return sendThenMapAs(requestBuilder.build(), InteractiveUser.PaginatedListOf.class);
     }
 
-    public InteractiveUser getUser(UUID userId) {
+    public InteractiveUser getUser(String userId) {
         var request = this.requestBuilder(GET, USERS_PATH + "/" + userId).build();
         return sendThenMapAs(request, InteractiveUser.class);
     }

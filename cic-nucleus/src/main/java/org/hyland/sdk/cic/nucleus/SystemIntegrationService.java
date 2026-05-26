@@ -20,7 +20,6 @@ package org.hyland.sdk.cic.nucleus;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 
 import org.hyland.sdk.cic.http.client.pagination.CursorPageIterable;
 import org.hyland.sdk.cic.http.client.pagination.CursorPageableResponse;
@@ -59,7 +58,7 @@ public class SystemIntegrationService {
      * @return the system resource handle
      * @throws NullPointerException if systemId is null
      */
-    public SystemResource system(UUID systemId) {
+    public SystemResource system(String systemId) {
         return new SystemResource(httpClient, Objects.requireNonNull(systemId, "systemId cannot be null"));
     }
 
@@ -70,7 +69,7 @@ public class SystemIntegrationService {
      * @return the principal user resource handle
      * @throws NullPointerException if principalUserId is null
      */
-    public PrincipalUserResource principalUser(UUID principalUserId) {
+    public PrincipalUserResource principalUser(String principalUserId) {
         return new PrincipalUserResource(httpClient,
                 Objects.requireNonNull(principalUserId, "principalUserId cannot be null"));
     }
@@ -94,19 +93,19 @@ public class SystemIntegrationService {
         return new CursorPageIterable<>(cursor -> toPageableResponse(httpClient.listSystems(cursor, null)));
     }
 
-    public SystemOutput getSystem(UUID systemId) {
+    public SystemOutput getSystem(String systemId) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         return httpClient.getSystem(systemId);
     }
 
     // --- Groups ---
 
-    public GroupOutput.PaginatedListOf listGroups(UUID systemId) {
+    public GroupOutput.PaginatedListOf listGroups(String systemId) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         return httpClient.listGroups(systemId, null, null);
     }
 
-    public GroupOutput.PaginatedListOf listGroups(UUID systemId, String cursor, Integer limit) {
+    public GroupOutput.PaginatedListOf listGroups(String systemId, String cursor, Integer limit) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         return httpClient.listGroups(systemId, cursor, limit);
     }
@@ -118,24 +117,24 @@ public class SystemIntegrationService {
      * @return an iterable that fetches pages on demand
      * @throws NullPointerException if systemId is null
      */
-    public CursorPageIterable<GroupOutput> listGroupsPaginator(UUID systemId) {
+    public CursorPageIterable<GroupOutput> listGroupsPaginator(String systemId) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         return new CursorPageIterable<>(cursor -> toPageableResponse(httpClient.listGroups(systemId, cursor, null)));
     }
 
-    public GroupOutput getGroup(UUID systemId, String externalGroupId) {
+    public GroupOutput getGroup(String systemId, String externalGroupId) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
         return httpClient.getGroup(systemId, externalGroupId);
     }
 
-    public void createGroups(UUID systemId, List<GroupCreateInput> groups) {
+    public void createGroups(String systemId, List<GroupCreateInput> groups) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(groups, "groups cannot be null");
         httpClient.createGroups(systemId, groups);
     }
 
-    public void deleteGroup(UUID systemId, String externalGroupId) {
+    public void deleteGroup(String systemId, String externalGroupId) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
         httpClient.deleteGroup(systemId, externalGroupId);
@@ -143,33 +142,33 @@ public class SystemIntegrationService {
 
     // --- Group Attributes ---
 
-    public List<Attribute> getGroupAttributes(UUID systemId, String externalGroupId) {
+    public List<Attribute> getGroupAttributes(String systemId, String externalGroupId) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
         return httpClient.getGroupAttributes(systemId, externalGroupId, null);
     }
 
-    public List<Attribute> getGroupAttributes(UUID systemId, String externalGroupId, List<String> keys) {
+    public List<Attribute> getGroupAttributes(String systemId, String externalGroupId, List<String> keys) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
         return httpClient.getGroupAttributes(systemId, externalGroupId, keys);
     }
 
-    public void createGroupAttributes(UUID systemId, String externalGroupId, List<AttributeInput> attributes) {
+    public void createGroupAttributes(String systemId, String externalGroupId, List<AttributeInput> attributes) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
         Objects.requireNonNull(attributes, "attributes cannot be null");
         httpClient.createGroupAttributes(systemId, externalGroupId, attributes);
     }
 
-    public void replaceGroupAttributes(UUID systemId, String externalGroupId, List<AttributeInput> attributes) {
+    public void replaceGroupAttributes(String systemId, String externalGroupId, List<AttributeInput> attributes) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
         Objects.requireNonNull(attributes, "attributes cannot be null");
         httpClient.replaceGroupAttributes(systemId, externalGroupId, attributes);
     }
 
-    public void replaceGroupAttributeValues(UUID systemId, String externalGroupId, String key, List<String> values) {
+    public void replaceGroupAttributeValues(String systemId, String externalGroupId, String key, List<String> values) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
         Objects.requireNonNull(key, "key cannot be null");
@@ -177,7 +176,7 @@ public class SystemIntegrationService {
         httpClient.replaceGroupAttributeValues(systemId, externalGroupId, key, values);
     }
 
-    public void deleteGroupAttribute(UUID systemId, String externalGroupId, String key) {
+    public void deleteGroupAttribute(String systemId, String externalGroupId, String key) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
         Objects.requireNonNull(key, "key cannot be null");
@@ -186,12 +185,12 @@ public class SystemIntegrationService {
 
     // --- Group Members ---
 
-    public GroupMember.PaginatedListOf getGroupMembers(UUID systemId) {
+    public GroupMember.PaginatedListOf getGroupMembers(String systemId) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         return httpClient.getGroupMembers(systemId, null, null, null);
     }
 
-    public GroupMember.PaginatedListOf getGroupMembers(UUID systemId, String externalGroupId, String cursor,
+    public GroupMember.PaginatedListOf getGroupMembers(String systemId, String externalGroupId, String cursor,
             Integer limit) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         return httpClient.getGroupMembers(systemId, externalGroupId, cursor, limit);
@@ -204,19 +203,19 @@ public class SystemIntegrationService {
      * @return an iterable that fetches pages on demand
      * @throws NullPointerException if systemId is null
      */
-    public CursorPageIterable<GroupMember> getGroupMembersPaginator(UUID systemId) {
+    public CursorPageIterable<GroupMember> getGroupMembersPaginator(String systemId) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         return new CursorPageIterable<>(
                 cursor -> toPageableResponse(httpClient.getGroupMembers(systemId, null, cursor, null)));
     }
 
-    public void assignGroupMembers(UUID systemId, List<GroupMemberAssignmentInput> assignments) {
+    public void assignGroupMembers(String systemId, List<GroupMemberAssignmentInput> assignments) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(assignments, "assignments cannot be null");
         httpClient.assignGroupMembers(systemId, assignments);
     }
 
-    public void removeGroupMembers(UUID systemId, String parentExternalGroupId, List<String> memberExternalUserIds,
+    public void removeGroupMembers(String systemId, String parentExternalGroupId, List<String> memberExternalUserIds,
             List<String> memberExternalGroupIds) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         httpClient.removeGroupMembers(systemId, parentExternalGroupId, memberExternalUserIds, memberExternalGroupIds);
@@ -224,12 +223,12 @@ public class SystemIntegrationService {
 
     // --- User Mappings ---
 
-    public UserMapping.PaginatedListOf listUserMappings(UUID systemId) {
+    public UserMapping.PaginatedListOf listUserMappings(String systemId) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         return httpClient.listUserMappings(systemId, null, null);
     }
 
-    public UserMapping.PaginatedListOf listUserMappings(UUID systemId, String cursor, Integer limit) {
+    public UserMapping.PaginatedListOf listUserMappings(String systemId, String cursor, Integer limit) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         return httpClient.listUserMappings(systemId, cursor, limit);
     }
@@ -241,32 +240,32 @@ public class SystemIntegrationService {
      * @return an iterable that fetches pages on demand
      * @throws NullPointerException if systemId is null
      */
-    public CursorPageIterable<UserMapping> listUserMappingsPaginator(UUID systemId) {
+    public CursorPageIterable<UserMapping> listUserMappingsPaginator(String systemId) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         return new CursorPageIterable<>(
                 cursor -> toPageableResponse(httpClient.listUserMappings(systemId, cursor, null)));
     }
 
-    public UserMapping getUserMapping(UUID systemId, String externalUserId) {
+    public UserMapping getUserMapping(String systemId, String externalUserId) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(externalUserId, "externalUserId cannot be null");
         return httpClient.getUserMapping(systemId, externalUserId);
     }
 
-    public void createUserMappings(UUID systemId, List<UserMappingCreateInput> mappings) {
+    public void createUserMappings(String systemId, List<UserMappingCreateInput> mappings) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(mappings, "mappings cannot be null");
         httpClient.createUserMappings(systemId, mappings);
     }
 
-    public void updateUserMapping(UUID systemId, String externalUserId, UserMappingReplaceInput input) {
+    public void updateUserMapping(String systemId, String externalUserId, UserMappingReplaceInput input) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(externalUserId, "externalUserId cannot be null");
         Objects.requireNonNull(input, "input cannot be null");
         httpClient.updateUserMapping(systemId, externalUserId, input);
     }
 
-    public void deleteUserMapping(UUID systemId, String externalUserId) {
+    public void deleteUserMapping(String systemId, String externalUserId) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(externalUserId, "externalUserId cannot be null");
         httpClient.deleteUserMapping(systemId, externalUserId);
@@ -274,33 +273,33 @@ public class SystemIntegrationService {
 
     // --- User Mapping Attributes ---
 
-    public List<Attribute> getUserMappingAttributes(UUID systemId, String externalUserId) {
+    public List<Attribute> getUserMappingAttributes(String systemId, String externalUserId) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(externalUserId, "externalUserId cannot be null");
         return httpClient.getUserMappingAttributes(systemId, externalUserId, null);
     }
 
-    public List<Attribute> getUserMappingAttributes(UUID systemId, String externalUserId, List<String> keys) {
+    public List<Attribute> getUserMappingAttributes(String systemId, String externalUserId, List<String> keys) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(externalUserId, "externalUserId cannot be null");
         return httpClient.getUserMappingAttributes(systemId, externalUserId, keys);
     }
 
-    public void createUserMappingAttributes(UUID systemId, String externalUserId, List<AttributeInput> attributes) {
+    public void createUserMappingAttributes(String systemId, String externalUserId, List<AttributeInput> attributes) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(externalUserId, "externalUserId cannot be null");
         Objects.requireNonNull(attributes, "attributes cannot be null");
         httpClient.createUserMappingAttributes(systemId, externalUserId, attributes);
     }
 
-    public void replaceUserMappingAttributes(UUID systemId, String externalUserId, List<AttributeInput> attributes) {
+    public void replaceUserMappingAttributes(String systemId, String externalUserId, List<AttributeInput> attributes) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(externalUserId, "externalUserId cannot be null");
         Objects.requireNonNull(attributes, "attributes cannot be null");
         httpClient.replaceUserMappingAttributes(systemId, externalUserId, attributes);
     }
 
-    public void replaceUserMappingAttributeValues(UUID systemId, String externalUserId, String key,
+    public void replaceUserMappingAttributeValues(String systemId, String externalUserId, String key,
             List<String> values) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(externalUserId, "externalUserId cannot be null");
@@ -309,7 +308,7 @@ public class SystemIntegrationService {
         httpClient.replaceUserMappingAttributeValues(systemId, externalUserId, key, values);
     }
 
-    public void deleteUserMappingAttribute(UUID systemId, String externalUserId, String key) {
+    public void deleteUserMappingAttribute(String systemId, String externalUserId, String key) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(externalUserId, "externalUserId cannot be null");
         Objects.requireNonNull(key, "key cannot be null");
@@ -318,12 +317,12 @@ public class SystemIntegrationService {
 
     // --- Principal Users ---
 
-    public PrincipalUserMapping.PaginatedListOf getPrincipalUserMappings(UUID principalUserId) {
+    public PrincipalUserMapping.PaginatedListOf getPrincipalUserMappings(String principalUserId) {
         Objects.requireNonNull(principalUserId, "principalUserId cannot be null");
         return httpClient.getPrincipalUserMappings(principalUserId, null, null);
     }
 
-    public PrincipalUserMapping.PaginatedListOf getPrincipalUserMappings(UUID principalUserId, String cursor,
+    public PrincipalUserMapping.PaginatedListOf getPrincipalUserMappings(String principalUserId, String cursor,
             Integer limit) {
         Objects.requireNonNull(principalUserId, "principalUserId cannot be null");
         return httpClient.getPrincipalUserMappings(principalUserId, cursor, limit);
@@ -336,18 +335,18 @@ public class SystemIntegrationService {
      * @return an iterable that fetches pages on demand
      * @throws NullPointerException if principalUserId is null
      */
-    public CursorPageIterable<PrincipalUserMapping> getPrincipalUserMappingsPaginator(UUID principalUserId) {
+    public CursorPageIterable<PrincipalUserMapping> getPrincipalUserMappingsPaginator(String principalUserId) {
         Objects.requireNonNull(principalUserId, "principalUserId cannot be null");
         return new CursorPageIterable<>(
                 cursor -> toPageableResponse(httpClient.getPrincipalUserMappings(principalUserId, cursor, null)));
     }
 
-    public PrincipalUserMembership.PaginatedListOf getPrincipalUserMembership(UUID principalUserId) {
+    public PrincipalUserMembership.PaginatedListOf getPrincipalUserMembership(String principalUserId) {
         Objects.requireNonNull(principalUserId, "principalUserId cannot be null");
         return httpClient.getPrincipalUserMembership(principalUserId, null, null);
     }
 
-    public PrincipalUserMembership.PaginatedListOf getPrincipalUserMembership(UUID principalUserId, String cursor,
+    public PrincipalUserMembership.PaginatedListOf getPrincipalUserMembership(String principalUserId, String cursor,
             Integer limit) {
         Objects.requireNonNull(principalUserId, "principalUserId cannot be null");
         return httpClient.getPrincipalUserMembership(principalUserId, cursor, limit);
@@ -360,7 +359,7 @@ public class SystemIntegrationService {
      * @return an iterable that fetches pages on demand
      * @throws NullPointerException if principalUserId is null
      */
-    public CursorPageIterable<PrincipalUserMembership> getPrincipalUserMembershipPaginator(UUID principalUserId) {
+    public CursorPageIterable<PrincipalUserMembership> getPrincipalUserMembershipPaginator(String principalUserId) {
         Objects.requireNonNull(principalUserId, "principalUserId cannot be null");
         return new CursorPageIterable<>(
                 cursor -> toPageableResponse(httpClient.getPrincipalUserMembership(principalUserId, cursor, null)));
@@ -380,14 +379,14 @@ public class SystemIntegrationService {
 
         private final NucleusHttpClient httpClient;
 
-        private final UUID systemId;
+        private final String systemId;
 
-        private SystemResource(NucleusHttpClient httpClient, UUID systemId) {
+        private SystemResource(NucleusHttpClient httpClient, String systemId) {
             this.httpClient = httpClient;
             this.systemId = systemId;
         }
 
-        public UUID id() {
+        public String id() {
             return systemId;
         }
 
@@ -436,6 +435,21 @@ public class SystemIntegrationService {
         public List<Attribute> getGroupAttributes(String externalGroupId, List<String> keys) {
             Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
             return httpClient.getGroupAttributes(systemId, externalGroupId, keys);
+        }
+
+        public CursorPageIterable<GroupOutput> listGroupsPaginator(Integer limit) {
+            return new CursorPageIterable<>(
+                    cursor -> toPageableResponse(httpClient.listGroups(systemId, cursor, limit)));
+        }
+
+        public CursorPageIterable<GroupMember> getGroupMembersPaginator(Integer limit) {
+            return new CursorPageIterable<>(
+                    cursor -> toPageableResponse(httpClient.getGroupMembers(systemId, null, cursor, limit)));
+        }
+
+        public CursorPageIterable<UserMapping> listUserMappingsPaginator(Integer limit) {
+            return new CursorPageIterable<>(
+                    cursor -> toPageableResponse(httpClient.listUserMappings(systemId, cursor, limit)));
         }
 
         public void createGroupAttributes(String externalGroupId, List<AttributeInput> attributes) {
@@ -576,14 +590,14 @@ public class SystemIntegrationService {
 
         private final NucleusHttpClient httpClient;
 
-        private final UUID principalUserId;
+        private final String principalUserId;
 
-        private PrincipalUserResource(NucleusHttpClient httpClient, UUID principalUserId) {
+        private PrincipalUserResource(NucleusHttpClient httpClient, String principalUserId) {
             this.httpClient = httpClient;
             this.principalUserId = principalUserId;
         }
 
-        public UUID id() {
+        public String id() {
             return principalUserId;
         }
 

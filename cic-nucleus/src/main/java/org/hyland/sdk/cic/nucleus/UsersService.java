@@ -19,7 +19,6 @@
 package org.hyland.sdk.cic.nucleus;
 
 import java.util.Objects;
-import java.util.UUID;
 
 import org.hyland.sdk.cic.http.client.pagination.CursorPageIterable;
 import org.hyland.sdk.cic.http.client.pagination.CursorPageableResponse;
@@ -67,7 +66,7 @@ public class UsersService {
         return new CursorPageIterable<>(cursor -> toPageableResponse(httpClient.listUsers(externalId, cursor, null)));
     }
 
-    public InteractiveUser getUser(UUID userId) {
+    public InteractiveUser getUser(String userId) {
         Objects.requireNonNull(userId, "userId cannot be null");
         return httpClient.getUser(userId);
     }
@@ -75,5 +74,9 @@ public class UsersService {
     private static <T> CursorPageableResponse<T> toPageableResponse(PaginatedList<T> page) {
         var next = page.next();
         return new CursorPageableResponse<>(page.items(), new CursorPagination(next, next != null));
+    }
+
+    public CursorPageIterable<InteractiveUser> listUsersPaginator(Integer limit) {
+        return new CursorPageIterable<>(cursor -> toPageableResponse(httpClient.listUsers(null, cursor, limit)));
     }
 }

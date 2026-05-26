@@ -21,12 +21,11 @@ package org.hyland.sdk.cic.nucleus.object;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * @since 1.0.0
  */
-public record UserMappingCreateInput(UUID userId, String externalUserId, List<AttributeInput> attributes) {
+public record UserMappingCreateInput(String userId, String externalUserId, List<AttributeInput> attributes) {
 
     public UserMappingCreateInput {
         Objects.requireNonNull(userId, "userId cannot be null");
@@ -34,11 +33,11 @@ public record UserMappingCreateInput(UUID userId, String externalUserId, List<At
         attributes = attributes != null ? List.copyOf(attributes) : null;
     }
 
-    public static UserMappingCreateInput of(UUID userId, String externalUserId) {
+    public static UserMappingCreateInput of(String userId, String externalUserId) {
         return new UserMappingCreateInput(userId, externalUserId, null);
     }
 
-    public static UserMappingCreateInput of(UUID userId, String externalUserId, List<AttributeInput> attributes) {
+    public static UserMappingCreateInput of(String userId, String externalUserId, List<AttributeInput> attributes) {
         return new UserMappingCreateInput(userId, externalUserId, attributes);
     }
 

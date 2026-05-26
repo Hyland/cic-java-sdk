@@ -22,8 +22,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-import java.util.UUID;
-
 import org.junit.jupiter.api.Test;
 
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
@@ -48,9 +46,9 @@ class SystemOutputMapperTest {
 
         var result = MapperService.read(json, SystemOutput.class);
 
-        assertEquals(UUID.fromString("a1b2c3d4-e5f6-7890-abcd-ef1234567890"), result.systemId());
+        assertEquals("a1b2c3d4-e5f6-7890-abcd-ef1234567890", result.systemId());
         assertEquals("TestSystem", result.name());
-        assertEquals(UUID.fromString("f1e2d3c4-b5a6-7890-fedc-ba0987654321"), result.environmentId());
+        assertEquals("f1e2d3c4-b5a6-7890-fedc-ba0987654321", result.environmentId());
         assertEquals(SystemIntegrationType.ON_BASE, result.systemType());
     }
 
