@@ -29,4 +29,6 @@ public interface CICBlob {
     InputStream getInputStream();
 
     Optional<String> getDigest();
+
+    String contentType();
 }

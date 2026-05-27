@@ -21,9 +21,12 @@ package org.hyland.sdk.cic.ingest;
 import static org.hyland.sdk.cic.http.client.base.CICHttpRequest.GET;
 import static org.hyland.sdk.cic.http.client.base.CICHttpRequest.POST;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import org.hyland.sdk.cic.http.client.CICSdkException;
@@ -164,14 +167,41 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
      * @throws CICSdkException if upload fails after all retry attempts or is interrupted
      */
     public void upload(String preSignedUrl, CICBlob blob) {
-        var response = sendRawWithRetry(
-                () -> HttpRequest.newBuilder(URI.create(preSignedUrl))
-                                 .PUT(HttpRequest.BodyPublishers.ofInputStream(blob::getInputStream))
-                                 .build(),
-                "PUT", HttpResponse.BodyHandlers.ofString(), statusCode -> statusCode == 200);
-        if (response.statusCode() != 200) {
-            throw new CICSdkException(
-                    "Couldn't upload the blob, HTTP response returned with status code: " + response.statusCode());
+        Path tempFile = null;
+        try {
+            tempFile = Files.createTempFile("cic-upload-", ".tmp");
+            try (var is = blob.getInputStream()) {
+                Files.copy(is, tempFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+            long contentLength = Files.size(tempFile);
+            if (contentLength == 0) {
+                throw new CICSdkException("Cannot upload empty blob");
+            }
+            Path finalTempFile = tempFile;
+            var response = sendRawWithRetry(() -> {
+                try {
+                    return HttpRequest.newBuilder(URI.create(preSignedUrl))
+                                      .PUT(HttpRequest.BodyPublishers.ofFile(finalTempFile))
+                                      .header("Content-Type", blob.contentType())
+                                      .build();
+                } catch (IOException e) {
+                    throw new CICSdkException("Failed to build upload request", e);
+                }
+            }, "PUT", HttpResponse.BodyHandlers.ofString(), statusCode -> statusCode == 200);
+            if (response.statusCode() != 200) {
+                throw new CICSdkException(
+                        "Couldn't upload the blob, HTTP response returned with status code: " + response.statusCode());
+            }
+        } catch (IOException e) {
+            throw new CICSdkException("Failed to buffer blob for upload", e);
+        } finally {
+            if (tempFile != null) {
+                try {
+                    Files.deleteIfExists(tempFile);
+                } catch (IOException e) {
+                    // ignore cleanup failure
+                }
+            }
         }
     }
 
