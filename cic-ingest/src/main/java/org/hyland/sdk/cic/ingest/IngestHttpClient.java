@@ -158,9 +158,6 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
      * Retries are governed by the {@link org.hyland.sdk.cic.http.client.retry.RetryPolicy} configured on this client.
      * The upload uses PUT (idempotent), so it is safe to retry on transient failures.
      * <p>
-     * <b>Important:</b> The blob's {@link CICBlob#getInputStream()} must return a fresh, fully readable stream on each
-     * invocation to support retries. Implementations that return the same stream instance may cause silent data
-     * corruption on retry.
      *
      * @param preSignedUrl the pre-signed URL
      * @param blob the blob to upload
@@ -172,10 +169,6 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
             tempFile = Files.createTempFile("cic-upload-", ".tmp");
             try (var is = blob.getInputStream()) {
                 Files.copy(is, tempFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            }
-            long contentLength = Files.size(tempFile);
-            if (contentLength == 0) {
-                throw new CICSdkException("Cannot upload empty blob");
             }
             Path finalTempFile = tempFile;
             var response = sendRawWithRetry(() -> {

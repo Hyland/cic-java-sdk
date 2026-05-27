@@ -273,8 +273,15 @@ class IngestHttpClientUploadRetryTest {
     }
 
     @Test
-    void uploadThrowsOnEmptyBlob() {
+    void uploadSendsZeroContentLengthForEmptyBlob() {
+        var capturedContentLength = new AtomicReference<String>();
+        server.createContext("/upload", exchange -> {
+            capturedContentLength.set(exchange.getRequestHeaders().getFirst("Content-Length"));
+            exchange.sendResponseHeaders(200, -1);
+            exchange.close();
+        });
         server.start();
+
         var client = buildClient(RetryPolicy.none());
         CICBlob emptyBlob = new CICBlob() {
             @Override
@@ -293,7 +300,8 @@ class IngestHttpClientUploadRetryTest {
             }
         };
 
-        assertThrows(CICSdkException.class, () -> client.upload(baseUrl + "/upload", emptyBlob));
+        assertDoesNotThrow(() -> client.upload(baseUrl + "/upload", emptyBlob));
+        assertEquals("0", capturedContentLength.get());
     }
 
     @Test
