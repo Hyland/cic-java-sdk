@@ -193,8 +193,8 @@ class IngestServiceTest {
             }
 
             @Override
-            public String getContentType() {
-                return "application/pdf";
+            public Optional<String> getContentType() {
+                return Optional.of("application/pdf");
             }
         };
     }

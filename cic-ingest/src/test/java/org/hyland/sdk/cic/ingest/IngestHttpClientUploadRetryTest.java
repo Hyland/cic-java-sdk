@@ -211,8 +211,8 @@ class IngestHttpClientUploadRetryTest {
             }
 
             @Override
-            public String getContentType() {
-                return "application/pdf";
+            public Optional<String> getContentType() {
+                return Optional.of("application/pdf");
             }
         };
 
@@ -263,8 +263,8 @@ class IngestHttpClientUploadRetryTest {
             }
 
             @Override
-            public String getContentType() {
-                return "application/octet-stream";
+            public Optional<String> getContentType() {
+                return Optional.of("application/octet-stream");
             }
         };
 
@@ -295,8 +295,8 @@ class IngestHttpClientUploadRetryTest {
             }
 
             @Override
-            public String getContentType() {
-                return "application/pdf";
+            public Optional<String> getContentType() {
+                return Optional.of("application/pdf");
             }
         };
 
@@ -359,8 +359,8 @@ class IngestHttpClientUploadRetryTest {
             }
 
             @Override
-            public String getContentType() {
-                return "application/pdf";
+            public Optional<String> getContentType() {
+                return Optional.of("application/pdf");
             }
         };
     }

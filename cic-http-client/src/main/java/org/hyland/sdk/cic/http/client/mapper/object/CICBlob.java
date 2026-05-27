@@ -30,7 +30,7 @@ public interface CICBlob {
 
     Optional<String> getDigest();
 
-    default String getContentType() {
-        return "application/octet-stream";
+    default Optional<String> getContentType() {
+        return Optional.empty();
     }
 }
