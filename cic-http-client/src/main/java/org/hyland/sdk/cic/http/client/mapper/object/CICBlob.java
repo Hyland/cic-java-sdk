@@ -30,5 +30,5 @@ public interface CICBlob {
 
     Optional<String> getDigest();
 
-    String contentType();
+    String getContentType();
 }

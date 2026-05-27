@@ -193,7 +193,7 @@ class IngestServiceTest {
             }
 
             @Override
-            public String contentType() {
+            public String getContentType() {
                 return "application/pdf";
             }
         };
