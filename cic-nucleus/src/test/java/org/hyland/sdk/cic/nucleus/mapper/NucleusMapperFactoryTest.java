@@ -47,8 +47,7 @@ class NucleusMapperFactoryTest {
 
     @Test
     void testGetMapperForInteractiveUserPaginatedList() {
-        assertInstanceOf(InteractiveUserMapper.PaginatedListMapper.class,
-                factory.getMapper(InteractiveUser.PaginatedListOf.class));
+        assertInstanceOf(PaginatedListMapper.class, factory.getMapper(InteractiveUser.PaginatedListOf.class));
     }
 
     @Test
@@ -63,8 +62,7 @@ class NucleusMapperFactoryTest {
 
     @Test
     void testGetMapperForSystemOutputPaginatedList() {
-        assertInstanceOf(SystemOutputMapper.PaginatedListMapper.class,
-                factory.getMapper(SystemOutput.PaginatedListOf.class));
+        assertInstanceOf(PaginatedListMapper.class, factory.getMapper(SystemOutput.PaginatedListOf.class));
     }
 
     @Test

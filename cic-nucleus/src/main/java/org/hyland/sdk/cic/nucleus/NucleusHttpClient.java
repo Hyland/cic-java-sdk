@@ -24,10 +24,12 @@ import static org.hyland.sdk.cic.http.client.base.CICHttpRequest.POST;
 import static org.hyland.sdk.cic.http.client.base.CICHttpRequest.PUT;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.hyland.sdk.cic.http.client.auth.AbstractAuthenticatedHttpClient;
 import org.hyland.sdk.cic.http.client.auth.AbstractAuthenticatedHttpClientBuilder;
 import org.hyland.sdk.cic.http.client.auth.AuthenticationHttpClient;
+import org.hyland.sdk.cic.http.client.base.CICHttpRequest;
 import org.hyland.sdk.cic.http.client.base.CICHttpRequest.CICEntity;
 import org.hyland.sdk.cic.http.client.util.ErrorUtils;
 import org.hyland.sdk.cic.nucleus.object.Attribute;
@@ -36,7 +38,6 @@ import org.hyland.sdk.cic.nucleus.object.GroupCreateInput;
 import org.hyland.sdk.cic.nucleus.object.GroupMember;
 import org.hyland.sdk.cic.nucleus.object.GroupMemberAssignmentInput;
 import org.hyland.sdk.cic.nucleus.object.GroupOutput;
-import org.hyland.sdk.cic.nucleus.object.InteractiveUser;
 import org.hyland.sdk.cic.nucleus.object.PrincipalUserMapping;
 import org.hyland.sdk.cic.nucleus.object.PrincipalUserMembership;
 import org.hyland.sdk.cic.nucleus.object.SystemOutput;
@@ -45,7 +46,7 @@ import org.hyland.sdk.cic.nucleus.object.UserMappingCreateInput;
 import org.hyland.sdk.cic.nucleus.object.UserMappingReplaceInput;
 
 /**
- * HTTP client for interacting with the CIC System Integrations API.
+ * HTTP client for interacting with the Nucleus System Integrations API.
  *
  * @since 1.0.0
  */
@@ -54,8 +55,6 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
     private static final String SYSTEMS_PATH = "/system-integrations/systems";
 
     private static final String PRINCIPAL_USERS_PATH = "/system-integrations/principal-users";
-
-    private static final String USERS_PATH = "/api/users";
 
     protected NucleusHttpClient(Builder builder) {
         super(builder);
@@ -81,12 +80,14 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
     }
 
     public SystemOutput getSystem(String systemId) {
-        var request = this.requestBuilder(GET, SYSTEMS_PATH + "/" + systemId).build();
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        var request = this.requestBuilder(GET, SYSTEMS_PATH + "/" + encodePathSegment(systemId)).build();
         return sendThenMapAs(request, SystemOutput.class);
     }
 
     public GroupOutput.PaginatedListOf listGroups(String systemId, String cursor, Integer limit) {
-        var requestBuilder = this.requestBuilder(GET, SYSTEMS_PATH + "/" + systemId + "/groups");
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        var requestBuilder = this.requestBuilder(GET, SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/groups");
         if (cursor != null) {
             requestBuilder.queryParameter("Cursor", cursor);
         }
@@ -97,34 +98,38 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
     }
 
     public GroupOutput getGroup(String systemId, String externalGroupId) {
-        var request = this.requestBuilder(GET, SYSTEMS_PATH + "/" + systemId + "/groups/" + externalGroupId).build();
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
+        var request = this.requestBuilder(GET,
+                SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/groups/" + encodePathSegment(externalGroupId))
+                          .build();
         return sendThenMapAs(request, GroupOutput.class);
     }
 
     public void createGroups(String systemId, List<GroupCreateInput> groups) {
-        var request = this.requestBuilder(POST, SYSTEMS_PATH + "/" + systemId + "/groups")
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        Objects.requireNonNull(groups, "groups cannot be null");
+        var request = this.requestBuilder(POST, SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/groups")
                           .header("Content-Type", "application/json")
                           .entity(new CICEntity(groups))
                           .build();
-        var response = sendThenReadAsString(request);
-        if (response.statusCode() != 204) {
-            ErrorUtils.throwException(response,
-                    "Failed to create groups, HTTP response returned with status code: " + response.statusCode());
-        }
+        sendExpectingSuccess(request, "Failed to create groups");
     }
 
     public void deleteGroup(String systemId, String externalGroupId) {
-        var request = this.requestBuilder(DELETE, SYSTEMS_PATH + "/" + systemId + "/groups/" + externalGroupId).build();
-        var response = sendThenReadAsString(request);
-        if (response.statusCode() != 204) {
-            ErrorUtils.throwException(response,
-                    "Failed to delete group, HTTP response returned with status code: " + response.statusCode());
-        }
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
+        var request = this.requestBuilder(DELETE,
+                SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/groups/" + encodePathSegment(externalGroupId))
+                          .build();
+        sendExpectingSuccess(request, "Failed to delete group");
     }
 
     public List<Attribute> getGroupAttributes(String systemId, String externalGroupId, List<String> keys) {
-        var requestBuilder = this.requestBuilder(GET,
-                SYSTEMS_PATH + "/" + systemId + "/groups/" + externalGroupId + "/attributes");
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
+        var requestBuilder = this.requestBuilder(GET, SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/groups/"
+                + encodePathSegment(externalGroupId) + "/attributes");
         if (keys != null) {
             keys.forEach(key -> requestBuilder.queryParameter("key", key));
         }
@@ -132,61 +137,59 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
     }
 
     public void createGroupAttributes(String systemId, String externalGroupId, List<AttributeInput> attributes) {
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
+        Objects.requireNonNull(attributes, "attributes cannot be null");
         var request = this.requestBuilder(POST,
-                SYSTEMS_PATH + "/" + systemId + "/groups/" + externalGroupId + "/attributes")
+                SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/groups/" + encodePathSegment(externalGroupId)
+                        + "/attributes")
                           .header("Content-Type", "application/json")
                           .entity(new CICEntity(attributes))
                           .build();
-        var response = sendThenReadAsString(request);
-        if (response.statusCode() != 204 && response.statusCode() != 200) {
-            ErrorUtils.throwException(response,
-                    "Failed to create group attributes, HTTP response returned with status code: "
-                            + response.statusCode());
-        }
+        sendExpectingSuccess(request, "Failed to create group attributes");
     }
 
     public void replaceGroupAttributes(String systemId, String externalGroupId, List<AttributeInput> attributes) {
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
+        Objects.requireNonNull(attributes, "attributes cannot be null");
         var request = this.requestBuilder(PUT,
-                SYSTEMS_PATH + "/" + systemId + "/groups/" + externalGroupId + "/attributes")
+                SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/groups/" + encodePathSegment(externalGroupId)
+                        + "/attributes")
                           .header("Content-Type", "application/json")
                           .entity(new CICEntity(attributes))
                           .build();
-        var response = sendThenReadAsString(request);
-        if (response.statusCode() != 204) {
-            ErrorUtils.throwException(response,
-                    "Failed to replace group attributes, HTTP response returned with status code: "
-                            + response.statusCode());
-        }
+        sendExpectingSuccess(request, "Failed to replace group attributes");
     }
 
     public void replaceGroupAttributeValues(String systemId, String externalGroupId, String key, List<String> values) {
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
+        Objects.requireNonNull(key, "key cannot be null");
+        Objects.requireNonNull(values, "values cannot be null");
         var request = this.requestBuilder(PUT,
-                SYSTEMS_PATH + "/" + systemId + "/groups/" + externalGroupId + "/attributes/" + key)
+                SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/groups/" + encodePathSegment(externalGroupId)
+                        + "/attributes/" + encodePathSegment(key))
                           .header("Content-Type", "application/json")
                           .entity(new CICEntity(values))
                           .build();
-        var response = sendThenReadAsString(request);
-        if (response.statusCode() != 204) {
-            ErrorUtils.throwException(response,
-                    "Failed to replace group attribute values, HTTP response returned with status code: "
-                            + response.statusCode());
-        }
+        sendExpectingSuccess(request, "Failed to replace group attribute values");
     }
 
     public void deleteGroupAttribute(String systemId, String externalGroupId, String key) {
-        var request = this.requestBuilder(DELETE,
-                SYSTEMS_PATH + "/" + systemId + "/groups/" + externalGroupId + "/attributes/" + key).build();
-        var response = sendThenReadAsString(request);
-        if (response.statusCode() != 204) {
-            ErrorUtils.throwException(response,
-                    "Failed to delete group attribute, HTTP response returned with status code: "
-                            + response.statusCode());
-        }
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
+        Objects.requireNonNull(key, "key cannot be null");
+        var request = this.requestBuilder(DELETE, SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/groups/"
+                + encodePathSegment(externalGroupId) + "/attributes/" + encodePathSegment(key)).build();
+        sendExpectingSuccess(request, "Failed to delete group attribute");
     }
 
-    public GroupMember.PaginatedListOf getGroupMembers(String systemId, String externalGroupId, String cursor,
+    public GroupMember.PaginatedListOf listGroupMembers(String systemId, String externalGroupId, String cursor,
             Integer limit) {
-        var requestBuilder = this.requestBuilder(GET, SYSTEMS_PATH + "/" + systemId + "/group-members");
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        var requestBuilder = this.requestBuilder(GET,
+                SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/group-members");
         if (externalGroupId != null) {
             requestBuilder.queryParameter("externalGroupId", externalGroupId);
         }
@@ -200,21 +203,20 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
     }
 
     public void assignGroupMembers(String systemId, List<GroupMemberAssignmentInput> assignments) {
-        var request = this.requestBuilder(POST, SYSTEMS_PATH + "/" + systemId + "/group-members")
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        Objects.requireNonNull(assignments, "assignments cannot be null");
+        var request = this.requestBuilder(POST, SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/group-members")
                           .header("Content-Type", "application/json")
                           .entity(new CICEntity(assignments))
                           .build();
-        var response = sendThenReadAsString(request);
-        if (response.statusCode() != 204) {
-            ErrorUtils.throwException(response,
-                    "Failed to assign group members, HTTP response returned with status code: "
-                            + response.statusCode());
-        }
+        sendExpectingSuccess(request, "Failed to assign group members");
     }
 
     public void removeGroupMembers(String systemId, String parentExternalGroupId, List<String> memberExternalUserIds,
             List<String> memberExternalGroupIds) {
-        var requestBuilder = this.requestBuilder(DELETE, SYSTEMS_PATH + "/" + systemId + "/group-members");
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        var requestBuilder = this.requestBuilder(DELETE,
+                SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/group-members");
         if (parentExternalGroupId != null) {
             requestBuilder.queryParameter("parentExternalGroupId", parentExternalGroupId);
         }
@@ -224,16 +226,13 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         if (memberExternalGroupIds != null) {
             memberExternalGroupIds.forEach(id -> requestBuilder.queryParameter("memberExternalGroupIds", id));
         }
-        var response = sendThenReadAsString(requestBuilder.build());
-        if (response.statusCode() != 204) {
-            ErrorUtils.throwException(response,
-                    "Failed to remove group members, HTTP response returned with status code: "
-                            + response.statusCode());
-        }
+        sendExpectingSuccess(requestBuilder.build(), "Failed to remove group members");
     }
 
     public UserMapping.PaginatedListOf listUserMappings(String systemId, String cursor, Integer limit) {
-        var requestBuilder = this.requestBuilder(GET, SYSTEMS_PATH + "/" + systemId + "/user-mappings");
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        var requestBuilder = this.requestBuilder(GET,
+                SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/user-mappings");
         if (cursor != null) {
             requestBuilder.queryParameter("Cursor", cursor);
         }
@@ -244,51 +243,51 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
     }
 
     public UserMapping getUserMapping(String systemId, String externalUserId) {
-        var request = this.requestBuilder(GET, SYSTEMS_PATH + "/" + systemId + "/user-mappings/" + externalUserId)
-                          .build();
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        Objects.requireNonNull(externalUserId, "externalUserId cannot be null");
+        var request = this.requestBuilder(GET, SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/user-mappings/"
+                + encodePathSegment(externalUserId)).build();
         return sendThenMapAs(request, UserMapping.class);
     }
 
     public void createUserMappings(String systemId, List<UserMappingCreateInput> mappings) {
-        var request = this.requestBuilder(POST, SYSTEMS_PATH + "/" + systemId + "/user-mappings")
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        Objects.requireNonNull(mappings, "mappings cannot be null");
+        var request = this.requestBuilder(POST, SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/user-mappings")
                           .header("Content-Type", "application/json")
                           .entity(new CICEntity(mappings))
                           .build();
-        var response = sendThenReadAsString(request);
-        if (response.statusCode() != 204) {
-            ErrorUtils.throwException(response,
-                    "Failed to create user mappings, HTTP response returned with status code: "
-                            + response.statusCode());
-        }
+        sendExpectingSuccess(request, "Failed to create user mappings");
     }
 
     public void updateUserMapping(String systemId, String externalUserId, UserMappingReplaceInput input) {
-        var request = this.requestBuilder(PUT, SYSTEMS_PATH + "/" + systemId + "/user-mappings/" + externalUserId)
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        Objects.requireNonNull(externalUserId, "externalUserId cannot be null");
+        Objects.requireNonNull(input, "input cannot be null");
+        var request = this.requestBuilder(PUT,
+                SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/user-mappings/"
+                        + encodePathSegment(externalUserId))
                           .header("Content-Type", "application/json")
                           .entity(new CICEntity(input))
                           .build();
-        var response = sendThenReadAsString(request);
-        if (response.statusCode() != 204 && response.statusCode() != 200) {
-            ErrorUtils.throwException(response,
-                    "Failed to update user mapping, HTTP response returned with status code: " + response.statusCode());
-        }
+        sendExpectingSuccess(request, "Failed to update user mapping");
     }
 
     public void deleteUserMapping(String systemId, String externalUserId) {
-        var request = this.requestBuilder(DELETE, SYSTEMS_PATH + "/" + systemId + "/user-mappings/" + externalUserId)
-                          .build();
-        var response = sendThenReadAsString(request);
-        if (response.statusCode() != 204) {
-            ErrorUtils.throwException(response,
-                    "Failed to delete user mapping, HTTP response returned with status code: " + response.statusCode());
-        }
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        Objects.requireNonNull(externalUserId, "externalUserId cannot be null");
+        var request = this.requestBuilder(DELETE, SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/user-mappings/"
+                + encodePathSegment(externalUserId)).build();
+        sendExpectingSuccess(request, "Failed to delete user mapping");
     }
 
     // --- User Mapping Attributes ---
 
     public List<Attribute> getUserMappingAttributes(String systemId, String externalUserId, List<String> keys) {
-        var requestBuilder = this.requestBuilder(GET,
-                SYSTEMS_PATH + "/" + systemId + "/user-mappings/" + externalUserId + "/attributes");
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        Objects.requireNonNull(externalUserId, "externalUserId cannot be null");
+        var requestBuilder = this.requestBuilder(GET, SYSTEMS_PATH + "/" + encodePathSegment(systemId)
+                + "/user-mappings/" + encodePathSegment(externalUserId) + "/attributes");
         if (keys != null) {
             keys.forEach(key -> requestBuilder.queryParameter("key", key));
         }
@@ -296,64 +295,60 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
     }
 
     public void createUserMappingAttributes(String systemId, String externalUserId, List<AttributeInput> attributes) {
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        Objects.requireNonNull(externalUserId, "externalUserId cannot be null");
+        Objects.requireNonNull(attributes, "attributes cannot be null");
         var request = this.requestBuilder(POST,
-                SYSTEMS_PATH + "/" + systemId + "/user-mappings/" + externalUserId + "/attributes")
+                SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/user-mappings/" + encodePathSegment(externalUserId)
+                        + "/attributes")
                           .header("Content-Type", "application/json")
                           .entity(new CICEntity(attributes))
                           .build();
-        var response = sendThenReadAsString(request);
-        if (response.statusCode() != 204) {
-            ErrorUtils.throwException(response,
-                    "Failed to create user mapping attributes, HTTP response returned with status code: "
-                            + response.statusCode());
-        }
+        sendExpectingSuccess(request, "Failed to create user mapping attributes");
     }
 
     public void replaceUserMappingAttributes(String systemId, String externalUserId, List<AttributeInput> attributes) {
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        Objects.requireNonNull(externalUserId, "externalUserId cannot be null");
+        Objects.requireNonNull(attributes, "attributes cannot be null");
         var request = this.requestBuilder(PUT,
-                SYSTEMS_PATH + "/" + systemId + "/user-mappings/" + externalUserId + "/attributes")
+                SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/user-mappings/" + encodePathSegment(externalUserId)
+                        + "/attributes")
                           .header("Content-Type", "application/json")
                           .entity(new CICEntity(attributes))
                           .build();
-        var response = sendThenReadAsString(request);
-        if (response.statusCode() != 204) {
-            ErrorUtils.throwException(response,
-                    "Failed to replace user mapping attributes, HTTP response returned with status code: "
-                            + response.statusCode());
-        }
+        sendExpectingSuccess(request, "Failed to replace user mapping attributes");
     }
 
     public void replaceUserMappingAttributeValues(String systemId, String externalUserId, String key,
             List<String> values) {
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        Objects.requireNonNull(externalUserId, "externalUserId cannot be null");
+        Objects.requireNonNull(key, "key cannot be null");
+        Objects.requireNonNull(values, "values cannot be null");
         var request = this.requestBuilder(PUT,
-                SYSTEMS_PATH + "/" + systemId + "/user-mappings/" + externalUserId + "/attributes/" + key)
+                SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/user-mappings/" + encodePathSegment(externalUserId)
+                        + "/attributes/" + encodePathSegment(key))
                           .header("Content-Type", "application/json")
                           .entity(new CICEntity(values))
                           .build();
-        var response = sendThenReadAsString(request);
-        if (response.statusCode() != 204) {
-            ErrorUtils.throwException(response,
-                    "Failed to replace user mapping attribute values, HTTP response returned with status code: "
-                            + response.statusCode());
-        }
+        sendExpectingSuccess(request, "Failed to replace user mapping attribute values");
     }
 
     public void deleteUserMappingAttribute(String systemId, String externalUserId, String key) {
-        var request = this.requestBuilder(DELETE,
-                SYSTEMS_PATH + "/" + systemId + "/user-mappings/" + externalUserId + "/attributes/" + key).build();
-        var response = sendThenReadAsString(request);
-        if (response.statusCode() != 204) {
-            ErrorUtils.throwException(response,
-                    "Failed to delete user mapping attribute, HTTP response returned with status code: "
-                            + response.statusCode());
-        }
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        Objects.requireNonNull(externalUserId, "externalUserId cannot be null");
+        Objects.requireNonNull(key, "key cannot be null");
+        var request = this.requestBuilder(DELETE, SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/user-mappings/"
+                + encodePathSegment(externalUserId) + "/attributes/" + encodePathSegment(key)).build();
+        sendExpectingSuccess(request, "Failed to delete user mapping attribute");
     }
 
-    // --- Principal Users ---
-
-    public PrincipalUserMapping.PaginatedListOf getPrincipalUserMappings(String principalUserId, String cursor,
+    public PrincipalUserMapping.PaginatedListOf listPrincipalUserMappings(String principalUserId, String cursor,
             Integer limit) {
-        var requestBuilder = this.requestBuilder(GET, PRINCIPAL_USERS_PATH + "/" + principalUserId + "/user-mappings");
+        Objects.requireNonNull(principalUserId, "principalUserId cannot be null");
+        var requestBuilder = this.requestBuilder(GET,
+                PRINCIPAL_USERS_PATH + "/" + encodePathSegment(principalUserId) + "/user-mappings");
         if (cursor != null) {
             requestBuilder.queryParameter("Cursor", cursor);
         }
@@ -363,9 +358,11 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         return sendThenMapAs(requestBuilder.build(), PrincipalUserMapping.PaginatedListOf.class);
     }
 
-    public PrincipalUserMembership.PaginatedListOf getPrincipalUserMembership(String principalUserId, String cursor,
+    public PrincipalUserMembership.PaginatedListOf listPrincipalUserMemberships(String principalUserId, String cursor,
             Integer limit) {
-        var requestBuilder = this.requestBuilder(GET, PRINCIPAL_USERS_PATH + "/" + principalUserId + "/membership");
+        Objects.requireNonNull(principalUserId, "principalUserId cannot be null");
+        var requestBuilder = this.requestBuilder(GET,
+                PRINCIPAL_USERS_PATH + "/" + encodePathSegment(principalUserId) + "/membership");
         if (cursor != null) {
             requestBuilder.queryParameter("Cursor", cursor);
         }
@@ -375,25 +372,16 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         return sendThenMapAs(requestBuilder.build(), PrincipalUserMembership.PaginatedListOf.class);
     }
 
-    // --- Users ---
-
-    public InteractiveUser.PaginatedListOf listUsers(String externalId, String cursor, Integer limit) {
-        var requestBuilder = this.requestBuilder(GET, USERS_PATH);
-        if (externalId != null) {
-            requestBuilder.queryParameter("externalid", externalId);
-        }
-        if (cursor != null) {
-            requestBuilder.queryParameter("cursor", cursor);
-        }
-        if (limit != null) {
-            requestBuilder.queryParameter("limit", limit.toString());
-        }
-        return sendThenMapAs(requestBuilder.build(), InteractiveUser.PaginatedListOf.class);
-    }
-
-    public InteractiveUser getUser(String userId) {
-        var request = this.requestBuilder(GET, USERS_PATH + "/" + userId).build();
-        return sendThenMapAs(request, InteractiveUser.class);
+    /**
+     * Sends a request that is expected to complete with a success (2xx) status code and has no response body to map.
+     *
+     * @param request the request to send
+     * @param failureMessage the message used for the thrown exception if the service responds with an error status
+     * @throws org.hyland.sdk.cic.http.client.CICServiceException if the service responds with a 4xx or 5xx status code
+     */
+    private void sendExpectingSuccess(CICHttpRequest request, String failureMessage) {
+        var response = sendThenReadAsString(request);
+        ErrorUtils.throwExceptionOnUnexpectedStatusCode(response, failureMessage);
     }
 
     public static class Builder extends AbstractAuthenticatedHttpClientBuilder<Builder, NucleusHttpClient> {
@@ -401,10 +389,6 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         public Builder(String baseUrl, AuthenticationHttpClient.Builder authenticationBuilder) {
             super(baseUrl, authenticationBuilder);
             header("Accept", "application/json");
-        }
-
-        public Builder hxpEnvironment(String environment) {
-            return header("hxp-environment", environment);
         }
 
         @Override

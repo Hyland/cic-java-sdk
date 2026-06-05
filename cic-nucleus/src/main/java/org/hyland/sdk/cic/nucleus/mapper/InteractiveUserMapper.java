@@ -38,20 +38,4 @@ class InteractiveUserMapper implements CICMapper<InteractiveUser> {
                 obj.getString("preferredLanguage", null));
     }
 
-    static class PaginatedListMapper implements CICMapper<InteractiveUser.PaginatedListOf> {
-
-        private final InteractiveUserMapper innerMapper = new InteractiveUserMapper();
-
-        @Override
-        public InteractiveUser.PaginatedListOf fromCICNode(CICNode cicNode) {
-            if (!(cicNode instanceof CICObject obj)) {
-                throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
-            }
-            var items = obj.getOptionalArray("users")
-                           .map(a -> a.toListObject().stream().map(innerMapper::fromCICNode).toList())
-                           .orElse(null);
-            var next = obj.getString("next", null);
-            return new InteractiveUser.PaginatedListOf(items, next);
-        }
-    }
 }

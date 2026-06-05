@@ -41,20 +41,4 @@ class GroupOutputMapper implements CICMapper<GroupOutput> {
                    .orElse(null));
     }
 
-    static class PaginatedListMapper implements CICMapper<GroupOutput.PaginatedListOf> {
-
-        private final GroupOutputMapper innerMapper = new GroupOutputMapper();
-
-        @Override
-        public GroupOutput.PaginatedListOf fromCICNode(CICNode cicNode) {
-            if (!(cicNode instanceof CICObject obj)) {
-                throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
-            }
-            var items = obj.getOptionalArray("items")
-                           .map(a -> a.toListObject().stream().map(innerMapper::fromCICNode).toList())
-                           .orElse(null);
-            var next = obj.getString("next", null);
-            return new GroupOutput.PaginatedListOf(items, next);
-        }
-    }
 }

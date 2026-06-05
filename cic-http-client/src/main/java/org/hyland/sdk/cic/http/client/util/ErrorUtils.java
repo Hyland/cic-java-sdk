@@ -40,6 +40,12 @@ public final class ErrorUtils {
         }
     }
 
+    public static void throwExceptionOnUnexpectedStatusCode(CICHttpResponse<String> response, String exceptionMessage) {
+        if (isUnexpectedStatusCode(response.statusCode())) {
+            throwException(response, exceptionMessage);
+        }
+    }
+
     public static void throwException(CICHttpResponse<String> response, String exceptionMessage) {
         throw buildServiceException(response, exceptionMessage);
     }

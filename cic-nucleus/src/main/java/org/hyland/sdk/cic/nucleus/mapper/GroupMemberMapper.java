@@ -37,20 +37,4 @@ class GroupMemberMapper implements CICMapper<GroupMember> {
                 obj.getString("memberExternalGroupId", null));
     }
 
-    static class PaginatedListMapper implements CICMapper<GroupMember.PaginatedListOf> {
-
-        private final GroupMemberMapper innerMapper = new GroupMemberMapper();
-
-        @Override
-        public GroupMember.PaginatedListOf fromCICNode(CICNode cicNode) {
-            if (!(cicNode instanceof CICObject obj)) {
-                throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
-            }
-            var items = obj.getOptionalArray("items")
-                           .map(a -> a.toListObject().stream().map(innerMapper::fromCICNode).toList())
-                           .orElse(null);
-            var next = obj.getString("next", null);
-            return new GroupMember.PaginatedListOf(items, next);
-        }
-    }
 }

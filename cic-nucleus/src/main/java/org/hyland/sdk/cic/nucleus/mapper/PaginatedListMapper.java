@@ -19,30 +19,44 @@
 package org.hyland.sdk.cic.nucleus.mapper;
 
 import java.util.List;
+import java.util.function.BiFunction;
 
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
-import org.hyland.sdk.cic.nucleus.object.MembershipType;
-import org.hyland.sdk.cic.nucleus.object.PrincipalUserMembership;
+import org.hyland.sdk.cic.nucleus.object.PaginatedList;
 
 /**
+ * Generic paginated-list mapper. Reads a page envelope with an items array and a {@code next} cursor, delegating each
+ * item to the provided item mapper and constructing the result via the provided factory.
+ *
+ * @param <T> the item type
+ * @param <L> the paginated list type
  * @since 1.0.0
  */
-class PrincipalUserMembershipMapper implements CICMapper<PrincipalUserMembership> {
+class PaginatedListMapper<T, L extends PaginatedList<T>> implements CICMapper<L> {
 
-    private final AttributeMapper attributeMapper = new AttributeMapper();
+    private final CICMapper<T> itemMapper;
+
+    private final String itemsKey;
+
+    private final BiFunction<List<T>, String, L> factory;
+
+    PaginatedListMapper(CICMapper<T> itemMapper, String itemsKey, BiFunction<List<T>, String, L> factory) {
+        this.itemMapper = itemMapper;
+        this.itemsKey = itemsKey;
+        this.factory = factory;
+    }
 
     @Override
-    public PrincipalUserMembership fromCICNode(CICNode cicNode) {
+    public L fromCICNode(CICNode cicNode) {
         if (!(cicNode instanceof CICObject obj)) {
             throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
         }
-        return new PrincipalUserMembership(obj.getStringOrThrow("externalGroupId"), obj.getStringOrThrow("systemId"),
-                MembershipType.fromValue(obj.getStringOrThrow("membershipType")),
-                obj.getOptionalArray("attributes")
-                   .map(a -> a.toListObject().stream().map(attributeMapper::fromCICNode).toList())
-                   .orElse(List.of()));
+        var items = obj.getOptionalArray(itemsKey)
+                       .map(a -> a.toListObject().stream().map(itemMapper::fromCICNode).toList())
+                       .orElse(null);
+        var next = obj.getString("next", null);
+        return factory.apply(items, next);
     }
-
 }

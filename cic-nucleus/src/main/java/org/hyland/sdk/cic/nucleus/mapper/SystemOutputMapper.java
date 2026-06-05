@@ -40,20 +40,4 @@ class SystemOutputMapper implements CICMapper<SystemOutput> {
                 systemTypeStr != null ? SystemIntegrationType.fromValue(systemTypeStr) : null);
     }
 
-    static class PaginatedListMapper implements CICMapper<SystemOutput.PaginatedListOf> {
-
-        private final SystemOutputMapper innerMapper = new SystemOutputMapper();
-
-        @Override
-        public SystemOutput.PaginatedListOf fromCICNode(CICNode cicNode) {
-            if (!(cicNode instanceof CICObject obj)) {
-                throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
-            }
-            var items = obj.getOptionalArray("items")
-                           .map(a -> a.toListObject().stream().map(innerMapper::fromCICNode).toList())
-                           .orElse(null);
-            var next = obj.getString("next", null);
-            return new SystemOutput.PaginatedListOf(items, next);
-        }
-    }
 }

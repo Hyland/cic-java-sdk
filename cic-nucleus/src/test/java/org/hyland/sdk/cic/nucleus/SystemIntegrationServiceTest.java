@@ -261,7 +261,7 @@ class SystemIntegrationServiceTest {
         httpClient.groupMembersPaginated = new GroupMember.PaginatedListOf(
                 List.of(new GroupMember("ext-group-1", "user-1", null)), null);
 
-        var result = service.system(SYSTEM_ID).getGroupMembers();
+        var result = service.system(SYSTEM_ID).listGroupMembers();
 
         assertEquals(1, result.items().size());
         assertEquals("user-1", result.items().get(0).memberExternalUserId());
@@ -272,7 +272,7 @@ class SystemIntegrationServiceTest {
     void testSystemGetGroupMembersWithFilter() {
         httpClient.groupMembersPaginated = new GroupMember.PaginatedListOf(List.of(), null);
 
-        service.system(SYSTEM_ID).getGroupMembers("ext-group-1", "cursor-1", 20);
+        service.system(SYSTEM_ID).listGroupMembers("ext-group-1", "cursor-1", 20);
 
         assertEquals(SYSTEM_ID, httpClient.lastSystemId);
         assertEquals("ext-group-1", httpClient.lastExternalGroupId);
@@ -286,7 +286,7 @@ class SystemIntegrationServiceTest {
                 List.of(new GroupMember("ext-group-1", "user-1", null)), null);
 
         var items = new ArrayList<GroupMember>();
-        service.system(SYSTEM_ID).getGroupMembersPaginator().forEach(items::add);
+        service.system(SYSTEM_ID).listGroupMembersPaginator().forEach(items::add);
 
         assertEquals(1, items.size());
         assertEquals("user-1", items.get(0).memberExternalUserId());
@@ -460,7 +460,7 @@ class SystemIntegrationServiceTest {
         httpClient.principalUserMappingsPaginated = new PrincipalUserMapping.PaginatedListOf(
                 List.of(new PrincipalUserMapping(SYSTEM_ID, "ext-user-1", List.of())), null);
 
-        var result = service.principalUser(PRINCIPAL_USER_ID).getUserMappings();
+        var result = service.principalUser(PRINCIPAL_USER_ID).listUserMappings();
 
         assertEquals(1, result.items().size());
         assertEquals("ext-user-1", result.items().get(0).externalUserId());
@@ -471,7 +471,7 @@ class SystemIntegrationServiceTest {
     void testPrincipalUserGetUserMappingsWithPagination() {
         httpClient.principalUserMappingsPaginated = new PrincipalUserMapping.PaginatedListOf(List.of(), null);
 
-        service.principalUser(PRINCIPAL_USER_ID).getUserMappings("cursor-1", 10);
+        service.principalUser(PRINCIPAL_USER_ID).listUserMappings("cursor-1", 10);
 
         assertEquals("cursor-1", httpClient.lastCursor);
         assertEquals(10, httpClient.lastLimit);
@@ -483,7 +483,7 @@ class SystemIntegrationServiceTest {
                 List.of(new PrincipalUserMapping(SYSTEM_ID, "ext-user-1", List.of())), null);
 
         var items = new ArrayList<PrincipalUserMapping>();
-        service.principalUser(PRINCIPAL_USER_ID).getUserMappingsPaginator().forEach(items::add);
+        service.principalUser(PRINCIPAL_USER_ID).listUserMappingsPaginator().forEach(items::add);
 
         assertEquals(1, items.size());
         assertEquals("ext-user-1", items.get(0).externalUserId());
@@ -494,7 +494,7 @@ class SystemIntegrationServiceTest {
         httpClient.principalUserMembershipsPaginated = new PrincipalUserMembership.PaginatedListOf(
                 List.of(new PrincipalUserMembership("ext-group-1", SYSTEM_ID, MembershipType.DIRECT, List.of())), null);
 
-        var result = service.principalUser(PRINCIPAL_USER_ID).getMembership();
+        var result = service.principalUser(PRINCIPAL_USER_ID).listMemberships();
 
         assertEquals(1, result.items().size());
         assertEquals(MembershipType.DIRECT, result.items().get(0).membershipType());
@@ -505,7 +505,7 @@ class SystemIntegrationServiceTest {
     void testPrincipalUserGetMembershipWithPagination() {
         httpClient.principalUserMembershipsPaginated = new PrincipalUserMembership.PaginatedListOf(List.of(), null);
 
-        service.principalUser(PRINCIPAL_USER_ID).getMembership("cursor-1", 10);
+        service.principalUser(PRINCIPAL_USER_ID).listMemberships("cursor-1", 10);
 
         assertEquals("cursor-1", httpClient.lastCursor);
         assertEquals(10, httpClient.lastLimit);
@@ -517,7 +517,7 @@ class SystemIntegrationServiceTest {
                 List.of(new PrincipalUserMembership("ext-group-1", SYSTEM_ID, MembershipType.DIRECT, List.of())), null);
 
         var items = new ArrayList<PrincipalUserMembership>();
-        service.principalUser(PRINCIPAL_USER_ID).getMembershipPaginator().forEach(items::add);
+        service.principalUser(PRINCIPAL_USER_ID).listMembershipsPaginator().forEach(items::add);
 
         assertEquals(1, items.size());
         assertEquals(MembershipType.DIRECT, items.get(0).membershipType());
@@ -673,7 +673,7 @@ class SystemIntegrationServiceTest {
         }
 
         @Override
-        public GroupMember.PaginatedListOf getGroupMembers(String systemId, String externalGroupId, String cursor,
+        public GroupMember.PaginatedListOf listGroupMembers(String systemId, String externalGroupId, String cursor,
                 Integer limit) {
             lastSystemId = systemId;
             lastExternalGroupId = externalGroupId;
@@ -769,7 +769,7 @@ class SystemIntegrationServiceTest {
         }
 
         @Override
-        public PrincipalUserMapping.PaginatedListOf getPrincipalUserMappings(String principalUserId, String cursor,
+        public PrincipalUserMapping.PaginatedListOf listPrincipalUserMappings(String principalUserId, String cursor,
                 Integer limit) {
             lastPrincipalUserId = principalUserId;
             lastCursor = cursor;
@@ -778,8 +778,8 @@ class SystemIntegrationServiceTest {
         }
 
         @Override
-        public PrincipalUserMembership.PaginatedListOf getPrincipalUserMembership(String principalUserId, String cursor,
-                Integer limit) {
+        public PrincipalUserMembership.PaginatedListOf listPrincipalUserMemberships(String principalUserId,
+                String cursor, Integer limit) {
             lastPrincipalUserId = principalUserId;
             lastCursor = cursor;
             lastLimit = limit;

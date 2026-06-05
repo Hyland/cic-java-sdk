@@ -124,7 +124,7 @@ class UsersServiceTest {
         assertThrows(NullPointerException.class, () -> service.getUser(null));
     }
 
-    private static class TestNucleusHttpClient extends NucleusHttpClient {
+    private static class TestNucleusHttpClient extends NucleusIAMHttpClient {
 
         InteractiveUser.PaginatedListOf usersPaginated;
 
@@ -143,7 +143,7 @@ class UsersServiceTest {
         String lastUserId;
 
         public TestNucleusHttpClient() {
-            super(NucleusHttpClient.from("https://localhost",
+            super(NucleusIAMHttpClient.from("https://localhost",
                     AuthenticationHttpClient.from().clientId("test-client-id").clientSecret("test-client-secret")));
         }
 

@@ -41,20 +41,4 @@ class UserMappingMapper implements CICMapper<UserMapping> {
                    .orElse(null));
     }
 
-    static class PaginatedListMapper implements CICMapper<UserMapping.PaginatedListOf> {
-
-        private final UserMappingMapper innerMapper = new UserMappingMapper();
-
-        @Override
-        public UserMapping.PaginatedListOf fromCICNode(CICNode cicNode) {
-            if (!(cicNode instanceof CICObject obj)) {
-                throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
-            }
-            var items = obj.getOptionalArray("items")
-                           .map(a -> a.toListObject().stream().map(innerMapper::fromCICNode).toList())
-                           .orElse(null);
-            var next = obj.getString("next", null);
-            return new UserMapping.PaginatedListOf(items, next);
-        }
-    }
 }
