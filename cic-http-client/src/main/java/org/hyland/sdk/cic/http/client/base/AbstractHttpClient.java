@@ -243,6 +243,6 @@ public abstract class AbstractHttpClient implements AutoCloseable {
     }
 
     protected static String encodePathSegment(String segment) {
-        return URLEncoder.encode(segment, StandardCharsets.UTF_8);
+        return URLEncoder.encode(segment, StandardCharsets.UTF_8).replace("+", "%20");
     }
 }

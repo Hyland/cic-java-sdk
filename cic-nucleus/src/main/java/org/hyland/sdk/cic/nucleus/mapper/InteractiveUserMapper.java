@@ -33,9 +33,9 @@ class InteractiveUserMapper implements CICMapper<InteractiveUser> {
         if (!(cicNode instanceof CICObject obj)) {
             throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
         }
-        return new InteractiveUser(obj.getString("userId", null), obj.getString("userName", null),
-                obj.getString("email", null), obj.getString("externalId", null),
-                obj.getString("preferredLanguage", null));
+        return new InteractiveUser(obj.getStringOrThrow("userId"), obj.getStringOrNull("userName"),
+                obj.getStringOrNull("email"), obj.getStringOrNull("externalId"),
+                obj.getStringOrNull("preferredLanguage"));
     }
 
 }
