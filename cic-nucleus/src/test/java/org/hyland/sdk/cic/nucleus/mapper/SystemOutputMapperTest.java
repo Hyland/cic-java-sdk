@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
 import org.hyland.sdk.cic.nucleus.object.SystemIntegrationType;
 import org.hyland.sdk.cic.nucleus.object.SystemOutput;
+import org.hyland.sdk.cic.nucleus.object.SystemOutputPage;
 
 /**
  * @since 1.0.0
@@ -53,7 +54,7 @@ class SystemOutputMapperTest {
     }
 
     @Test
-    void testDeserializeSystemOutputPaginatedList() {
+    void testDeserializeSystemOutputPage() {
         var json = """
                 {
                   "items": [
@@ -64,20 +65,20 @@ class SystemOutputMapperTest {
                       "systemType": "Alfresco"
                     }
                   ],
-                  "next": "cursor-token-123"
+                  "next": "/systems?cursor=cursor-token-123"
                 }
                 """;
 
-        var result = MapperService.read(json, SystemOutput.PaginatedListOf.class);
+        var result = MapperService.read(json, SystemOutputPage.class);
 
-        assertEquals(1, result.items().size());
-        assertEquals("System1", result.items().get(0).name());
-        assertEquals(SystemIntegrationType.ALFRESCO, result.items().get(0).systemType());
-        assertEquals("cursor-token-123", result.next());
+        assertEquals(1, result.data().size());
+        assertEquals("System1", result.data().get(0).name());
+        assertEquals(SystemIntegrationType.ALFRESCO, result.data().get(0).systemType());
+        assertEquals("cursor-token-123", result.pagination().nextCursor());
     }
 
     @Test
-    void testDeserializeSystemOutputPaginatedListWithNullNext() {
+    void testDeserializeSystemOutputPageWithNullNext() {
         var json = """
                 {
                   "items": [],
@@ -85,10 +86,10 @@ class SystemOutputMapperTest {
                 }
                 """;
 
-        var result = MapperService.read(json, SystemOutput.PaginatedListOf.class);
+        var result = MapperService.read(json, SystemOutputPage.class);
 
-        assertNotNull(result.items());
-        assertEquals(0, result.items().size());
-        assertNull(result.next());
+        assertNotNull(result.data());
+        assertEquals(0, result.data().size());
+        assertNull(result.pagination().nextCursor());
     }
 }

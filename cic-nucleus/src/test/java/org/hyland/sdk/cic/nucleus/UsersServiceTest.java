@@ -22,13 +22,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import org.hyland.sdk.cic.http.client.auth.AuthenticationHttpClient;
+import org.hyland.sdk.cic.http.client.pagination.CursorPagination;
 import org.hyland.sdk.cic.nucleus.object.InteractiveUser;
+import org.hyland.sdk.cic.nucleus.object.InteractiveUserPage;
 
 /**
  * @since 1.0.0
@@ -49,21 +52,21 @@ class UsersServiceTest {
 
     @Test
     void testListUsers() {
-        httpClient.usersPaginated = new InteractiveUser.PaginatedListOf(
+        httpClient.usersPaginated = page(
                 List.of(new InteractiveUser(USER_ID, "alice", "alice@localhost", "ext-alice", "en-US")), null);
 
         var result = service.listUsers();
 
-        assertEquals(1, result.items().size());
-        assertEquals("alice", result.items().get(0).userName());
-        assertEquals(USER_ID, result.items().get(0).userId());
+        assertEquals(1, result.data().size());
+        assertEquals("alice", result.data().get(0).userName());
+        assertEquals(USER_ID, result.data().get(0).userId());
     }
 
     @Test
     void testListUsersWithParams() {
-        httpClient.usersPaginated = new InteractiveUser.PaginatedListOf(List.of(), null);
+        httpClient.usersPaginated = page(List.of(), null);
 
-        service.listUsers("ext-alice", "cursor-1", 10);
+        service.listUsers(r -> r.externalId("ext-alice").cursor("cursor-1").limit(10));
 
         assertEquals("ext-alice", httpClient.lastExternalId);
         assertEquals("cursor-1", httpClient.lastCursor);
@@ -72,7 +75,7 @@ class UsersServiceTest {
 
     @Test
     void testListUsersPaginator() {
-        httpClient.usersPaginated = new InteractiveUser.PaginatedListOf(
+        httpClient.usersPaginated = page(
                 List.of(new InteractiveUser(USER_ID, "alice", "alice@localhost", "ext-alice", null)), null);
 
         var items = new ArrayList<InteractiveUser>();
@@ -87,8 +90,7 @@ class UsersServiceTest {
         var user1 = new InteractiveUser("user-id-1", "alice", "alice@localhost", null, null);
         var user2 = new InteractiveUser("user-id-2", "bob", "bob@localhost", null, null);
 
-        httpClient.usersPaginatedPages = List.of(new InteractiveUser.PaginatedListOf(List.of(user1), "cursor-2"),
-                new InteractiveUser.PaginatedListOf(List.of(user2), null));
+        httpClient.usersPaginatedPages = List.of(page(List.of(user1), "cursor-2"), page(List.of(user2), null));
 
         var items = new ArrayList<InteractiveUser>();
         service.listUsersPaginator().forEach(items::add);
@@ -99,10 +101,31 @@ class UsersServiceTest {
     }
 
     @Test
-    void testListUsersPaginatorWithExternalId() {
-        httpClient.usersPaginated = new InteractiveUser.PaginatedListOf(List.of(), null);
+    void testListUsersPaginatorThreePages() {
+        var user1 = new InteractiveUser("user-id-1", "alice", "alice@localhost", null, null);
+        var user2 = new InteractiveUser("user-id-2", "bob", "bob@localhost", null, null);
+        var user3 = new InteractiveUser("user-id-3", "carol", "carol@localhost", null, null);
 
-        service.listUsersPaginator("ext-alice").forEach(u -> {
+        httpClient.usersPaginatedPages = List.of(page(List.of(user1), "cursor1"), page(List.of(user2), "cursor2"),
+                page(List.of(user3), null));
+
+        var items = new ArrayList<InteractiveUser>();
+        service.listUsersPaginator().forEach(items::add);
+
+        assertEquals(3, items.size());
+        assertEquals("alice", items.get(0).userName());
+        assertEquals("bob", items.get(1).userName());
+        assertEquals("carol", items.get(2).userName());
+
+        // exactly 3 calls: null → cursor1 → cursor2, then no 4th call because "next" was absent
+        assertEquals(Arrays.asList(null, "cursor1", "cursor2"), httpClient.capturedCursors);
+    }
+
+    @Test
+    void testListUsersPaginatorWithExternalId() {
+        httpClient.usersPaginated = page(List.of(), null);
+
+        service.listUsersPaginator(r -> r.externalId("ext-alice")).forEach(u -> {
         });
 
         assertEquals("ext-alice", httpClient.lastExternalId);
@@ -124,11 +147,15 @@ class UsersServiceTest {
         assertThrows(NullPointerException.class, () -> service.getUser(null));
     }
 
+    private static InteractiveUserPage page(List<InteractiveUser> items, String cursor) {
+        return new InteractiveUserPage(items, new CursorPagination(cursor, cursor != null));
+    }
+
     private static class TestNucleusHttpClient extends NucleusIAMHttpClient {
 
-        InteractiveUser.PaginatedListOf usersPaginated;
+        InteractiveUserPage usersPaginated;
 
-        List<InteractiveUser.PaginatedListOf> usersPaginatedPages;
+        List<InteractiveUserPage> usersPaginatedPages;
 
         int pageIndex;
 
@@ -142,16 +169,19 @@ class UsersServiceTest {
 
         String lastUserId;
 
+        List<String> capturedCursors = new ArrayList<>();
+
         public TestNucleusHttpClient() {
             super(NucleusIAMHttpClient.from("https://localhost",
                     AuthenticationHttpClient.from().clientId("test-client-id").clientSecret("test-client-secret")));
         }
 
         @Override
-        public InteractiveUser.PaginatedListOf listUsers(String externalId, String cursor, Integer limit) {
+        public InteractiveUserPage listUsers(String externalId, String cursor, Integer limit) {
             lastExternalId = externalId;
             lastCursor = cursor;
             lastLimit = limit;
+            capturedCursors.add(cursor);
             if (usersPaginatedPages != null && pageIndex < usersPaginatedPages.size()) {
                 return usersPaginatedPages.get(pageIndex++);
             }

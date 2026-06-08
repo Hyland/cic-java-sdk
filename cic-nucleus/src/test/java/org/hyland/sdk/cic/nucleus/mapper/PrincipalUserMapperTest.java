@@ -26,7 +26,9 @@ import org.junit.jupiter.api.Test;
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
 import org.hyland.sdk.cic.nucleus.object.MembershipType;
 import org.hyland.sdk.cic.nucleus.object.PrincipalUserMapping;
+import org.hyland.sdk.cic.nucleus.object.PrincipalUserMappingPage;
 import org.hyland.sdk.cic.nucleus.object.PrincipalUserMembership;
+import org.hyland.sdk.cic.nucleus.object.PrincipalUserMembershipPage;
 
 /**
  * @since 1.0.0
@@ -53,7 +55,7 @@ class PrincipalUserMapperTest {
     }
 
     @Test
-    void testDeserializePrincipalUserMappingPaginatedList() {
+    void testDeserializePrincipalUserMappingPage() {
         var json = """
                 {
                   "items": [
@@ -63,14 +65,14 @@ class PrincipalUserMapperTest {
                       "attributes": []
                     }
                   ],
-                  "next": "cursor-abc"
+                  "next": "/user-mappings?cursor=cursor-abc"
                 }
                 """;
 
-        var result = MapperService.read(json, PrincipalUserMapping.PaginatedListOf.class);
+        var result = MapperService.read(json, PrincipalUserMappingPage.class);
 
-        assertEquals(1, result.items().size());
-        assertEquals("cursor-abc", result.next());
+        assertEquals(1, result.data().size());
+        assertEquals("cursor-abc", result.pagination().nextCursor());
     }
 
     @Test
@@ -111,7 +113,7 @@ class PrincipalUserMapperTest {
     }
 
     @Test
-    void testDeserializePrincipalUserMembershipPaginatedList() {
+    void testDeserializePrincipalUserMembershipPage() {
         var json = """
                 {
                   "items": [
@@ -126,9 +128,9 @@ class PrincipalUserMapperTest {
                 }
                 """;
 
-        var result = MapperService.read(json, PrincipalUserMembership.PaginatedListOf.class);
+        var result = MapperService.read(json, PrincipalUserMembershipPage.class);
 
-        assertEquals(1, result.items().size());
+        assertEquals(1, result.data().size());
     }
 
     @Test

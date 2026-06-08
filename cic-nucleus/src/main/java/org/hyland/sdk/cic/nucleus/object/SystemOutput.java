@@ -18,15 +18,15 @@
  */
 package org.hyland.sdk.cic.nucleus.object;
 
+import java.util.Objects;
+
 /**
  * @since 1.0.0
  */
 public record SystemOutput(String systemId, String name, String environmentId, SystemIntegrationType systemType) {
 
-    public static class PaginatedListOf extends PaginatedList<SystemOutput> {
-
-        public PaginatedListOf(java.util.List<SystemOutput> items, String next) {
-            super(items, next);
-        }
+    public SystemOutput {
+        Objects.requireNonNull(systemId, "systemId cannot be null");
+        Objects.requireNonNull(systemType, "systemType cannot be null");
     }
 }

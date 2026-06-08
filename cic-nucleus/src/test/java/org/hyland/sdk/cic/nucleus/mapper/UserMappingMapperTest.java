@@ -26,6 +26,7 @@ import org.skyscreamer.jsonassert.JSONAssert;
 
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
 import org.hyland.sdk.cic.nucleus.object.UserMapping;
+import org.hyland.sdk.cic.nucleus.object.UserMappingPage;
 import org.hyland.sdk.cic.nucleus.object.UserMappingReplaceInput;
 
 /**
@@ -54,7 +55,7 @@ class UserMappingMapperTest {
     }
 
     @Test
-    void testDeserializeUserMappingPaginatedList() {
+    void testDeserializeUserMappingPage() {
         var json = """
                 {
                   "items": [
@@ -68,11 +69,11 @@ class UserMappingMapperTest {
                 }
                 """;
 
-        var result = MapperService.read(json, UserMapping.PaginatedListOf.class);
+        var result = MapperService.read(json, UserMappingPage.class);
 
-        assertEquals(1, result.items().size());
-        assertEquals("ext-user-1", result.items().get(0).externalUserId());
-        assertNull(result.next());
+        assertEquals(1, result.data().size());
+        assertEquals("ext-user-1", result.data().get(0).externalUserId());
+        assertNull(result.pagination().nextCursor());
     }
 
     @Test

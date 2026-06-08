@@ -18,27 +18,38 @@
  */
 package org.hyland.sdk.cic.nucleus.object;
 
-import java.util.List;
-
 /**
+ * Optional parameters for listing principal user mappings with cursor-based pagination.
+ *
  * @since 1.0.0
  */
-public class PaginatedList<T> {
+public record ListPrincipalUserMappingsRequest(String cursor, Integer limit) {
 
-    private final List<T> items;
-
-    private final String next;
-
-    public PaginatedList(List<T> items, String next) {
-        this.items = items != null ? List.copyOf(items) : List.of();
-        this.next = next;
+    public static Builder builder() {
+        return new Builder();
     }
 
-    public List<T> items() {
-        return items;
-    }
+    public static final class Builder {
 
-    public String next() {
-        return next;
+        private String cursor;
+
+        private Integer limit;
+
+        private Builder() {
+        }
+
+        public Builder cursor(String cursor) {
+            this.cursor = cursor;
+            return this;
+        }
+
+        public Builder limit(int limit) {
+            this.limit = limit;
+            return this;
+        }
+
+        public ListPrincipalUserMappingsRequest build() {
+            return new ListPrincipalUserMappingsRequest(cursor, limit);
+        }
     }
 }

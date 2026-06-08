@@ -29,14 +29,7 @@ public record PrincipalUserMapping(String systemId, String externalUserId, List<
     public PrincipalUserMapping {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(externalUserId, "externalUserId cannot be null");
-        Objects.requireNonNull(attributes, "attributes cannot be null");
-        attributes = List.copyOf(attributes);
+        attributes = attributes != null ? List.copyOf(attributes) : List.of();
     }
 
-    public static class PaginatedListOf extends PaginatedList<PrincipalUserMapping> {
-
-        public PaginatedListOf(List<PrincipalUserMapping> items, String next) {
-            super(items, next);
-        }
-    }
 }

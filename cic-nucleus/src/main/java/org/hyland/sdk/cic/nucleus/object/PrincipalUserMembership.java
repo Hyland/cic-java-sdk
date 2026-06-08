@@ -31,14 +31,7 @@ public record PrincipalUserMembership(String externalGroupId, String systemId, M
         Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
         Objects.requireNonNull(systemId, "systemId cannot be null");
         Objects.requireNonNull(membershipType, "membershipType cannot be null");
-        Objects.requireNonNull(attributes, "attributes cannot be null");
-        attributes = List.copyOf(attributes);
+        attributes = attributes != null ? List.copyOf(attributes) : List.of();
     }
 
-    public static class PaginatedListOf extends PaginatedList<PrincipalUserMembership> {
-
-        public PaginatedListOf(List<PrincipalUserMembership> items, String next) {
-            super(items, next);
-        }
-    }
 }

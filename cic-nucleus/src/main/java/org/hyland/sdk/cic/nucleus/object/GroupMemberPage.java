@@ -19,16 +19,18 @@
 package org.hyland.sdk.cic.nucleus.object;
 
 import java.util.List;
-import java.util.Objects;
+
+import org.hyland.sdk.cic.http.client.pagination.CursorPageableResponse;
+import org.hyland.sdk.cic.http.client.pagination.CursorPagination;
 
 /**
+ * Type-token class for cursor-paginated {@link GroupMember} responses, used for mapper lookup.
+ *
  * @since 1.0.0
  */
-public record GroupOutput(String externalGroupId, List<Attribute> attributes) {
+public class GroupMemberPage extends CursorPageableResponse<GroupMember> {
 
-    public GroupOutput {
-        Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
-        attributes = attributes != null ? List.copyOf(attributes) : List.of();
+    public GroupMemberPage(List<GroupMember> data, CursorPagination pagination) {
+        super(data, pagination);
     }
-
 }

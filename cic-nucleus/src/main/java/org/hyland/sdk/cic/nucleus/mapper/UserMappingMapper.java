@@ -38,7 +38,7 @@ class UserMappingMapper implements CICMapper<UserMapping> {
         return new UserMapping(obj.getStringOrThrow("userId"), obj.getStringOrThrow("externalUserId"),
                 obj.getOptionalArray("attributes")
                    .map(a -> a.toListObject().stream().map(attributeMapper::fromCICNode).toList())
-                   .orElse(null));
+                   .orElse(java.util.List.of()));
     }
 
 }

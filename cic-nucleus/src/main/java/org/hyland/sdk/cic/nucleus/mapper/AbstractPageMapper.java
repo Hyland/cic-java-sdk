@@ -19,44 +19,42 @@
 package org.hyland.sdk.cic.nucleus.mapper;
 
 import java.util.List;
-import java.util.function.BiFunction;
 
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
-import org.hyland.sdk.cic.nucleus.object.PaginatedList;
+import org.hyland.sdk.cic.http.client.pagination.CursorPagination;
+import org.hyland.sdk.cic.nucleus.pagination.NucleusCursorExtractor;
 
 /**
- * Generic paginated-list mapper. Reads a page envelope with an items array and a {@code next} cursor, delegating each
- * item to the provided item mapper and constructing the result via the provided factory.
- *
- * @param <T> the item type
- * @param <L> the paginated list type
  * @since 1.0.0
  */
-class PaginatedListMapper<T, L extends PaginatedList<T>> implements CICMapper<L> {
+abstract class AbstractPageMapper<T, P> implements CICMapper<P> {
 
     private final CICMapper<T> itemMapper;
 
-    private final String itemsKey;
+    private final String arrayField;
 
-    private final BiFunction<List<T>, String, L> factory;
+    protected AbstractPageMapper(CICMapper<T> itemMapper) {
+        this(itemMapper, "items");
+    }
 
-    PaginatedListMapper(CICMapper<T> itemMapper, String itemsKey, BiFunction<List<T>, String, L> factory) {
+    protected AbstractPageMapper(CICMapper<T> itemMapper, String arrayField) {
         this.itemMapper = itemMapper;
-        this.itemsKey = itemsKey;
-        this.factory = factory;
+        this.arrayField = arrayField;
     }
 
     @Override
-    public L fromCICNode(CICNode cicNode) {
+    public P fromCICNode(CICNode cicNode) {
         if (!(cicNode instanceof CICObject obj)) {
             throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
         }
-        var items = obj.getOptionalArray(itemsKey)
-                       .map(a -> a.toListObject().stream().map(itemMapper::fromCICNode).toList())
-                       .orElse(null);
-        var next = obj.getString("next", null);
-        return factory.apply(items, next);
+        var data = obj.getOptionalArray(arrayField)
+                      .map(a -> a.toListObject().stream().map(itemMapper::fromCICNode).toList())
+                      .orElse(List.of());
+        var cursor = NucleusCursorExtractor.extract(obj.getString("next", null));
+        return createPage(data, new CursorPagination(cursor, cursor != null));
     }
+
+    protected abstract P createPage(List<T> data, CursorPagination pagination);
 }

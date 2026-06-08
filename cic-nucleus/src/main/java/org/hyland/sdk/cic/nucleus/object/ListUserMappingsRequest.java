@@ -18,17 +18,38 @@
  */
 package org.hyland.sdk.cic.nucleus.object;
 
-import java.util.List;
-import java.util.Objects;
-
 /**
+ * Optional parameters for listing user mappings with cursor-based pagination.
+ *
  * @since 1.0.0
  */
-public record GroupOutput(String externalGroupId, List<Attribute> attributes) {
+public record ListUserMappingsRequest(String cursor, Integer limit) {
 
-    public GroupOutput {
-        Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
-        attributes = attributes != null ? List.copyOf(attributes) : List.of();
+    public static Builder builder() {
+        return new Builder();
     }
 
+    public static final class Builder {
+
+        private String cursor;
+
+        private Integer limit;
+
+        private Builder() {
+        }
+
+        public Builder cursor(String cursor) {
+            this.cursor = cursor;
+            return this;
+        }
+
+        public Builder limit(int limit) {
+            this.limit = limit;
+            return this;
+        }
+
+        public ListUserMappingsRequest build() {
+            return new ListUserMappingsRequest(cursor, limit);
+        }
+    }
 }

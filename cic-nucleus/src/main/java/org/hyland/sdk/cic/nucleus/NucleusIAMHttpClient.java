@@ -26,6 +26,7 @@ import org.hyland.sdk.cic.http.client.auth.AbstractAuthenticatedHttpClient;
 import org.hyland.sdk.cic.http.client.auth.AbstractAuthenticatedHttpClientBuilder;
 import org.hyland.sdk.cic.http.client.auth.AuthenticationHttpClient;
 import org.hyland.sdk.cic.nucleus.object.InteractiveUser;
+import org.hyland.sdk.cic.nucleus.object.InteractiveUserPage;
 
 /**
  * HTTP client for interacting with the Nucleus IAM API.
@@ -40,6 +41,11 @@ public class NucleusIAMHttpClient extends AbstractAuthenticatedHttpClient {
         super(builder);
     }
 
+    public static Builder from() {
+        // TODO turn this to production
+        return from("https://auth.dev.app.hyland.com");
+    }
+
     public static Builder from(String baseUrl) {
         return from(baseUrl, AuthenticationHttpClient.from());
     }
@@ -48,7 +54,7 @@ public class NucleusIAMHttpClient extends AbstractAuthenticatedHttpClient {
         return new Builder(baseUrl, authenticationBuilder);
     }
 
-    public InteractiveUser.PaginatedListOf listUsers(String externalId, String cursor, Integer limit) {
+    public InteractiveUserPage listUsers(String externalId, String cursor, Integer limit) {
         var requestBuilder = this.requestBuilder(GET, USERS_PATH);
         if (externalId != null) {
             requestBuilder.queryParameter("externalid", externalId);
@@ -59,7 +65,7 @@ public class NucleusIAMHttpClient extends AbstractAuthenticatedHttpClient {
         if (limit != null) {
             requestBuilder.queryParameter("limit", limit.toString());
         }
-        return sendThenMapAs(requestBuilder.build(), InteractiveUser.PaginatedListOf.class);
+        return sendThenMapAs(requestBuilder.build(), InteractiveUserPage.class);
     }
 
     public InteractiveUser getUser(String userId) {

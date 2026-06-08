@@ -16,19 +16,25 @@
  * Contributors:
  *     Damian Ujma <damian.ujma@hyland.com>
  */
-package org.hyland.sdk.cic.nucleus.object;
+package org.hyland.sdk.cic.nucleus.mapper;
 
 import java.util.List;
-import java.util.Objects;
+
+import org.hyland.sdk.cic.http.client.pagination.CursorPagination;
+import org.hyland.sdk.cic.nucleus.object.GroupOutput;
+import org.hyland.sdk.cic.nucleus.object.GroupOutputPage;
 
 /**
  * @since 1.0.0
  */
-public record GroupOutput(String externalGroupId, List<Attribute> attributes) {
+class GroupOutputPageMapper extends AbstractPageMapper<GroupOutput, GroupOutputPage> {
 
-    public GroupOutput {
-        Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
-        attributes = attributes != null ? List.copyOf(attributes) : List.of();
+    GroupOutputPageMapper() {
+        super(new GroupOutputMapper());
     }
 
+    @Override
+    protected GroupOutputPage createPage(List<GroupOutput> data, CursorPagination pagination) {
+        return new GroupOutputPage(data, pagination);
+    }
 }

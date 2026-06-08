@@ -19,13 +19,13 @@
 package org.hyland.sdk.cic.nucleus;
 
 import java.util.Objects;
+import java.util.function.Consumer;
 
 import org.hyland.sdk.cic.http.client.CICSdkException;
 import org.hyland.sdk.cic.http.client.pagination.CursorPageIterable;
-import org.hyland.sdk.cic.http.client.pagination.CursorPageableResponse;
-import org.hyland.sdk.cic.http.client.pagination.CursorPagination;
 import org.hyland.sdk.cic.nucleus.object.InteractiveUser;
-import org.hyland.sdk.cic.nucleus.object.PaginatedList;
+import org.hyland.sdk.cic.nucleus.object.InteractiveUserPage;
+import org.hyland.sdk.cic.nucleus.object.ListUsersRequest;
 
 /**
  * High-level service for CIC Users API operations.
@@ -46,33 +46,24 @@ public class UsersService {
      * @return the first page of users
      * @throws CICSdkException if the request fails
      */
-    public InteractiveUser.PaginatedListOf listUsers() {
+    public InteractiveUserPage listUsers() {
         return httpClient.listUsers(null, null, null);
     }
 
     /**
-     * Lists users for the given page.
+     * Lists users using a builder consumer to specify optional filter and pagination parameters.
      *
-     * @param cursor the pagination cursor from a previous response, or {@code null} for the first page
-     * @param limit the maximum number of items to return, or {@code null} for the server default
+     * @param consumer configures optional parameters (externalId, cursor, limit)
      * @return the requested page of users
+     * @throws NullPointerException if consumer is null
      * @throws CICSdkException if the request fails
      */
-    public InteractiveUser.PaginatedListOf listUsers(String cursor, Integer limit) {
-        return httpClient.listUsers(null, cursor, limit);
-    }
-
-    /**
-     * Lists users filtered by external ID for the given page.
-     *
-     * @param externalId the external ID to filter by, or {@code null} for no filter
-     * @param cursor the pagination cursor from a previous response, or {@code null} for the first page
-     * @param limit the maximum number of items to return, or {@code null} for the server default
-     * @return the requested page of users
-     * @throws CICSdkException if the request fails
-     */
-    public InteractiveUser.PaginatedListOf listUsers(String externalId, String cursor, Integer limit) {
-        return httpClient.listUsers(externalId, cursor, limit);
+    public InteractiveUserPage listUsers(Consumer<ListUsersRequest.Builder> consumer) {
+        Objects.requireNonNull(consumer, "consumer cannot be null");
+        var builder = ListUsersRequest.builder();
+        consumer.accept(builder);
+        var request = builder.build();
+        return httpClient.listUsers(request.externalId(), request.cursor(), request.limit());
     }
 
     /**
@@ -81,39 +72,25 @@ public class UsersService {
      * @return an iterable that fetches pages on demand
      */
     public CursorPageIterable<InteractiveUser> listUsersPaginator() {
-        return new CursorPageIterable<>(cursor -> toPageableResponse(httpClient.listUsers(null, cursor, null)));
+        return new CursorPageIterable<>(cursor -> httpClient.listUsers(null, cursor, null));
     }
 
     /**
-     * Returns a lazily-fetching {@link Iterable} over all users across all pages, using the given page size.
+     * Returns a lazily-fetching {@link Iterable} over all users across all pages, using a builder consumer to specify
+     * optional filter and pagination parameters.
+     * <p>
+     * The {@code cursor} field of the request is ignored; the paginator manages the cursor internally.
      *
-     * @param limit the page size, or {@code null} for the server default
+     * @param consumer configures optional parameters (externalId, limit)
      * @return an iterable that fetches pages on demand
+     * @throws NullPointerException if consumer is null
      */
-    public CursorPageIterable<InteractiveUser> listUsersPaginator(Integer limit) {
-        return new CursorPageIterable<>(cursor -> toPageableResponse(httpClient.listUsers(null, cursor, limit)));
-    }
-
-    /**
-     * Returns a lazily-fetching {@link Iterable} over users filtered by external ID across all pages.
-     *
-     * @param externalId the external ID to filter by
-     * @return an iterable that fetches pages on demand
-     */
-    public CursorPageIterable<InteractiveUser> listUsersPaginator(String externalId) {
-        return new CursorPageIterable<>(cursor -> toPageableResponse(httpClient.listUsers(externalId, cursor, null)));
-    }
-
-    /**
-     * Returns a lazily-fetching {@link Iterable} over users filtered by external ID across all pages, using the given
-     * page size.
-     *
-     * @param externalId the external ID to filter by
-     * @param limit the page size, or {@code null} for the server default
-     * @return an iterable that fetches pages on demand
-     */
-    public CursorPageIterable<InteractiveUser> listUsersPaginator(String externalId, Integer limit) {
-        return new CursorPageIterable<>(cursor -> toPageableResponse(httpClient.listUsers(externalId, cursor, limit)));
+    public CursorPageIterable<InteractiveUser> listUsersPaginator(Consumer<ListUsersRequest.Builder> consumer) {
+        Objects.requireNonNull(consumer, "consumer cannot be null");
+        var builder = ListUsersRequest.builder();
+        consumer.accept(builder);
+        var request = builder.build();
+        return new CursorPageIterable<>(cursor -> httpClient.listUsers(request.externalId(), cursor, request.limit()));
     }
 
     /**
@@ -129,8 +106,4 @@ public class UsersService {
         return httpClient.getUser(userId);
     }
 
-    private static <T> CursorPageableResponse<T> toPageableResponse(PaginatedList<T> page) {
-        var next = page.next();
-        return new CursorPageableResponse<>(page.items(), new CursorPagination(next, next != null));
-    }
 }

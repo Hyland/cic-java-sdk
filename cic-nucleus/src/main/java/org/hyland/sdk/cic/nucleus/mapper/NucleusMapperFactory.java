@@ -18,7 +18,6 @@
  */
 package org.hyland.sdk.cic.nucleus.mapper;
 
-import java.util.List;
 import java.util.Map;
 
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
@@ -28,13 +27,20 @@ import org.hyland.sdk.cic.nucleus.object.AttributeInput;
 import org.hyland.sdk.cic.nucleus.object.GroupCreateInput;
 import org.hyland.sdk.cic.nucleus.object.GroupMember;
 import org.hyland.sdk.cic.nucleus.object.GroupMemberAssignmentInput;
+import org.hyland.sdk.cic.nucleus.object.GroupMemberPage;
 import org.hyland.sdk.cic.nucleus.object.GroupOutput;
+import org.hyland.sdk.cic.nucleus.object.GroupOutputPage;
 import org.hyland.sdk.cic.nucleus.object.InteractiveUser;
+import org.hyland.sdk.cic.nucleus.object.InteractiveUserPage;
 import org.hyland.sdk.cic.nucleus.object.PrincipalUserMapping;
+import org.hyland.sdk.cic.nucleus.object.PrincipalUserMappingPage;
 import org.hyland.sdk.cic.nucleus.object.PrincipalUserMembership;
+import org.hyland.sdk.cic.nucleus.object.PrincipalUserMembershipPage;
 import org.hyland.sdk.cic.nucleus.object.SystemOutput;
+import org.hyland.sdk.cic.nucleus.object.SystemOutputPage;
 import org.hyland.sdk.cic.nucleus.object.UserMapping;
 import org.hyland.sdk.cic.nucleus.object.UserMappingCreateInput;
+import org.hyland.sdk.cic.nucleus.object.UserMappingPage;
 import org.hyland.sdk.cic.nucleus.object.UserMappingReplaceInput;
 
 /**
@@ -42,34 +48,24 @@ import org.hyland.sdk.cic.nucleus.object.UserMappingReplaceInput;
  */
 public class NucleusMapperFactory implements MapperService.MapperFactory {
 
-    private static final List<Map.Entry<Class<?>, CICMapper<?>>> MAPPERS = List.of(
+    private static final Map<Class<?>, CICMapper<?>> MAPPERS = Map.ofEntries(
             Map.entry(Attribute.ListOf.class, new AttributeMapper.ListMapper()),
             Map.entry(Attribute.class, new AttributeMapper()),
-            Map.entry(InteractiveUser.PaginatedListOf.class,
-                    new PaginatedListMapper<>(new InteractiveUserMapper(), "users",
-                            InteractiveUser.PaginatedListOf::new)),
+            Map.entry(InteractiveUserPage.class, new InteractiveUserPageMapper()),
             Map.entry(InteractiveUser.class, new InteractiveUserMapper()),
             Map.entry(AttributeInput.ListOf.class, new AttributeInputMapper.ListMapper()),
             Map.entry(AttributeInput.class, new AttributeInputMapper()),
-            Map.entry(SystemOutput.PaginatedListOf.class,
-                    new PaginatedListMapper<>(new SystemOutputMapper(), "items", SystemOutput.PaginatedListOf::new)),
+            Map.entry(SystemOutputPage.class, new SystemOutputPageMapper()),
             Map.entry(SystemOutput.class, new SystemOutputMapper()),
-            Map.entry(GroupOutput.PaginatedListOf.class,
-                    new PaginatedListMapper<>(new GroupOutputMapper(), "items", GroupOutput.PaginatedListOf::new)),
+            Map.entry(GroupOutputPage.class, new GroupOutputPageMapper()),
             Map.entry(GroupOutput.class, new GroupOutputMapper()),
-            Map.entry(GroupMember.PaginatedListOf.class,
-                    new PaginatedListMapper<>(new GroupMemberMapper(), "items", GroupMember.PaginatedListOf::new)),
+            Map.entry(GroupMemberPage.class, new GroupMemberPageMapper()),
             Map.entry(GroupMember.class, new GroupMemberMapper()),
-            Map.entry(UserMapping.PaginatedListOf.class,
-                    new PaginatedListMapper<>(new UserMappingMapper(), "items", UserMapping.PaginatedListOf::new)),
+            Map.entry(UserMappingPage.class, new UserMappingPageMapper()),
             Map.entry(UserMapping.class, new UserMappingMapper()),
-            Map.entry(PrincipalUserMapping.PaginatedListOf.class,
-                    new PaginatedListMapper<>(new PrincipalUserMappingMapper(), "items",
-                            PrincipalUserMapping.PaginatedListOf::new)),
+            Map.entry(PrincipalUserMappingPage.class, new PrincipalUserMappingPageMapper()),
             Map.entry(PrincipalUserMapping.class, new PrincipalUserMappingMapper()),
-            Map.entry(PrincipalUserMembership.PaginatedListOf.class,
-                    new PaginatedListMapper<>(new PrincipalUserMembershipMapper(), "items",
-                            PrincipalUserMembership.PaginatedListOf::new)),
+            Map.entry(PrincipalUserMembershipPage.class, new PrincipalUserMembershipPageMapper()),
             Map.entry(PrincipalUserMembership.class, new PrincipalUserMembershipMapper()),
             Map.entry(GroupCreateInput.ListOf.class, new GroupCreateInputMapper.ListMapper()),
             Map.entry(GroupCreateInput.class, new GroupCreateInputMapper()),
@@ -82,11 +78,6 @@ public class NucleusMapperFactory implements MapperService.MapperFactory {
     @Override
     @SuppressWarnings("unchecked")
     public <T> CICMapper<T> getMapper(Class<T> type) {
-        for (var entry : MAPPERS) {
-            if (entry.getKey().isAssignableFrom(type)) {
-                return (CICMapper<T>) entry.getValue();
-            }
-        }
-        return null;
+        return (CICMapper<T>) MAPPERS.get(type);
     }
 }

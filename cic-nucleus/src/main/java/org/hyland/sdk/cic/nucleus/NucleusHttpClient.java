@@ -35,14 +35,17 @@ import org.hyland.sdk.cic.http.client.util.ErrorUtils;
 import org.hyland.sdk.cic.nucleus.object.Attribute;
 import org.hyland.sdk.cic.nucleus.object.AttributeInput;
 import org.hyland.sdk.cic.nucleus.object.GroupCreateInput;
-import org.hyland.sdk.cic.nucleus.object.GroupMember;
 import org.hyland.sdk.cic.nucleus.object.GroupMemberAssignmentInput;
+import org.hyland.sdk.cic.nucleus.object.GroupMemberPage;
 import org.hyland.sdk.cic.nucleus.object.GroupOutput;
-import org.hyland.sdk.cic.nucleus.object.PrincipalUserMapping;
-import org.hyland.sdk.cic.nucleus.object.PrincipalUserMembership;
+import org.hyland.sdk.cic.nucleus.object.GroupOutputPage;
+import org.hyland.sdk.cic.nucleus.object.PrincipalUserMappingPage;
+import org.hyland.sdk.cic.nucleus.object.PrincipalUserMembershipPage;
 import org.hyland.sdk.cic.nucleus.object.SystemOutput;
+import org.hyland.sdk.cic.nucleus.object.SystemOutputPage;
 import org.hyland.sdk.cic.nucleus.object.UserMapping;
 import org.hyland.sdk.cic.nucleus.object.UserMappingCreateInput;
+import org.hyland.sdk.cic.nucleus.object.UserMappingPage;
 import org.hyland.sdk.cic.nucleus.object.UserMappingReplaceInput;
 
 /**
@@ -60,6 +63,11 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         super(builder);
     }
 
+    public static Builder from() {
+        // TODO turn this to production
+        return from("https://api.platform.dev.app.hyland.com");
+    }
+
     public static Builder from(String baseUrl) {
         return from(baseUrl, AuthenticationHttpClient.from());
     }
@@ -68,7 +76,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         return new Builder(baseUrl, authenticationBuilder);
     }
 
-    public SystemOutput.PaginatedListOf listSystems(String cursor, Integer limit) {
+    public SystemOutputPage listSystems(String cursor, Integer limit) {
         var requestBuilder = this.requestBuilder(GET, SYSTEMS_PATH);
         if (cursor != null) {
             requestBuilder.queryParameter("Cursor", cursor);
@@ -76,7 +84,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         if (limit != null) {
             requestBuilder.queryParameter("Limit", limit.toString());
         }
-        return sendThenMapAs(requestBuilder.build(), SystemOutput.PaginatedListOf.class);
+        return sendThenMapAs(requestBuilder.build(), SystemOutputPage.class);
     }
 
     public SystemOutput getSystem(String systemId) {
@@ -85,7 +93,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         return sendThenMapAs(request, SystemOutput.class);
     }
 
-    public GroupOutput.PaginatedListOf listGroups(String systemId, String cursor, Integer limit) {
+    public GroupOutputPage listGroups(String systemId, String cursor, Integer limit) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         var requestBuilder = this.requestBuilder(GET, SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/groups");
         if (cursor != null) {
@@ -94,7 +102,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         if (limit != null) {
             requestBuilder.queryParameter("Limit", limit.toString());
         }
-        return sendThenMapAs(requestBuilder.build(), GroupOutput.PaginatedListOf.class);
+        return sendThenMapAs(requestBuilder.build(), GroupOutputPage.class);
     }
 
     public GroupOutput getGroup(String systemId, String externalGroupId) {
@@ -185,8 +193,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         sendExpectingSuccess(request, "Failed to delete group attribute");
     }
 
-    public GroupMember.PaginatedListOf listGroupMembers(String systemId, String externalGroupId, String cursor,
-            Integer limit) {
+    public GroupMemberPage listGroupMembers(String systemId, String externalGroupId, String cursor, Integer limit) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         var requestBuilder = this.requestBuilder(GET,
                 SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/group-members");
@@ -199,7 +206,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         if (limit != null) {
             requestBuilder.queryParameter("Limit", limit.toString());
         }
-        return sendThenMapAs(requestBuilder.build(), GroupMember.PaginatedListOf.class);
+        return sendThenMapAs(requestBuilder.build(), GroupMemberPage.class);
     }
 
     public void assignGroupMembers(String systemId, List<GroupMemberAssignmentInput> assignments) {
@@ -229,7 +236,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         sendExpectingSuccess(requestBuilder.build(), "Failed to remove group members");
     }
 
-    public UserMapping.PaginatedListOf listUserMappings(String systemId, String cursor, Integer limit) {
+    public UserMappingPage listUserMappings(String systemId, String cursor, Integer limit) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         var requestBuilder = this.requestBuilder(GET,
                 SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/user-mappings");
@@ -239,7 +246,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         if (limit != null) {
             requestBuilder.queryParameter("Limit", limit.toString());
         }
-        return sendThenMapAs(requestBuilder.build(), UserMapping.PaginatedListOf.class);
+        return sendThenMapAs(requestBuilder.build(), UserMappingPage.class);
     }
 
     public UserMapping getUserMapping(String systemId, String externalUserId) {
@@ -344,8 +351,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         sendExpectingSuccess(request, "Failed to delete user mapping attribute");
     }
 
-    public PrincipalUserMapping.PaginatedListOf listPrincipalUserMappings(String principalUserId, String cursor,
-            Integer limit) {
+    public PrincipalUserMappingPage listPrincipalUserMappings(String principalUserId, String cursor, Integer limit) {
         Objects.requireNonNull(principalUserId, "principalUserId cannot be null");
         var requestBuilder = this.requestBuilder(GET,
                 PRINCIPAL_USERS_PATH + "/" + encodePathSegment(principalUserId) + "/user-mappings");
@@ -355,10 +361,10 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         if (limit != null) {
             requestBuilder.queryParameter("Limit", limit.toString());
         }
-        return sendThenMapAs(requestBuilder.build(), PrincipalUserMapping.PaginatedListOf.class);
+        return sendThenMapAs(requestBuilder.build(), PrincipalUserMappingPage.class);
     }
 
-    public PrincipalUserMembership.PaginatedListOf listPrincipalUserMemberships(String principalUserId, String cursor,
+    public PrincipalUserMembershipPage listPrincipalUserMemberships(String principalUserId, String cursor,
             Integer limit) {
         Objects.requireNonNull(principalUserId, "principalUserId cannot be null");
         var requestBuilder = this.requestBuilder(GET,
@@ -369,7 +375,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         if (limit != null) {
             requestBuilder.queryParameter("Limit", limit.toString());
         }
-        return sendThenMapAs(requestBuilder.build(), PrincipalUserMembership.PaginatedListOf.class);
+        return sendThenMapAs(requestBuilder.build(), PrincipalUserMembershipPage.class);
     }
 
     /**

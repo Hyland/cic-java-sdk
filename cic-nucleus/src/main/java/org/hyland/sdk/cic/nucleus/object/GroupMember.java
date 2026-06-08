@@ -18,7 +18,6 @@
  */
 package org.hyland.sdk.cic.nucleus.object;
 
-import java.util.List;
 import java.util.Objects;
 
 /**
@@ -30,10 +29,4 @@ public record GroupMember(String externalGroupId, String memberExternalUserId, S
         Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
     }
 
-    public static class PaginatedListOf extends PaginatedList<GroupMember> {
-
-        public PaginatedListOf(List<GroupMember> items, String next) {
-            super(items, next);
-        }
-    }
 }

@@ -16,19 +16,26 @@
  * Contributors:
  *     Damian Ujma <damian.ujma@hyland.com>
  */
-package org.hyland.sdk.cic.nucleus.object;
+package org.hyland.sdk.cic.nucleus.mapper;
 
 import java.util.List;
-import java.util.Objects;
+
+import org.hyland.sdk.cic.http.client.pagination.CursorPagination;
+import org.hyland.sdk.cic.nucleus.object.PrincipalUserMembership;
+import org.hyland.sdk.cic.nucleus.object.PrincipalUserMembershipPage;
 
 /**
  * @since 1.0.0
  */
-public record GroupOutput(String externalGroupId, List<Attribute> attributes) {
+class PrincipalUserMembershipPageMapper
+        extends AbstractPageMapper<PrincipalUserMembership, PrincipalUserMembershipPage> {
 
-    public GroupOutput {
-        Objects.requireNonNull(externalGroupId, "externalGroupId cannot be null");
-        attributes = attributes != null ? List.copyOf(attributes) : List.of();
+    PrincipalUserMembershipPageMapper() {
+        super(new PrincipalUserMembershipMapper());
     }
 
+    @Override
+    protected PrincipalUserMembershipPage createPage(List<PrincipalUserMembership> data, CursorPagination pagination) {
+        return new PrincipalUserMembershipPage(data, pagination);
+    }
 }

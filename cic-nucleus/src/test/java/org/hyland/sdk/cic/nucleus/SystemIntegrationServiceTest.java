@@ -22,25 +22,33 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import org.hyland.sdk.cic.http.client.auth.AuthenticationHttpClient;
+import org.hyland.sdk.cic.http.client.pagination.CursorPagination;
 import org.hyland.sdk.cic.nucleus.object.Attribute;
 import org.hyland.sdk.cic.nucleus.object.AttributeInput;
 import org.hyland.sdk.cic.nucleus.object.GroupCreateInput;
 import org.hyland.sdk.cic.nucleus.object.GroupMember;
 import org.hyland.sdk.cic.nucleus.object.GroupMemberAssignmentInput;
+import org.hyland.sdk.cic.nucleus.object.GroupMemberPage;
 import org.hyland.sdk.cic.nucleus.object.GroupOutput;
+import org.hyland.sdk.cic.nucleus.object.GroupOutputPage;
 import org.hyland.sdk.cic.nucleus.object.MembershipType;
 import org.hyland.sdk.cic.nucleus.object.PrincipalUserMapping;
+import org.hyland.sdk.cic.nucleus.object.PrincipalUserMappingPage;
 import org.hyland.sdk.cic.nucleus.object.PrincipalUserMembership;
+import org.hyland.sdk.cic.nucleus.object.PrincipalUserMembershipPage;
 import org.hyland.sdk.cic.nucleus.object.SystemIntegrationType;
 import org.hyland.sdk.cic.nucleus.object.SystemOutput;
+import org.hyland.sdk.cic.nucleus.object.SystemOutputPage;
 import org.hyland.sdk.cic.nucleus.object.UserMapping;
 import org.hyland.sdk.cic.nucleus.object.UserMappingCreateInput;
+import org.hyland.sdk.cic.nucleus.object.UserMappingPage;
 import org.hyland.sdk.cic.nucleus.object.UserMappingReplaceInput;
 
 /**
@@ -68,20 +76,20 @@ class SystemIntegrationServiceTest {
 
     @Test
     void testListSystems() {
-        httpClient.systemsPaginated = new SystemOutput.PaginatedListOf(
+        httpClient.systemsPaginated = systemPage(
                 List.of(new SystemOutput(SYSTEM_ID, "TestSystem", "env-id-1", SystemIntegrationType.ON_BASE)), null);
 
         var result = service.listSystems();
 
-        assertEquals(1, result.items().size());
-        assertEquals("TestSystem", result.items().get(0).name());
+        assertEquals(1, result.data().size());
+        assertEquals("TestSystem", result.data().get(0).name());
     }
 
     @Test
     void testListSystemsWithPagination() {
-        httpClient.systemsPaginated = new SystemOutput.PaginatedListOf(List.of(), null);
+        httpClient.systemsPaginated = systemPage(List.of(), null);
 
-        service.listSystems("cursor-1", 5);
+        service.listSystems(r -> r.cursor("cursor-1").limit(5));
 
         assertEquals("cursor-1", httpClient.lastCursor);
         assertEquals(5, httpClient.lastLimit);
@@ -89,7 +97,7 @@ class SystemIntegrationServiceTest {
 
     @Test
     void testListSystemsPaginator() {
-        httpClient.systemsPaginated = new SystemOutput.PaginatedListOf(
+        httpClient.systemsPaginated = systemPage(
                 List.of(new SystemOutput(SYSTEM_ID, "TestSystem", "env-id-1", SystemIntegrationType.ON_BASE)), null);
 
         var items = new ArrayList<SystemOutput>();
@@ -97,6 +105,27 @@ class SystemIntegrationServiceTest {
 
         assertEquals(1, items.size());
         assertEquals("TestSystem", items.get(0).name());
+    }
+
+    @Test
+    void testListSystemsPaginatorExtractsCursorFromNextUrl() {
+        var system1 = new SystemOutput("sys-id-1", "System1", "env-id-1", SystemIntegrationType.ON_BASE);
+        var system2 = new SystemOutput("sys-id-2", "System2", "env-id-2", SystemIntegrationType.ON_BASE);
+        var system3 = new SystemOutput("sys-id-3", "System3", "env-id-3", SystemIntegrationType.ON_BASE);
+
+        httpClient.systemsPaginatedPages = List.of(systemPage(List.of(system1), "cursor1"),
+                systemPage(List.of(system2), "cursor2"), systemPage(List.of(system3), null));
+
+        var items = new ArrayList<SystemOutput>();
+        service.listSystemsPaginator().forEach(items::add);
+
+        assertEquals(3, items.size());
+        assertEquals("System1", items.get(0).name());
+        assertEquals("System2", items.get(1).name());
+        assertEquals("System3", items.get(2).name());
+
+        // exactly 3 calls: null → cursor1 → cursor2, then no 4th call because "next" was absent
+        assertEquals(Arrays.asList(null, "cursor1", "cursor2"), httpClient.capturedCursors);
     }
 
     @Test
@@ -132,21 +161,20 @@ class SystemIntegrationServiceTest {
 
     @Test
     void testSystemListGroups() {
-        httpClient.groupsPaginated = new GroupOutput.PaginatedListOf(List.of(new GroupOutput("ext-group-1", List.of())),
-                null);
+        httpClient.groupsPaginated = groupPage(List.of(new GroupOutput("ext-group-1", List.of())), null);
 
         var result = service.system(SYSTEM_ID).listGroups();
 
-        assertEquals(1, result.items().size());
-        assertEquals("ext-group-1", result.items().get(0).externalGroupId());
+        assertEquals(1, result.data().size());
+        assertEquals("ext-group-1", result.data().get(0).externalGroupId());
         assertEquals(SYSTEM_ID, httpClient.lastSystemId);
     }
 
     @Test
     void testSystemListGroupsWithPagination() {
-        httpClient.groupsPaginated = new GroupOutput.PaginatedListOf(List.of(), null);
+        httpClient.groupsPaginated = groupPage(List.of(), null);
 
-        service.system(SYSTEM_ID).listGroups("cursor-1", 10);
+        service.system(SYSTEM_ID).listGroups(r -> r.cursor("cursor-1").limit(10));
 
         assertEquals("cursor-1", httpClient.lastCursor);
         assertEquals(10, httpClient.lastLimit);
@@ -154,8 +182,7 @@ class SystemIntegrationServiceTest {
 
     @Test
     void testSystemListGroupsPaginator() {
-        httpClient.groupsPaginated = new GroupOutput.PaginatedListOf(List.of(new GroupOutput("ext-group-1", List.of())),
-                null);
+        httpClient.groupsPaginated = groupPage(List.of(new GroupOutput("ext-group-1", List.of())), null);
 
         var items = new ArrayList<GroupOutput>();
         service.system(SYSTEM_ID).listGroupsPaginator().forEach(items::add);
@@ -258,21 +285,21 @@ class SystemIntegrationServiceTest {
 
     @Test
     void testSystemGetGroupMembers() {
-        httpClient.groupMembersPaginated = new GroupMember.PaginatedListOf(
-                List.of(new GroupMember("ext-group-1", "user-1", null)), null);
+        httpClient.groupMembersPaginated = groupMemberPage(List.of(new GroupMember("ext-group-1", "user-1", null)),
+                null);
 
         var result = service.system(SYSTEM_ID).listGroupMembers();
 
-        assertEquals(1, result.items().size());
-        assertEquals("user-1", result.items().get(0).memberExternalUserId());
+        assertEquals(1, result.data().size());
+        assertEquals("user-1", result.data().get(0).memberExternalUserId());
         assertEquals(SYSTEM_ID, httpClient.lastSystemId);
     }
 
     @Test
     void testSystemGetGroupMembersWithFilter() {
-        httpClient.groupMembersPaginated = new GroupMember.PaginatedListOf(List.of(), null);
+        httpClient.groupMembersPaginated = groupMemberPage(List.of(), null);
 
-        service.system(SYSTEM_ID).listGroupMembers("ext-group-1", "cursor-1", 20);
+        service.system(SYSTEM_ID).listGroupMembers(r -> r.externalGroupId("ext-group-1").cursor("cursor-1").limit(20));
 
         assertEquals(SYSTEM_ID, httpClient.lastSystemId);
         assertEquals("ext-group-1", httpClient.lastExternalGroupId);
@@ -282,8 +309,8 @@ class SystemIntegrationServiceTest {
 
     @Test
     void testSystemGetGroupMembersPaginator() {
-        httpClient.groupMembersPaginated = new GroupMember.PaginatedListOf(
-                List.of(new GroupMember("ext-group-1", "user-1", null)), null);
+        httpClient.groupMembersPaginated = groupMemberPage(List.of(new GroupMember("ext-group-1", "user-1", null)),
+                null);
 
         var items = new ArrayList<GroupMember>();
         service.system(SYSTEM_ID).listGroupMembersPaginator().forEach(items::add);
@@ -313,21 +340,21 @@ class SystemIntegrationServiceTest {
 
     @Test
     void testSystemListUserMappings() {
-        httpClient.userMappingsPaginated = new UserMapping.PaginatedListOf(
-                List.of(new UserMapping(USER_ID, "ext-user-1", List.of())), null);
+        httpClient.userMappingsPaginated = userMappingPage(List.of(new UserMapping(USER_ID, "ext-user-1", List.of())),
+                null);
 
         var result = service.system(SYSTEM_ID).listUserMappings();
 
-        assertEquals(1, result.items().size());
-        assertEquals("ext-user-1", result.items().get(0).externalUserId());
+        assertEquals(1, result.data().size());
+        assertEquals("ext-user-1", result.data().get(0).externalUserId());
         assertEquals(SYSTEM_ID, httpClient.lastSystemId);
     }
 
     @Test
     void testSystemListUserMappingsWithPagination() {
-        httpClient.userMappingsPaginated = new UserMapping.PaginatedListOf(List.of(), null);
+        httpClient.userMappingsPaginated = userMappingPage(List.of(), null);
 
-        service.system(SYSTEM_ID).listUserMappings("cursor-1", 10);
+        service.system(SYSTEM_ID).listUserMappings(r -> r.cursor("cursor-1").limit(10));
 
         assertEquals("cursor-1", httpClient.lastCursor);
         assertEquals(10, httpClient.lastLimit);
@@ -335,8 +362,8 @@ class SystemIntegrationServiceTest {
 
     @Test
     void testSystemListUserMappingsPaginator() {
-        httpClient.userMappingsPaginated = new UserMapping.PaginatedListOf(
-                List.of(new UserMapping(USER_ID, "ext-user-1", List.of())), null);
+        httpClient.userMappingsPaginated = userMappingPage(List.of(new UserMapping(USER_ID, "ext-user-1", List.of())),
+                null);
 
         var items = new ArrayList<UserMapping>();
         service.system(SYSTEM_ID).listUserMappingsPaginator().forEach(items::add);
@@ -457,21 +484,21 @@ class SystemIntegrationServiceTest {
 
     @Test
     void testPrincipalUserGetUserMappings() {
-        httpClient.principalUserMappingsPaginated = new PrincipalUserMapping.PaginatedListOf(
+        httpClient.principalUserMappingsPaginated = principalUserMappingPage(
                 List.of(new PrincipalUserMapping(SYSTEM_ID, "ext-user-1", List.of())), null);
 
         var result = service.principalUser(PRINCIPAL_USER_ID).listUserMappings();
 
-        assertEquals(1, result.items().size());
-        assertEquals("ext-user-1", result.items().get(0).externalUserId());
+        assertEquals(1, result.data().size());
+        assertEquals("ext-user-1", result.data().get(0).externalUserId());
         assertEquals(PRINCIPAL_USER_ID, httpClient.lastPrincipalUserId);
     }
 
     @Test
     void testPrincipalUserGetUserMappingsWithPagination() {
-        httpClient.principalUserMappingsPaginated = new PrincipalUserMapping.PaginatedListOf(List.of(), null);
+        httpClient.principalUserMappingsPaginated = principalUserMappingPage(List.of(), null);
 
-        service.principalUser(PRINCIPAL_USER_ID).listUserMappings("cursor-1", 10);
+        service.principalUser(PRINCIPAL_USER_ID).listUserMappings(r -> r.cursor("cursor-1").limit(10));
 
         assertEquals("cursor-1", httpClient.lastCursor);
         assertEquals(10, httpClient.lastLimit);
@@ -479,7 +506,7 @@ class SystemIntegrationServiceTest {
 
     @Test
     void testPrincipalUserGetUserMappingsPaginator() {
-        httpClient.principalUserMappingsPaginated = new PrincipalUserMapping.PaginatedListOf(
+        httpClient.principalUserMappingsPaginated = principalUserMappingPage(
                 List.of(new PrincipalUserMapping(SYSTEM_ID, "ext-user-1", List.of())), null);
 
         var items = new ArrayList<PrincipalUserMapping>();
@@ -491,21 +518,21 @@ class SystemIntegrationServiceTest {
 
     @Test
     void testPrincipalUserGetMembership() {
-        httpClient.principalUserMembershipsPaginated = new PrincipalUserMembership.PaginatedListOf(
+        httpClient.principalUserMembershipsPaginated = principalUserMembershipPage(
                 List.of(new PrincipalUserMembership("ext-group-1", SYSTEM_ID, MembershipType.DIRECT, List.of())), null);
 
         var result = service.principalUser(PRINCIPAL_USER_ID).listMemberships();
 
-        assertEquals(1, result.items().size());
-        assertEquals(MembershipType.DIRECT, result.items().get(0).membershipType());
+        assertEquals(1, result.data().size());
+        assertEquals(MembershipType.DIRECT, result.data().get(0).membershipType());
         assertEquals(PRINCIPAL_USER_ID, httpClient.lastPrincipalUserId);
     }
 
     @Test
     void testPrincipalUserGetMembershipWithPagination() {
-        httpClient.principalUserMembershipsPaginated = new PrincipalUserMembership.PaginatedListOf(List.of(), null);
+        httpClient.principalUserMembershipsPaginated = principalUserMembershipPage(List.of(), null);
 
-        service.principalUser(PRINCIPAL_USER_ID).listMemberships("cursor-1", 10);
+        service.principalUser(PRINCIPAL_USER_ID).listMemberships(r -> r.cursor("cursor-1").limit(10));
 
         assertEquals("cursor-1", httpClient.lastCursor);
         assertEquals(10, httpClient.lastLimit);
@@ -513,7 +540,7 @@ class SystemIntegrationServiceTest {
 
     @Test
     void testPrincipalUserGetMembershipPaginator() {
-        httpClient.principalUserMembershipsPaginated = new PrincipalUserMembership.PaginatedListOf(
+        httpClient.principalUserMembershipsPaginated = principalUserMembershipPage(
                 List.of(new PrincipalUserMembership("ext-group-1", SYSTEM_ID, MembershipType.DIRECT, List.of())), null);
 
         var items = new ArrayList<PrincipalUserMembership>();
@@ -535,25 +562,56 @@ class SystemIntegrationServiceTest {
         assertThrows(NullPointerException.class, () -> service.principalUser(null));
     }
 
+    private static SystemOutputPage systemPage(List<SystemOutput> items, String cursor) {
+        return new SystemOutputPage(items, new CursorPagination(cursor, cursor != null));
+    }
+
+    private static GroupOutputPage groupPage(List<GroupOutput> items, String cursor) {
+        return new GroupOutputPage(items, new CursorPagination(cursor, cursor != null));
+    }
+
+    private static GroupMemberPage groupMemberPage(List<GroupMember> items, String cursor) {
+        return new GroupMemberPage(items, new CursorPagination(cursor, cursor != null));
+    }
+
+    private static UserMappingPage userMappingPage(List<UserMapping> items, String cursor) {
+        return new UserMappingPage(items, new CursorPagination(cursor, cursor != null));
+    }
+
+    private static PrincipalUserMappingPage principalUserMappingPage(List<PrincipalUserMapping> items, String cursor) {
+        return new PrincipalUserMappingPage(items, new CursorPagination(cursor, cursor != null));
+    }
+
+    private static PrincipalUserMembershipPage principalUserMembershipPage(List<PrincipalUserMembership> items,
+            String cursor) {
+        return new PrincipalUserMembershipPage(items, new CursorPagination(cursor, cursor != null));
+    }
+
     private static class TestNucleusHttpClient extends NucleusHttpClient {
 
-        SystemOutput.PaginatedListOf systemsPaginated;
+        SystemOutputPage systemsPaginated;
+
+        List<SystemOutputPage> systemsPaginatedPages;
+
+        int pageIndex;
+
+        List<String> capturedCursors = new ArrayList<>();
 
         SystemOutput systemOutput;
 
-        GroupOutput.PaginatedListOf groupsPaginated;
+        GroupOutputPage groupsPaginated;
 
         GroupOutput groupOutput;
 
-        GroupMember.PaginatedListOf groupMembersPaginated;
+        GroupMemberPage groupMembersPaginated;
 
-        UserMapping.PaginatedListOf userMappingsPaginated;
+        UserMappingPage userMappingsPaginated;
 
         UserMapping userMapping;
 
-        PrincipalUserMapping.PaginatedListOf principalUserMappingsPaginated;
+        PrincipalUserMappingPage principalUserMappingsPaginated;
 
-        PrincipalUserMembership.PaginatedListOf principalUserMembershipsPaginated;
+        PrincipalUserMembershipPage principalUserMembershipsPaginated;
 
         List<Attribute> attributes;
 
@@ -595,9 +653,13 @@ class SystemIntegrationServiceTest {
         }
 
         @Override
-        public SystemOutput.PaginatedListOf listSystems(String cursor, Integer limit) {
+        public SystemOutputPage listSystems(String cursor, Integer limit) {
             lastCursor = cursor;
             lastLimit = limit;
+            capturedCursors.add(cursor);
+            if (systemsPaginatedPages != null && pageIndex < systemsPaginatedPages.size()) {
+                return systemsPaginatedPages.get(pageIndex++);
+            }
             return systemsPaginated;
         }
 
@@ -608,7 +670,7 @@ class SystemIntegrationServiceTest {
         }
 
         @Override
-        public GroupOutput.PaginatedListOf listGroups(String systemId, String cursor, Integer limit) {
+        public GroupOutputPage listGroups(String systemId, String cursor, Integer limit) {
             lastSystemId = systemId;
             lastCursor = cursor;
             lastLimit = limit;
@@ -673,8 +735,7 @@ class SystemIntegrationServiceTest {
         }
 
         @Override
-        public GroupMember.PaginatedListOf listGroupMembers(String systemId, String externalGroupId, String cursor,
-                Integer limit) {
+        public GroupMemberPage listGroupMembers(String systemId, String externalGroupId, String cursor, Integer limit) {
             lastSystemId = systemId;
             lastExternalGroupId = externalGroupId;
             lastCursor = cursor;
@@ -697,7 +758,7 @@ class SystemIntegrationServiceTest {
         }
 
         @Override
-        public UserMapping.PaginatedListOf listUserMappings(String systemId, String cursor, Integer limit) {
+        public UserMappingPage listUserMappings(String systemId, String cursor, Integer limit) {
             lastSystemId = systemId;
             lastCursor = cursor;
             lastLimit = limit;
@@ -769,7 +830,7 @@ class SystemIntegrationServiceTest {
         }
 
         @Override
-        public PrincipalUserMapping.PaginatedListOf listPrincipalUserMappings(String principalUserId, String cursor,
+        public PrincipalUserMappingPage listPrincipalUserMappings(String principalUserId, String cursor,
                 Integer limit) {
             lastPrincipalUserId = principalUserId;
             lastCursor = cursor;
@@ -778,8 +839,8 @@ class SystemIntegrationServiceTest {
         }
 
         @Override
-        public PrincipalUserMembership.PaginatedListOf listPrincipalUserMemberships(String principalUserId,
-                String cursor, Integer limit) {
+        public PrincipalUserMembershipPage listPrincipalUserMemberships(String principalUserId, String cursor,
+                Integer limit) {
             lastPrincipalUserId = principalUserId;
             lastCursor = cursor;
             lastLimit = limit;

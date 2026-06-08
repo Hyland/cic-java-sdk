@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
 import org.hyland.sdk.cic.nucleus.object.GroupMember;
+import org.hyland.sdk.cic.nucleus.object.GroupMemberPage;
 
 /**
  * @since 1.0.0
@@ -66,7 +67,7 @@ class GroupMemberMapperTest {
     }
 
     @Test
-    void testDeserializeGroupMemberPaginatedList() {
+    void testDeserializeGroupMemberPage() {
         var json = """
                 {
                   "items": [
@@ -76,14 +77,14 @@ class GroupMemberMapperTest {
                       "memberExternalGroupId": null
                     }
                   ],
-                  "next": "next-page"
+                  "next": "/group-members?cursor=next-page"
                 }
                 """;
 
-        var result = MapperService.read(json, GroupMember.PaginatedListOf.class);
+        var result = MapperService.read(json, GroupMemberPage.class);
 
-        assertEquals(1, result.items().size());
-        assertEquals("ext-group-1", result.items().get(0).externalGroupId());
-        assertEquals("next-page", result.next());
+        assertEquals(1, result.data().size());
+        assertEquals("ext-group-1", result.data().get(0).externalGroupId());
+        assertEquals("next-page", result.pagination().nextCursor());
     }
 }

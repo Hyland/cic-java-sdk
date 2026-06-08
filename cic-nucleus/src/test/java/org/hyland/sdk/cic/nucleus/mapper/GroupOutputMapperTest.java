@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
 import org.hyland.sdk.cic.nucleus.object.GroupOutput;
+import org.hyland.sdk.cic.nucleus.object.GroupOutputPage;
 
 /**
  * @since 1.0.0
@@ -67,22 +68,22 @@ class GroupOutputMapperTest {
     }
 
     @Test
-    void testDeserializeGroupOutputPaginatedList() {
+    void testDeserializeGroupOutputPage() {
         var json = """
                 {
                   "items": [
                     {"externalGroupId": "group-1", "attributes": []},
                     {"externalGroupId": "group-2", "attributes": null}
                   ],
-                  "next": "next-cursor"
+                  "next": "/groups?cursor=next-cursor"
                 }
                 """;
 
-        var result = MapperService.read(json, GroupOutput.PaginatedListOf.class);
+        var result = MapperService.read(json, GroupOutputPage.class);
 
-        assertEquals(2, result.items().size());
-        assertEquals("group-1", result.items().get(0).externalGroupId());
-        assertEquals("group-2", result.items().get(1).externalGroupId());
-        assertEquals("next-cursor", result.next());
+        assertEquals(2, result.data().size());
+        assertEquals("group-1", result.data().get(0).externalGroupId());
+        assertEquals("group-2", result.data().get(1).externalGroupId());
+        assertEquals("next-cursor", result.pagination().nextCursor());
     }
 }

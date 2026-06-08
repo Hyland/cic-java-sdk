@@ -18,16 +18,15 @@
  */
 package org.hyland.sdk.cic.nucleus.object;
 
+import java.util.Objects;
+
 /**
  * @since 1.0.0
  */
 public record InteractiveUser(String userId, String userName, String email, String externalId,
         String preferredLanguage) {
 
-    public static class PaginatedListOf extends PaginatedList<InteractiveUser> {
-
-        public PaginatedListOf(java.util.List<InteractiveUser> items, String next) {
-            super(items, next);
-        }
+    public InteractiveUser {
+        Objects.requireNonNull(userId, "userId cannot be null");
     }
 }

@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
 import org.hyland.sdk.cic.nucleus.object.InteractiveUser;
+import org.hyland.sdk.cic.nucleus.object.InteractiveUserPage;
 
 /**
  * @since 1.0.0
@@ -75,7 +76,7 @@ class InteractiveUserMapperTest {
     }
 
     @Test
-    void testDeserializeInteractiveUserPaginatedList() {
+    void testDeserializeInteractiveUserPage() {
         var json = """
                 {
                   "users": [
@@ -94,24 +95,24 @@ class InteractiveUserMapperTest {
                       "preferredLanguage": null
                     }
                   ],
-                  "next": "cursor-token-abc"
+                  "next": "/users?cursor=cursor-token-abc"
                 }
                 """;
 
-        var result = MapperService.read(json, InteractiveUser.PaginatedListOf.class);
+        var result = MapperService.read(json, InteractiveUserPage.class);
 
-        assertEquals(2, result.items().size());
-        assertEquals("alice", result.items().get(0).userName());
-        assertEquals("alice@localhost", result.items().get(0).email());
-        assertEquals("ext-alice", result.items().get(0).externalId());
-        assertEquals("fr-FR", result.items().get(0).preferredLanguage());
-        assertEquals("bob", result.items().get(1).userName());
-        assertNull(result.items().get(1).externalId());
-        assertEquals("cursor-token-abc", result.next());
+        assertEquals(2, result.data().size());
+        assertEquals("alice", result.data().get(0).userName());
+        assertEquals("alice@localhost", result.data().get(0).email());
+        assertEquals("ext-alice", result.data().get(0).externalId());
+        assertEquals("fr-FR", result.data().get(0).preferredLanguage());
+        assertEquals("bob", result.data().get(1).userName());
+        assertNull(result.data().get(1).externalId());
+        assertEquals("cursor-token-abc", result.pagination().nextCursor());
     }
 
     @Test
-    void testDeserializeInteractiveUserPaginatedListWithNullNext() {
+    void testDeserializeInteractiveUserPageWithNullNext() {
         var json = """
                 {
                   "users": [],
@@ -119,10 +120,10 @@ class InteractiveUserMapperTest {
                 }
                 """;
 
-        var result = MapperService.read(json, InteractiveUser.PaginatedListOf.class);
+        var result = MapperService.read(json, InteractiveUserPage.class);
 
-        assertNotNull(result.items());
-        assertEquals(0, result.items().size());
-        assertNull(result.next());
+        assertNotNull(result.data());
+        assertEquals(0, result.data().size());
+        assertNull(result.pagination().nextCursor());
     }
 }

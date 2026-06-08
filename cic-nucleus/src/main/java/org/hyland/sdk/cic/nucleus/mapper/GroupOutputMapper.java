@@ -18,6 +18,8 @@
  */
 package org.hyland.sdk.cic.nucleus.mapper;
 
+import java.util.List;
+
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
@@ -38,7 +40,7 @@ class GroupOutputMapper implements CICMapper<GroupOutput> {
         return new GroupOutput(obj.getStringOrThrow("externalGroupId"),
                 obj.getOptionalArray("attributes")
                    .map(a -> a.toListObject().stream().map(attributeMapper::fromCICNode).toList())
-                   .orElse(null));
+                   .orElse(List.of()));
     }
 
 }

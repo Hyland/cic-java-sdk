@@ -34,10 +34,9 @@ class SystemOutputMapper implements CICMapper<SystemOutput> {
         if (!(cicNode instanceof CICObject obj)) {
             throw new IllegalArgumentException("Expected CICObject, got: " + cicNode.getClass().getSimpleName());
         }
-        var systemTypeStr = obj.getString("systemType", null);
-        return new SystemOutput(obj.getString("systemId", null), obj.getString("name", null),
+        return new SystemOutput(obj.getStringOrThrow("systemId"), obj.getString("name", null),
                 obj.getString("environmentId", null),
-                systemTypeStr != null ? SystemIntegrationType.fromValue(systemTypeStr) : null);
+                SystemIntegrationType.fromValue(obj.getStringOrThrow("systemType")));
     }
 
 }

@@ -32,10 +32,4 @@ public record UserMapping(String userId, String externalUserId, List<Attribute> 
         attributes = attributes != null ? List.copyOf(attributes) : List.of();
     }
 
-    public static class PaginatedListOf extends PaginatedList<UserMapping> {
-
-        public PaginatedListOf(List<UserMapping> items, String next) {
-            super(items, next);
-        }
-    }
 }

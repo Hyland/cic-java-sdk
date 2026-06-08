@@ -25,12 +25,19 @@ import org.junit.jupiter.api.Test;
 
 import org.hyland.sdk.cic.nucleus.object.Attribute;
 import org.hyland.sdk.cic.nucleus.object.GroupMember;
+import org.hyland.sdk.cic.nucleus.object.GroupMemberPage;
 import org.hyland.sdk.cic.nucleus.object.GroupOutput;
+import org.hyland.sdk.cic.nucleus.object.GroupOutputPage;
 import org.hyland.sdk.cic.nucleus.object.InteractiveUser;
+import org.hyland.sdk.cic.nucleus.object.InteractiveUserPage;
 import org.hyland.sdk.cic.nucleus.object.PrincipalUserMapping;
+import org.hyland.sdk.cic.nucleus.object.PrincipalUserMappingPage;
 import org.hyland.sdk.cic.nucleus.object.PrincipalUserMembership;
+import org.hyland.sdk.cic.nucleus.object.PrincipalUserMembershipPage;
 import org.hyland.sdk.cic.nucleus.object.SystemOutput;
+import org.hyland.sdk.cic.nucleus.object.SystemOutputPage;
 import org.hyland.sdk.cic.nucleus.object.UserMapping;
+import org.hyland.sdk.cic.nucleus.object.UserMappingPage;
 import org.hyland.sdk.cic.nucleus.object.UserMappingReplaceInput;
 
 /**
@@ -46,8 +53,8 @@ class NucleusMapperFactoryTest {
     }
 
     @Test
-    void testGetMapperForInteractiveUserPaginatedList() {
-        assertInstanceOf(PaginatedListMapper.class, factory.getMapper(InteractiveUser.PaginatedListOf.class));
+    void testGetMapperForInteractiveUserPage() {
+        assertInstanceOf(InteractiveUserPageMapper.class, factory.getMapper(InteractiveUserPage.class));
     }
 
     @Test
@@ -61,8 +68,33 @@ class NucleusMapperFactoryTest {
     }
 
     @Test
-    void testGetMapperForSystemOutputPaginatedList() {
-        assertInstanceOf(PaginatedListMapper.class, factory.getMapper(SystemOutput.PaginatedListOf.class));
+    void testGetMapperForSystemOutputPage() {
+        assertInstanceOf(SystemOutputPageMapper.class, factory.getMapper(SystemOutputPage.class));
+    }
+
+    @Test
+    void testGetMapperForGroupOutputPage() {
+        assertInstanceOf(GroupOutputPageMapper.class, factory.getMapper(GroupOutputPage.class));
+    }
+
+    @Test
+    void testGetMapperForGroupMemberPage() {
+        assertInstanceOf(GroupMemberPageMapper.class, factory.getMapper(GroupMemberPage.class));
+    }
+
+    @Test
+    void testGetMapperForUserMappingPage() {
+        assertInstanceOf(UserMappingPageMapper.class, factory.getMapper(UserMappingPage.class));
+    }
+
+    @Test
+    void testGetMapperForPrincipalUserMappingPage() {
+        assertInstanceOf(PrincipalUserMappingPageMapper.class, factory.getMapper(PrincipalUserMappingPage.class));
+    }
+
+    @Test
+    void testGetMapperForPrincipalUserMembershipPage() {
+        assertInstanceOf(PrincipalUserMembershipPageMapper.class, factory.getMapper(PrincipalUserMembershipPage.class));
     }
 
     @Test
