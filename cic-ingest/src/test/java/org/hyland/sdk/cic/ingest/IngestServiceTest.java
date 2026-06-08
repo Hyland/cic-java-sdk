@@ -191,6 +191,11 @@ class IngestServiceTest {
             public Optional<String> getDigest() {
                 return Optional.ofNullable(digest);
             }
+
+            @Override
+            public Optional<String> getContentType() {
+                return Optional.of("application/pdf");
+            }
         };
     }
 

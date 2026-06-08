@@ -26,9 +26,12 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -206,6 +209,11 @@ class IngestHttpClientUploadRetryTest {
             public Optional<String> getDigest() {
                 return Optional.of("sha256:abc123");
             }
+
+            @Override
+            public Optional<String> getContentType() {
+                return Optional.of("application/pdf");
+            }
         };
 
         assertDoesNotThrow(() -> client.upload(baseUrl + "/upload", blob));
@@ -213,6 +221,120 @@ class IngestHttpClientUploadRetryTest {
         for (int i = 0; i < receivedBodies.size(); i++) {
             assertEquals(new String(expectedContent), new String(receivedBodies.get(i)),
                     "Attempt " + (i + 1) + " should receive full blob content");
+        }
+    }
+
+    @Test
+    void uploadSendsContentTypeHeader() {
+        var capturedContentType = new AtomicReference<String>();
+        server.createContext("/upload", exchange -> {
+            capturedContentType.set(exchange.getRequestHeaders().getFirst("Content-Type"));
+            exchange.sendResponseHeaders(200, -1);
+            exchange.close();
+        });
+        server.start();
+
+        var client = buildClient(RetryPolicy.none());
+        assertDoesNotThrow(() -> client.upload(baseUrl + "/upload", createTestBlob()));
+        assertEquals("application/pdf", capturedContentType.get());
+    }
+
+    @Test
+    void uploadSendsContentLengthHeader() {
+        byte[] content = "hello world".getBytes();
+        var capturedContentLength = new AtomicReference<String>();
+        server.createContext("/upload", exchange -> {
+            capturedContentLength.set(exchange.getRequestHeaders().getFirst("Content-Length"));
+            exchange.sendResponseHeaders(200, -1);
+            exchange.close();
+        });
+        server.start();
+
+        var client = buildClient(RetryPolicy.none());
+        CICBlob blob = new CICBlob() {
+            @Override
+            public InputStream getInputStream() {
+                return new ByteArrayInputStream(content);
+            }
+
+            @Override
+            public Optional<String> getDigest() {
+                return Optional.empty();
+            }
+
+            @Override
+            public Optional<String> getContentType() {
+                return Optional.of("application/octet-stream");
+            }
+        };
+
+        assertDoesNotThrow(() -> client.upload(baseUrl + "/upload", blob));
+        assertEquals(String.valueOf(content.length), capturedContentLength.get());
+    }
+
+    @Test
+    void uploadSendsZeroContentLengthForEmptyBlob() {
+        var capturedContentLength = new AtomicReference<String>();
+        server.createContext("/upload", exchange -> {
+            capturedContentLength.set(exchange.getRequestHeaders().getFirst("Content-Length"));
+            exchange.sendResponseHeaders(200, -1);
+            exchange.close();
+        });
+        server.start();
+
+        var client = buildClient(RetryPolicy.none());
+        CICBlob emptyBlob = new CICBlob() {
+            @Override
+            public InputStream getInputStream() {
+                return new ByteArrayInputStream(new byte[0]);
+            }
+
+            @Override
+            public Optional<String> getDigest() {
+                return Optional.empty();
+            }
+
+            @Override
+            public Optional<String> getContentType() {
+                return Optional.of("application/pdf");
+            }
+        };
+
+        assertDoesNotThrow(() -> client.upload(baseUrl + "/upload", emptyBlob));
+        assertEquals("0", capturedContentLength.get());
+    }
+
+    @Test
+    void uploadDeletesTempFileAfterSuccess() throws IOException {
+        server.createContext("/upload", exchange -> {
+            exchange.sendResponseHeaders(200, -1);
+            exchange.close();
+        });
+        server.start();
+
+        var client = buildClient(RetryPolicy.none());
+        long before = countCicTempFiles();
+        client.upload(baseUrl + "/upload", createTestBlob());
+        assertEquals(before, countCicTempFiles(), "No temp files should remain after successful upload");
+    }
+
+    @Test
+    void uploadDeletesTempFileAfterFailure() throws IOException {
+        server.createContext("/upload", exchange -> {
+            exchange.sendResponseHeaders(500, -1);
+            exchange.close();
+        });
+        server.start();
+
+        var client = buildClient(RetryPolicy.none());
+        long before = countCicTempFiles();
+        assertThrows(CICSdkException.class, () -> client.upload(baseUrl + "/upload", createTestBlob()));
+        assertEquals(before, countCicTempFiles(), "No temp files should remain after failed upload");
+    }
+
+    private long countCicTempFiles() throws IOException {
+        try (var stream = Files.list(Path.of(System.getProperty("java.io.tmpdir")))) {
+            return stream.filter(p -> p.getFileName().toString().startsWith("cic-upload-")).count();
         }
     }
 
@@ -234,6 +356,11 @@ class IngestHttpClientUploadRetryTest {
             @Override
             public Optional<String> getDigest() {
                 return Optional.of("sha256:abc123");
+            }
+
+            @Override
+            public Optional<String> getContentType() {
+                return Optional.of("application/pdf");
             }
         };
     }
