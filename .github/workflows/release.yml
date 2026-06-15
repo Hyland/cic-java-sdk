@@ -124,10 +124,11 @@ jobs:
           git push origin "refs/tags/${TAG}"
 
       - name: Build and publish to GitHub Packages
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           mvn --batch-mode -nsu source:jar javadoc:jar deploy
-
       - name: Set next development version
         run: |
           set -euo pipefail
