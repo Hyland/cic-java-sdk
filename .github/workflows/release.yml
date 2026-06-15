@@ -56,8 +56,8 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -n "${DEVELOPMENT_VERSION}" ]]; then
-            if [[ "${DEVELOPMENT_VERSION}" != *-SNAPSHOT ]]; then
-              echo "::error::DEVELOPMENT_VERSION '${DEVELOPMENT_VERSION}' must be a SNAPSHOT (e.g. 1.2.4-SNAPSHOT)."
+            if [[ ! "${DEVELOPMENT_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-SNAPSHOT$ ]]; then
+              echo "::error::DEVELOPMENT_VERSION '${DEVELOPMENT_VERSION}' is invalid. Must match X.Y.Z-SNAPSHOT (e.g. 1.2.4-SNAPSHOT)."
               exit 1
             fi
             NEXT_DEV="${DEVELOPMENT_VERSION}"
@@ -191,6 +191,8 @@ jobs:
       - name: Output summary
         if: always()
         run: |
+          set -euo pipefail
+          STATUS="${{ job.status }}"
           NEXT_DEV="${{ steps.dev-version.outputs.next_dev }}"
           PR_URL="${{ steps.dev-pr.outputs.pr_url }}"
           {
@@ -203,7 +205,13 @@ jobs:
             echo "| **Next dev version** | \`${NEXT_DEV:-_(not computed)_}\` |"
             echo "| **Published to** | GitHub Packages |"
             echo "| **Next dev version PR** | ${PR_URL:-_(none — no changes needed)_} |"
-            echo "| **Result** | ${{ job.status }} |"
+            echo "| **Result** | ${STATUS} |"
             echo ""
-            echo "**Next step:** review and merge the PR to update \`main\` to \`${NEXT_DEV}\`."
+            if [[ "${STATUS}" == "success" && -n "${PR_URL}" ]]; then
+              echo "**Next step:** review and merge the PR to update \`main\` to \`${NEXT_DEV}\`."
+            elif [[ "${STATUS}" == "success" ]]; then
+              echo "**Next step:** no version bump PR was needed."
+            else
+              echo "**Next step:** fix the workflow failure and re-run the release (verify whether the tag exists before retrying)."
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
