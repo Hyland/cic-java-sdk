@@ -241,4 +241,8 @@ public abstract class AbstractHttpClient implements AutoCloseable {
     protected static String encodeKeyValueParameter(String key, String value) {
         return URLEncoder.encode(key, StandardCharsets.UTF_8) + "=" + URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
+
+    protected static String encodePathSegment(String segment) {
+        return URLEncoder.encode(segment, StandardCharsets.UTF_8).replace("+", "%20");
+    }
 }
