@@ -78,12 +78,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
 
     public SystemOutputPage listSystems(String cursor, Integer limit) {
         var requestBuilder = this.requestBuilder(GET, SYSTEMS_PATH);
-        if (cursor != null) {
-            requestBuilder.queryParameter("Cursor", cursor);
-        }
-        if (limit != null) {
-            requestBuilder.queryParameter("Limit", limit.toString());
-        }
+        applyPagination(cursor, limit, requestBuilder);
         return sendThenMapAs(requestBuilder.build(), SystemOutputPage.class);
     }
 
@@ -96,12 +91,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
     public GroupOutputPage listGroups(String systemId, String cursor, Integer limit) {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         var requestBuilder = this.requestBuilder(GET, SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/groups");
-        if (cursor != null) {
-            requestBuilder.queryParameter("Cursor", cursor);
-        }
-        if (limit != null) {
-            requestBuilder.queryParameter("Limit", limit.toString());
-        }
+        applyPagination(cursor, limit, requestBuilder);
         return sendThenMapAs(requestBuilder.build(), GroupOutputPage.class);
     }
 
@@ -240,12 +230,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         Objects.requireNonNull(systemId, "systemId cannot be null");
         var requestBuilder = this.requestBuilder(GET,
                 SYSTEMS_PATH + "/" + encodePathSegment(systemId) + "/user-mappings");
-        if (cursor != null) {
-            requestBuilder.queryParameter("Cursor", cursor);
-        }
-        if (limit != null) {
-            requestBuilder.queryParameter("Limit", limit.toString());
-        }
+        applyPagination(cursor, limit, requestBuilder);
         return sendThenMapAs(requestBuilder.build(), UserMappingPage.class);
     }
 
@@ -355,12 +340,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         Objects.requireNonNull(principalUserId, "principalUserId cannot be null");
         var requestBuilder = this.requestBuilder(GET,
                 PRINCIPAL_USERS_PATH + "/" + encodePathSegment(principalUserId) + "/user-mappings");
-        if (cursor != null) {
-            requestBuilder.queryParameter("Cursor", cursor);
-        }
-        if (limit != null) {
-            requestBuilder.queryParameter("Limit", limit.toString());
-        }
+        applyPagination(cursor, limit, requestBuilder);
         return sendThenMapAs(requestBuilder.build(), PrincipalUserMappingPage.class);
     }
 
@@ -369,12 +349,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         Objects.requireNonNull(principalUserId, "principalUserId cannot be null");
         var requestBuilder = this.requestBuilder(GET,
                 PRINCIPAL_USERS_PATH + "/" + encodePathSegment(principalUserId) + "/membership");
-        if (cursor != null) {
-            requestBuilder.queryParameter("Cursor", cursor);
-        }
-        if (limit != null) {
-            requestBuilder.queryParameter("Limit", limit.toString());
-        }
+        applyPagination(cursor, limit, requestBuilder);
         return sendThenMapAs(requestBuilder.build(), PrincipalUserMembershipPage.class);
     }
 
@@ -388,6 +363,16 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
     private void sendExpectingSuccess(CICHttpRequest request, String failureMessage) {
         var response = sendThenReadAsString(request);
         ErrorUtils.throwExceptionOnUnexpectedStatusCode(response, failureMessage);
+    }
+
+    private static void applyPagination(String cursor, Integer limit, CICHttpRequest.Builder requestBuilder)
+    {
+        if (cursor != null) {
+            requestBuilder.queryParameter("Cursor", cursor);
+        }
+        if (limit != null) {
+            requestBuilder.queryParameter("Limit", limit.toString());
+        }
     }
 
     public static class Builder extends AbstractAuthenticatedHttpClientBuilder<Builder, NucleusHttpClient> {
