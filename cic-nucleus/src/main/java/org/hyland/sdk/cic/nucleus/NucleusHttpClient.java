@@ -365,8 +365,7 @@ public class NucleusHttpClient extends AbstractAuthenticatedHttpClient {
         ErrorUtils.throwExceptionOnUnexpectedStatusCode(response, failureMessage);
     }
 
-    private static void applyPagination(String cursor, Integer limit, CICHttpRequest.Builder requestBuilder)
-    {
+    private static void applyPagination(String cursor, Integer limit, CICHttpRequest.Builder requestBuilder) {
         if (cursor != null) {
             requestBuilder.queryParameter("Cursor", cursor);
         }
