@@ -1,0 +1,209 @@
+###############################################################################
+# release.yml
+#
+# Trigger: Manual dispatch only (workflow_dispatch) with version inputs.
+#
+# What it does:
+#   1. Validates RELEASE_VERSION (X.Y.Z) and computes the next dev version
+#      (auto-incremented patch + -SNAPSHOT) unless one is provided.
+#   2. Stamps RELEASE_VERSION across the root POM and all module POMs.
+#   3. Commits, tags v<RELEASE_VERSION>, and pushes the tag.
+#   4. Builds + publishes artifacts (incl. source/javadoc jars) to GitHub Packages.
+#   5. Stamps the next development version on a branch and opens a PR to main.
+#
+###############################################################################
+
+name: CIC Java SDK Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      RELEASE_VERSION:
+        description: "Version to release (e.g. 1.2.3 — X.Y.Z, no -SNAPSHOT)."
+        required: true
+        type: string
+      DEVELOPMENT_VERSION:
+        description: "Next development version (e.g. 1.2.4-SNAPSHOT). Leave empty to auto-increment the patch."
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: write        # commit version bumps and push tags to the repo
+  packages: write        # publish artifacts to GitHub Packages
+  pull-requests: write   # open the next-development-version bump PR
+
+jobs:
+  release:
+    name: Release v${{ inputs.RELEASE_VERSION }}
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_VERSION: ${{ inputs.RELEASE_VERSION }}
+    steps:
+      - name: Validate release version
+        run: |
+          set -euo pipefail
+          if [[ ! "${RELEASE_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::RELEASE_VERSION '${RELEASE_VERSION}' is invalid. Must match X.Y.Z (e.g. 1.2.3)."
+            exit 1
+          fi
+          echo "Release version ${RELEASE_VERSION} is valid."
+
+      - name: Compute next development version
+        id: dev-version
+        env:
+          DEVELOPMENT_VERSION: ${{ inputs.DEVELOPMENT_VERSION }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${DEVELOPMENT_VERSION}" ]]; then
+            if [[ "${DEVELOPMENT_VERSION}" != *-SNAPSHOT ]]; then
+              echo "::error::DEVELOPMENT_VERSION '${DEVELOPMENT_VERSION}' must be a SNAPSHOT (e.g. 1.2.4-SNAPSHOT)."
+              exit 1
+            fi
+            NEXT_DEV="${DEVELOPMENT_VERSION}"
+            echo "Using provided next development version: ${NEXT_DEV}"
+          else
+            IFS='.' read -r MAJOR MINOR PATCH <<< "${RELEASE_VERSION}"
+            NEXT_DEV="${MAJOR}.${MINOR}.$((PATCH + 1))-SNAPSHOT"
+            echo "Auto-calculated next development version: ${NEXT_DEV}"
+          fi
+          echo "next_dev=${NEXT_DEV}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout main
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Ensure tag does not already exist
+        run: |
+          set -euo pipefail
+          TAG="v${RELEASE_VERSION}"
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "::error::Tag '${TAG}' already exists on origin. Choose a different RELEASE_VERSION."
+            exit 1
+          fi
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+
+      - name: Configure Git identity
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Set release version
+        run: |
+          set -euo pipefail
+          mvn --batch-mode -nsu versions:set \
+            -DnewVersion="${RELEASE_VERSION}" \
+            -DprocessAllModules=true \
+            -DgenerateBackupPoms=false
+
+      - name: Commit release version
+        run: |
+          set -euo pipefail
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes — POMs already at ${RELEASE_VERSION}."
+          else
+            git commit -m "chore(release): set version to ${RELEASE_VERSION}"
+          fi
+
+      - name: Create and push tag
+        run: |
+          set -euo pipefail
+          TAG="v${RELEASE_VERSION}"
+          git tag -a "${TAG}" -m "Release ${RELEASE_VERSION}"
+          git push origin "refs/tags/${TAG}"
+
+      - name: Build and publish to GitHub Packages
+        run: |
+          set -euo pipefail
+          mvn --batch-mode -nsu source:jar javadoc:jar deploy
+
+      - name: Set next development version
+        run: |
+          set -euo pipefail
+          mvn --batch-mode -nsu versions:set \
+            -DnewVersion="${{ steps.dev-version.outputs.next_dev }}" \
+            -DprocessAllModules=true \
+            -DgenerateBackupPoms=false
+
+      - name: Commit and push next development version branch
+        id: dev-bump
+        run: |
+          set -euo pipefail
+          NEXT_DEV="${{ steps.dev-version.outputs.next_dev }}"
+          BRANCH="chore/next-dev-version-${NEXT_DEV}"
+          git switch -c "${BRANCH}"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes — POMs already at ${NEXT_DEV}; no PR needed."
+            echo "pr_needed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git commit -m "chore(release): set next development version ${NEXT_DEV}"
+          git push --force-with-lease origin "${BRANCH}"
+          echo "pr_needed=true" >> "$GITHUB_OUTPUT"
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Open pull request for next development version
+        id: dev-pr
+        if: steps.dev-bump.outputs.pr_needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          NEXT_DEV="${{ steps.dev-version.outputs.next_dev }}"
+          BRANCH="${{ steps.dev-bump.outputs.branch }}"
+
+          EXISTING_PR=$(gh pr list --head "${BRANCH}" --base main --state open --json url --jq '.[0].url // empty')
+          if [[ -n "${EXISTING_PR}" ]]; then
+            echo "Reusing existing PR: ${EXISTING_PR}"
+            echo "pr_url=${EXISTING_PR}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          PR_URL=$(gh pr create \
+            --base main \
+            --head "${BRANCH}" \
+            --title "chore(release): set next development version ${NEXT_DEV}" \
+            --body "$(cat <<EOF
+          ## Automated next-development-version bump
+
+          Opened by the **Release** workflow after publishing \`v${RELEASE_VERSION}\` to GitHub Packages.
+
+          Bumps the project version to \`${NEXT_DEV}\` across the root POM and all module POMs.
+
+          **Safe to merge** once CI passes — this is a version-only change.
+          EOF
+          )")
+          echo "Created PR: ${PR_URL}"
+          echo "pr_url=${PR_URL}" >> "$GITHUB_OUTPUT"
+
+      - name: Output summary
+        if: always()
+        run: |
+          NEXT_DEV="${{ steps.dev-version.outputs.next_dev }}"
+          PR_URL="${{ steps.dev-pr.outputs.pr_url }}"
+          {
+            echo "### Release v${RELEASE_VERSION}"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| **Released version** | \`${RELEASE_VERSION}\` |"
+            echo "| **Git tag** | \`v${RELEASE_VERSION}\` |"
+            echo "| **Next dev version** | \`${NEXT_DEV:-_(not computed)_}\` |"
+            echo "| **Published to** | GitHub Packages |"
+            echo "| **Next dev version PR** | ${PR_URL:-_(none — no changes needed)_} |"
+            echo "| **Result** | ${{ job.status }} |"
+            echo ""
+            echo "**Next step:** review and merge the PR to update \`main\` to \`${NEXT_DEV}\`."
+          } >> "$GITHUB_STEP_SUMMARY"
