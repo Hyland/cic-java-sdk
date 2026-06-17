@@ -107,9 +107,6 @@ jobs:
             -DprocessAllModules=true \
             -DgenerateBackupPoms=false
 
-      - name: Compile
-        run: mvn --batch-mode -nsu install
-
       - name: Build and publish to GitHub Packages
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
