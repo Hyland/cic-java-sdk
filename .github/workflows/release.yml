@@ -7,8 +7,8 @@
 #   1. Validates RELEASE_VERSION (X.Y.Z) and computes the next dev version
 #      (auto-incremented patch + -SNAPSHOT) unless one is provided.
 #   2. Stamps RELEASE_VERSION across the root POM and all module POMs.
-#   3. Commits, tags v<RELEASE_VERSION>, and pushes the tag.
-#   4. Builds + publishes artifacts (incl. source/javadoc jars) to GitHub Packages.
+#   3. Builds + publishes artifacts (incl. source/javadoc jars) to GitHub Packages.
+#   4. Commits, tags v<RELEASE_VERSION>, and pushes the tag.
 #   5. Stamps the next development version on a branch and opens a PR to main.
 #
 ###############################################################################
@@ -186,6 +186,9 @@ jobs:
           Bumps the project version to \`${NEXT_DEV}\` across the root POM and all module POMs.
 
           **Safe to merge** once CI passes — this is a version-only change.
+
+          **IMPORTANT**
+          Merge using **Create a merge commit** (not Squash and merge).
           EOF
           )")
           echo "Created PR: ${PR_URL}"
