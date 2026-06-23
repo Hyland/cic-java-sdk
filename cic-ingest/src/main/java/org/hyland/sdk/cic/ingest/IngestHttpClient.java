@@ -173,10 +173,14 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
             Path finalTempFile = tempFile;
             var response = sendRawWithRetry(() -> {
                 try {
-                    return HttpRequest.newBuilder(URI.create(preSignedUrl))
-                                      .PUT(HttpRequest.BodyPublishers.ofFile(finalTempFile))
-                                      .header("Content-Type", blob.getContentType().orElse("application/octet-stream"))
-                                      .build();
+                    var uploadRequest = HttpRequest.newBuilder(URI.create(preSignedUrl))
+                                                   .PUT(HttpRequest.BodyPublishers.ofFile(finalTempFile))
+                                                   .header("Content-Type",
+                                                           blob.getContentType().orElse("application/octet-stream"));
+                    if (requestTimeout != null) {
+                        uploadRequest.timeout(requestTimeout);
+                    }
+                    return uploadRequest.build();
                 } catch (IOException e) {
                     throw new CICSdkException("Failed to build upload request", e);
                 }

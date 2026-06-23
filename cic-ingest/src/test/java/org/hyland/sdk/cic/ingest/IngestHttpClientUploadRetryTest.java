@@ -338,6 +338,47 @@ class IngestHttpClientUploadRetryTest {
         }
     }
 
+    @Test
+    void uploadTimesOutWhenServerIsSlow() {
+        server.createContext("/upload", exchange -> {
+            try {
+                Thread.sleep(5_000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            exchange.sendResponseHeaders(200, -1);
+            exchange.close();
+        });
+        server.start();
+
+        var client = IngestHttpClient.from(baseUrl,
+                AuthenticationHttpClient.from().clientId("test-client-id").clientSecret("test-client-secret"))
+                                     .sourceId("test-source")
+                                     .requestTimeout(Duration.ofMillis(100))
+                                     .retryPolicy(RetryPolicy.none())
+                                     .build();
+
+        assertThrows(CICSdkException.class, () -> client.upload(baseUrl + "/upload", createTestBlob()));
+    }
+
+    @Test
+    void uploadUsesConfiguredRequestTimeout() {
+        server.createContext("/upload", exchange -> {
+            exchange.sendResponseHeaders(200, -1);
+            exchange.close();
+        });
+        server.start();
+
+        var client = IngestHttpClient.from(baseUrl,
+                AuthenticationHttpClient.from().clientId("test-client-id").clientSecret("test-client-secret"))
+                                     .sourceId("test-source")
+                                     .requestTimeout(Duration.ofSeconds(10))
+                                     .retryPolicy(RetryPolicy.none())
+                                     .build();
+
+        assertDoesNotThrow(() -> client.upload(baseUrl + "/upload", createTestBlob()));
+    }
+
     private IngestHttpClient buildClient(RetryPolicy retryPolicy) {
         return IngestHttpClient.from(baseUrl,
                 AuthenticationHttpClient.from().clientId("test-client-id").clientSecret("test-client-secret"))
