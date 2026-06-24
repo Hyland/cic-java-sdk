@@ -41,8 +41,7 @@ import org.hyland.sdk.cic.http.client.CICSdkException;
  *
  * @since 1.0.0
  */
-class AbstractHttpClientTimeoutTest
-{
+class AbstractHttpClientTimeoutTest {
 
     private HttpServer server;
 
