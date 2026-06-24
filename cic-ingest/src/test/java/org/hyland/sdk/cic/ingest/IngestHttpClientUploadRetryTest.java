@@ -26,6 +26,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.net.http.HttpTimeoutException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -336,6 +337,48 @@ class IngestHttpClientUploadRetryTest {
         try (var stream = Files.list(Path.of(System.getProperty("java.io.tmpdir")))) {
             return stream.filter(p -> p.getFileName().toString().startsWith("cic-upload-")).count();
         }
+    }
+
+    @Test
+    void uploadTimesOutWhenServerIsSlow() {
+        server.createContext("/upload", exchange -> {
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            exchange.sendResponseHeaders(200, -1);
+            exchange.close();
+        });
+        server.start();
+
+        var client = IngestHttpClient.from(baseUrl,
+                AuthenticationHttpClient.from().clientId("test-client-id").clientSecret("test-client-secret"))
+                                     .sourceId("test-source")
+                                     .requestTimeout(Duration.ofMillis(100))
+                                     .retryPolicy(RetryPolicy.none())
+                                     .build();
+
+        var ex = assertThrows(CICSdkException.class, () -> client.upload(baseUrl + "/upload", createTestBlob()));
+        assertEquals(HttpTimeoutException.class, ex.getCause().getClass());
+    }
+
+    @Test
+    void uploadSucceedsWithConfiguredRequestTimeout() {
+        server.createContext("/upload", exchange -> {
+            exchange.sendResponseHeaders(200, -1);
+            exchange.close();
+        });
+        server.start();
+
+        var client = IngestHttpClient.from(baseUrl,
+                AuthenticationHttpClient.from().clientId("test-client-id").clientSecret("test-client-secret"))
+                                     .sourceId("test-source")
+                                     .requestTimeout(Duration.ofSeconds(10))
+                                     .retryPolicy(RetryPolicy.none())
+                                     .build();
+
+        assertDoesNotThrow(() -> client.upload(baseUrl + "/upload", createTestBlob()));
     }
 
     private IngestHttpClient buildClient(RetryPolicy retryPolicy) {

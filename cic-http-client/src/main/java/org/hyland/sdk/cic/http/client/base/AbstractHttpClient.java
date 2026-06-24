@@ -66,6 +66,8 @@ public abstract class AbstractHttpClient implements AutoCloseable {
 
     protected final RetryPolicy retryPolicy;
 
+    protected final Duration requestTimeout;
+
     protected AbstractHttpClient(AbstractHttpClientBuilder<?, ?> builder) {
         var clientBuilder = HttpClient.newBuilder();
         if (builder.connectTimeout != null) {
@@ -75,6 +77,7 @@ public abstract class AbstractHttpClient implements AutoCloseable {
         this.baseUrl = builder.baseUrl;
         this.headers = Collections.unmodifiableMap(new LinkedHashMap<>(builder.headers));
         this.retryPolicy = builder.retryPolicy;
+        this.requestTimeout = builder.requestTimeout;
     }
 
     protected CICHttpRequest.Builder requestBuilder(String method) {
@@ -179,7 +182,10 @@ public abstract class AbstractHttpClient implements AutoCloseable {
                 }
             }).collect(Collectors.joining("&"));
         }
-        var jdkRequest = HttpRequest.newBuilder(URI.create(fullUrl)).timeout(Duration.ofSeconds(30));
+        var jdkRequest = HttpRequest.newBuilder(URI.create(fullUrl));
+        if (requestTimeout != null) {
+            jdkRequest.timeout(requestTimeout);
+        }
         // append headers
         request.headers().forEach((name, values) -> values.forEach(value -> jdkRequest.header(name, value)));
         // set method and body

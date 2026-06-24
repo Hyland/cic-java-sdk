@@ -47,6 +47,8 @@ public abstract class AbstractHttpClientBuilder<B extends AbstractHttpClientBuil
 
     protected Duration connectTimeout;
 
+    protected Duration requestTimeout = Duration.ofSeconds(30);
+
     protected RetryPolicy retryPolicy = RetryPolicy.defaultPolicy();
 
     protected AbstractHttpClientBuilder(String baseUrl) {
@@ -62,6 +64,19 @@ public abstract class AbstractHttpClientBuilder<B extends AbstractHttpClientBuil
      */
     public B connectTimeout(Duration connectTimeout) {
         this.connectTimeout = connectTimeout;
+        return self();
+    }
+
+    /**
+     * Sets the per-request timeout, bounding the total time from sending the request to receiving the full response.
+     * <p>
+     * Defaults to 30 seconds. Pass {@code null} to disable the request timeout entirely.
+     *
+     * @param requestTimeout the request timeout duration; {@code null} means no timeout is set
+     * @return this builder
+     */
+    public B requestTimeout(Duration requestTimeout) {
+        this.requestTimeout = requestTimeout;
         return self();
     }
 
