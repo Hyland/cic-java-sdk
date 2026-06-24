@@ -26,6 +26,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.net.http.HttpTimeoutException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -342,7 +343,7 @@ class IngestHttpClientUploadRetryTest {
     void uploadTimesOutWhenServerIsSlow() {
         server.createContext("/upload", exchange -> {
             try {
-                Thread.sleep(5_000);
+                Thread.sleep(500);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -358,11 +359,12 @@ class IngestHttpClientUploadRetryTest {
                                      .retryPolicy(RetryPolicy.none())
                                      .build();
 
-        assertThrows(CICSdkException.class, () -> client.upload(baseUrl + "/upload", createTestBlob()));
+        var ex = assertThrows(CICSdkException.class, () -> client.upload(baseUrl + "/upload", createTestBlob()));
+        assertEquals(HttpTimeoutException.class, ex.getCause().getClass());
     }
 
     @Test
-    void uploadUsesConfiguredRequestTimeout() {
+    void uploadSucceedsWithConfiguredRequestTimeout() {
         server.createContext("/upload", exchange -> {
             exchange.sendResponseHeaders(200, -1);
             exchange.close();

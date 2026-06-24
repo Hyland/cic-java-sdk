@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 
 import org.junit.jupiter.api.AfterEach;
@@ -40,7 +41,8 @@ import org.hyland.sdk.cic.http.client.CICSdkException;
  *
  * @since 1.0.0
  */
-class AbstractHttpClientConnectTimeoutTest {
+class AbstractHttpClientTimeoutTest
+{
 
     private HttpServer server;
 
@@ -100,7 +102,7 @@ class AbstractHttpClientConnectTimeoutTest {
     void requestTimesOutWhenServerIsSlow() {
         server.createContext("/slow", exchange -> {
             try {
-                Thread.sleep(5_000);
+                Thread.sleep(500);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -111,7 +113,8 @@ class AbstractHttpClientConnectTimeoutTest {
 
         var client = new TestHttpClient.Builder(baseUrl).requestTimeout(Duration.ofMillis(100)).build();
 
-        assertThrows(CICSdkException.class, () -> client.doGet("/slow"));
+        var ex = assertThrows(CICSdkException.class, () -> client.doGet("/slow")).getCause();
+        assertEquals(HttpTimeoutException.class, ex.getClass());
     }
 
     @Test
