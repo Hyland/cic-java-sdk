@@ -191,6 +191,27 @@ class PageMapperTest {
     }
 
     @Test
+    void testPrincipalUserMembershipPageWithDifferentMembershipTypeCase() {
+        var json = """
+                {
+                  "items": [
+                    {
+                      "externalGroupId": "g-1",
+                      "systemId": "sys-1",
+                      "membershipType": "indirect",
+                      "attributes": []
+                    }
+                  ]
+                }
+                """;
+
+        var result = MapperService.read(json, PrincipalUserMembershipPage.class);
+
+        assertEquals(1, result.data().size());
+        assertEquals(MembershipType.INDIRECT, result.data().get(0).membershipType());
+    }
+
+    @Test
     void testPrincipalUserMembershipPageEmpty() {
         var json = """
                 {"items": [], "next": null}

@@ -35,6 +35,25 @@ import org.hyland.sdk.cic.nucleus.object.SystemOutputPage;
 class SystemOutputMapperTest {
 
     @Test
+    void testDeserializeSystemOutputWithDifferentSystemTypeCase() {
+        var json = """
+                {
+                  "systemId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                  "name": "TestSystem",
+                  "environmentId": "f1e2d3c4-b5a6-7890-fedc-ba0987654321",
+                  "systemType": "onBase"
+                }
+                """;
+
+        var result = MapperService.read(json, SystemOutput.class);
+
+        assertEquals("a1b2c3d4-e5f6-7890-abcd-ef1234567890", result.systemId());
+        assertEquals("TestSystem", result.name());
+        assertEquals("f1e2d3c4-b5a6-7890-fedc-ba0987654321", result.environmentId());
+        assertEquals(SystemIntegrationType.ON_BASE, result.systemType());
+    }
+
+    @Test
     void testDeserializeSystemOutput() {
         var json = """
                 {

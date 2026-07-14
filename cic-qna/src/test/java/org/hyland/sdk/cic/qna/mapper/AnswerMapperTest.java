@@ -36,6 +36,88 @@ import org.hyland.sdk.cic.qna.object.ResponseCompleteness;
 class AnswerMapperTest {
 
     @Test
+    void testDeserializeFullAnswerWithDifferentResponseCompletenessCase() {
+        var json = """
+                {
+                  "answer": "The current financial report is complete and approved.",
+                  "agentId": "f755cbcd-40a6-46b7-8f09-4b6ebe02c5fe",
+                  "agentVersion": 2,
+                  "responseCompleteness": "complete",
+                  "objectReferences": [
+                    {
+                      "objectId": "doc123",
+                      "references": [
+                        {"referenceId": "ref123", "rankScore": 0.58, "rank": 1},
+                        {"referenceId": "ref456", "rankScore": 0.45, "rank": 2}
+                      ]
+                    }
+                  ],
+                  "graphDocumentReferences": [],
+                  "question": "What is the status of the current financial report?",
+                  "feedback": "Good",
+                  "staticFilter": null,
+                  "dynamicFilter": null,
+                  "hxqlFilter": null
+                }
+                """;
+
+        var answer = MapperService.read(json, Answer.class);
+
+        assertEquals("The current financial report is complete and approved.", answer.answer());
+        assertEquals("f755cbcd-40a6-46b7-8f09-4b6ebe02c5fe", answer.agentId());
+        assertEquals(2, answer.agentVersion());
+        assertEquals(ResponseCompleteness.COMPLETE, answer.responseCompleteness());
+        assertNotNull(answer.objectReferences());
+        assertEquals(1, answer.objectReferences().size());
+        assertEquals("doc123", answer.objectReferences().get(0).objectId());
+        assertEquals(2, answer.objectReferences().get(0).references().size());
+        assertEquals("ref123", answer.objectReferences().get(0).references().get(0).referenceId());
+        assertEquals(0.58, answer.objectReferences().get(0).references().get(0).rankScore(), 0.001);
+        assertEquals(1, answer.objectReferences().get(0).references().get(0).rank());
+        assertNotNull(answer.graphDocumentReferences());
+        assertTrue(answer.graphDocumentReferences().isEmpty());
+        assertEquals("What is the status of the current financial report?", answer.question());
+        assertEquals(FeedbackType.GOOD, answer.feedback());
+        assertNull(answer.staticFilter());
+        assertNull(answer.dynamicFilter());
+        assertNull(answer.hxqlFilter());
+    }
+
+    @Test
+    void testDeserializeFullAnswerWithDifferentFeedbackCase() {
+        var json = """
+                {
+                  "answer": "The current financial report is complete and approved.",
+                  "agentId": "f755cbcd-40a6-46b7-8f09-4b6ebe02c5fe",
+                  "agentVersion": 2,
+                  "responseCompleteness": "complete",
+                  "objectReferences": [
+                    {
+                      "objectId": "doc123",
+                      "references": [
+                        {"referenceId": "ref123", "rankScore": 0.58, "rank": 1},
+                        {"referenceId": "ref456", "rankScore": 0.45, "rank": 2}
+                      ]
+                    }
+                  ],
+                  "graphDocumentReferences": [],
+                  "question": "What is the status of the current financial report?",
+                  "feedback": "good",
+                  "staticFilter": null,
+                  "dynamicFilter": null,
+                  "hxqlFilter": null
+                }
+                """;
+
+        var answer = MapperService.read(json, Answer.class);
+
+        assertEquals(FeedbackType.GOOD, answer.feedback());
+        assertNull(answer.staticFilter());
+        assertNull(answer.dynamicFilter());
+        assertNull(answer.hxqlFilter());
+    }
+
+    @Test
     void testDeserializeFullAnswer() {
         var json = """
                 {
