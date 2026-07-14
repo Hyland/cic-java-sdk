@@ -37,7 +37,7 @@ public enum MessageStatus {
 
     public static MessageStatus fromValue(String value) {
         for (var type : values()) {
-            if (type.value.equals(value)) {
+            if (type.value.equalsIgnoreCase(value)) {
                 return type;
             }
         }

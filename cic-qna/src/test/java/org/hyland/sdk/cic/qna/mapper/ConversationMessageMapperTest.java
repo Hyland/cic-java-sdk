@@ -158,4 +158,47 @@ class ConversationMessageMapperTest {
         assertNull(message.feedback());
         assertEquals(MessageStatus.SUBMITTED, message.status());
     }
+
+    @Test
+    void testDeserializeWithDocumentReferencesWithDifferentCase() {
+        var json = """
+                {
+                  "id": "11111111-2222-3333-4444-555555555555",
+                  "question": "What is the status?",
+                  "answer": "The report is done.",
+                  "documentReferences": [
+                    {
+                      "documentId": "doc1",
+                      "references": [
+                        {"referenceId": "ref1", "rankScore": 0.9, "rank": 1}
+                      ]
+                    }
+                  ],
+                  "graphDocumentReferences": [],
+                  "feedback": "Good",
+                  "staticFilter": null,
+                  "dynamicFilter": null,
+                  "dateCreated": "2026-04-02T11:42:00Z",
+                  "dateAnswered": "2026-04-02T11:42:01Z",
+                  "agentVersion": 2,
+                  "status": "answered"
+                }
+                """;
+
+        var message = MapperService.read(json, ConversationMessage.class);
+
+        assertEquals("11111111-2222-3333-4444-555555555555", message.id());
+        assertEquals("What is the status?", message.question());
+        assertEquals("The report is done.", message.answer());
+        assertEquals(1, message.documentReferences().size());
+        assertEquals("doc1", message.documentReferences().get(0).documentId());
+        assertEquals(1, message.documentReferences().get(0).references().size());
+        assertEquals("ref1", message.documentReferences().get(0).references().get(0).referenceId());
+        assertNotNull(message.graphDocumentReferences());
+        assertTrue(message.graphDocumentReferences().isEmpty());
+        assertEquals(FeedbackType.GOOD, message.feedback());
+        assertNull(message.staticFilter());
+        assertEquals(MessageStatus.ANSWERED, message.status());
+        assertEquals(2, message.agentVersion());
+    }
 }
