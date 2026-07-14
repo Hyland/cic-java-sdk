@@ -41,7 +41,7 @@ public enum SystemIntegrationType {
     public static SystemIntegrationType fromValue(String value) {
         Objects.requireNonNull(value, "value cannot be null");
         for (var type : values()) {
-            if (type.value.equals(value)) {
+            if (type.value.equalsIgnoreCase(value)) {
                 return type;
             }
         }
