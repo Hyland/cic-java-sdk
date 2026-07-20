@@ -175,6 +175,10 @@ See the `cic-http-client-jackson2` module for a full implementation.
 
 **Example Usage:**
 ```java
+AuthenticationHttpClient.Builder authBuilder = AuthenticationHttpClient.from("my-token-uri")
+    .clientId("my-client-id")
+    .clientSecret("my-client-secret");
+
 IngestHttpClient client = IngestHttpClient.from("https://ingestion.insight.dev.experience.hyland.com", authBuilder)
     .sourceId("my-source-id")
     .hxpEnvironment("my-hxp-environment")
