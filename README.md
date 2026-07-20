@@ -96,9 +96,9 @@ When no retry policy is explicitly configured, `RetryPolicy.defaultPolicy()` is 
 
 **Example: Default policy (applied automatically)**
 ```java
-IngestHttpClient client = IngestHttpClient.builder("https://api.example.com")
-    .clientId("my-client-id")
-    .clientSecret("my-secret")
+IngestHttpClient client = IngestHttpClient.from("https://api.example.com", authBuilder)
+    .sourceId("my-source-id")
+    .hxpEnvironment("my-hxp-environment")
     .build(); // default retry policy is applied
 ```
 
@@ -110,18 +110,18 @@ RetryPolicy policy = RetryPolicy.builder()
     .retryCondition(context -> context.statusCode() == 503)
     .build();
 
-IngestHttpClient client = IngestHttpClient.builder("https://api.example.com")
-    .clientId("my-client-id")
-    .clientSecret("my-secret")
+IngestHttpClient client = IngestHttpClient.from("https://api.example.com", authBuilder)
+    .sourceId("my-source-id")
+    .hxpEnvironment("my-hxp-environment")
     .retryPolicy(policy)
     .build();
 ```
 
 **Example: Disabling retries**
 ```java
-IngestHttpClient client = IngestHttpClient.builder("https://api.example.com")
-    .clientId("my-client-id")
-    .clientSecret("my-secret")
+IngestHttpClient client = IngestHttpClient.from("https://api.example.com", authBuilder)
+    .sourceId("my-source-id")
+    .hxpEnvironment("my-hxp-environment")
     .retryPolicy(RetryPolicy.none())
     .build();
 ```
@@ -175,12 +175,105 @@ See the `cic-http-client-jackson2` module for a full implementation.
 
 **Example Usage:**
 ```java
-IngestHttpClient client = IngestHttpClient.from("https://ingestion.insight.dev.experience.hyland.com")
-    .clientId("your-client-id")
-    .clientSecret("your-client-secret")
+AuthenticationHttpClient.Builder authBuilder = AuthenticationHttpClient.from("my-token-uri")
+    .clientId("my-client-id")
+    .clientSecret("my-client-secret");
+
+IngestHttpClient client = IngestHttpClient.from("https://ingestion.insight.dev.experience.hyland.com", authBuilder)
+    .sourceId("my-source-id")
+    .hxpEnvironment("my-hxp-environment")
     .build();
 IngestService service = new IngestService(client);
 service.uploadBlobIfNeeded(documentId, blob);
+```
+
+---
+
+### 5. CIC Agent Integration
+- **Package:** `org.hyland.sdk.cic.agent`
+- Provides APIs for managing CIC agents and submitting questions to them:
+  - `AgentService`: High-level API for agent lifecycle operations (create, read, update, delete), agent versioning, avatar management, LLM model and guardrail discovery, and question submission.
+  - `AgentHttpClient`: Lower-level HTTP client, extends `AbstractAuthenticatedHttpClient` for direct HTTP interactions.
+- **Design notes:**
+  - Exposes a fluent, resource-oriented API. `AgentService.agent(agentId)` returns an `AgentResource` handle that scopes subsequent operations to a single agent without repeatedly passing the ID.
+  - Integration-specific operations are available via `AgentService.integrations()`, which returns an `IntegrationAgentService`.
+  - Mutating operations accept either a fully built request object or a `Consumer` of its builder for concise, inline configuration.
+
+**Example Usage:**
+```java
+AgentHttpClient client = AgentHttpClient.from("https://discovery.dev.experience.hyland.com/agent", authBuilder)
+    .hxpEnvironment("my-hxp-environment")
+    .build();
+AgentService service = new AgentService(client);
+
+// Create an agent using a builder consumer
+AgentConfiguration agent = service.createAgent(builder -> builder
+    .name("Support Assistant")
+    .description("Answers product support questions"));
+
+// Submit a question via a resource handle
+QuestionResponse response = service.agent(agent.id())
+    .submitQuestion(request -> request.question("How do I reset my password?"));
+```
+
+---
+
+### 6. CIC QnA Integration
+- **Package:** `org.hyland.sdk.cic.qna`
+- Provides APIs for question-and-answer and conversational interactions with CIC agents:
+  - `QnaService`: High-level API for submitting questions, managing multi-turn conversations, retrieving answers and question history, and submitting feedback.
+  - `QnaHttpClient`: Lower-level HTTP client, extends `AbstractAuthenticatedHttpClient` for direct HTTP interactions.
+- **Design notes:**
+  - Follows the same resource-oriented model as the Agent module. `QnaService.agent(agentId)`, `agent(agentId).conversation(conversationId)`, and `question(questionId)` return scoped resource handles for conversation, message, and question operations.
+  - Integration-specific operations are available via `QnaService.integrations()`, which returns an `IntegrationQnaService`.
+  - List operations return paginated responses and provide `*Paginator()` variants returning lazily-fetching iterables (`CursorPageIterable`, `PageIterable`) that fetch pages on demand.
+
+**Example Usage:**
+```java
+QnaHttpClient client = QnaHttpClient.from("https://discovery.dev.experience.hyland.com/qna", authBuilder)
+    .hxpEnvironment("my-hxp-environment")
+    .build();
+QnaService service = new QnaService(client);
+
+// Start a conversation and send a follow-up message
+StartConversationResponse started = service.agent(agentId)
+    .startConversation(request -> request.question("How do I onboard a new team?"));
+ConversationMessage message = service.agent(agentId)
+    .conversation(started.conversation().id())
+    .sendMessage(request -> request.question("What are the next steps?"));
+
+// Iterate over all question history entries across pages
+for (QuestionHistory entry : service.agent(agentId).getQuestionHistoryPaginator()) {
+    // process entry
+}
+```
+
+---
+
+### 7. CIC Nucleus Integration
+- **Package:** `org.hyland.sdk.cic.nucleus`
+- Provides APIs for CIC Nucleus platform and identity operations, split across two authenticated HTTP clients:
+  - `NucleusHttpClient`: Client for the System Integrations API. Wrapped by `SystemIntegrationService`, a high-level API for managing systems, groups, group members, and user mappings (including their attributes).
+  - `NucleusIAMHttpClient`: Client for the Nucleus IAM API. Wrapped by `UsersService`, a high-level API for user lookup and enumeration.
+- **Design notes:**
+  - Both services follow the resource-oriented model. `SystemIntegrationService.system(systemId)` and `principalUser(principalUserId)` return scoped resource handles; list operations expose paginated responses with lazily-fetching `*Paginator()` variants.
+  - **`UsersService` retrieves interactive users only.** The IAM API surfaces interactive users; `listUsers`, `listUsersPaginator`, and `getUser` return `InteractiveUser` instances and do not enumerate service or system accounts.
+
+**Example Usage:**
+```java
+// System integration operations
+NucleusHttpClient nucleusClient = NucleusHttpClient.from("https://api.platform.dev.app.hyland.com", authBuilder)
+    .build();
+SystemIntegrationService systems = new SystemIntegrationService(nucleusClient);
+SystemOutputPage page = systems.listSystems();
+
+// Interactive user lookup via the IAM API
+NucleusIAMHttpClient iamClient = NucleusIAMHttpClient.from("https://auth.dev.app.hyland.com", authBuilder)
+    .build();
+UsersService users = new UsersService(iamClient);
+for (InteractiveUser user : users.listUsersPaginator()) {
+    // process interactive user
+}
 ```
 
 ---
