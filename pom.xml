@@ -4,7 +4,7 @@
 
   <groupId>org.hyland.sdk</groupId>
   <artifactId>cic-java-sdk</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Hyland CIC Java SDK</name>
