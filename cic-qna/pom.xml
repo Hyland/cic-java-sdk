@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.hyland.sdk</groupId>
     <artifactId>cic-java-sdk</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
   </parent>
   <artifactId>cic-qna</artifactId>
   <packaging>jar</packaging>
