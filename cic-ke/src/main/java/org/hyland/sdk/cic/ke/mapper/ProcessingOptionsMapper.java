@@ -67,7 +67,12 @@ class ProcessingOptionsMapper implements CICMapper<ProcessingOptions> {
 
         cicObject.getOptionalString("embeddings_model").ifPresent(builder::embeddingsModel);
 
-        cicObject.getOptionalString("json_schema").ifPresent(builder::jsonSchema);
+        var jsonSchemaNode = cicObject.getProperties().get("json_schema");
+        if (jsonSchemaNode instanceof org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive.CICBoolean b) {
+            builder.jsonSchema(b.value());
+        } else if (jsonSchemaNode instanceof org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive.CICString s) {
+            builder.jsonSchema(s.value());
+        }
 
         cicObject.getOptionalObject("pii").ifPresent(piiObj -> {
             var piiBuilder = PiiOptions.builder();

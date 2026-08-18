@@ -71,6 +71,10 @@ class ProcessRequestMapper implements CICMapper<ProcessRequest> {
             cicObject.putString("instructions", request.instructions());
         }
 
+        if (request.extraJsonPayload() != null) {
+            cicObject.putString("extraJsonPayload", request.extraJsonPayload());
+        }
+
         return cicObject;
     }
 }

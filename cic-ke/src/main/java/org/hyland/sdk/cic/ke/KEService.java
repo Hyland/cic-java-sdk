@@ -154,6 +154,9 @@ public class KEService {
         if (processRequest.instructions() != null) {
             actualRequest.instructions(processRequest.instructions());
         }
+        if (processRequest.extraJsonPayload() != null) {
+            actualRequest.extraJsonPayload(processRequest.extraJsonPayload());
+        }
 
         // 4. Submit for processing
         return httpClient.process(actualRequest.build());

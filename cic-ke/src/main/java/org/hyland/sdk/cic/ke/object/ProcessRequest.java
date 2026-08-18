@@ -96,12 +96,14 @@ public final class ProcessRequest {
         ProcessRequest that = (ProcessRequest) obj;
         return Objects.equals(objectKeys, that.objectKeys) && Objects.equals(actions, that.actions)
                 && Objects.equals(classes, that.classes) && Objects.equals(kSimilarMetadata, that.kSimilarMetadata)
-                && Objects.equals(maxWordCount, that.maxWordCount) && Objects.equals(instructions, that.instructions);
+                && Objects.equals(maxWordCount, that.maxWordCount) && Objects.equals(instructions, that.instructions)
+                && Objects.equals(extraJsonPayload, that.extraJsonPayload);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(objectKeys, actions, classes, kSimilarMetadata, maxWordCount, instructions);
+        return Objects.hash(objectKeys, actions, classes, kSimilarMetadata, maxWordCount, instructions,
+                extraJsonPayload);
     }
 
     public static final class Builder {

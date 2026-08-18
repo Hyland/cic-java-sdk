@@ -51,7 +51,7 @@ public class DataCurationService {
     }
 
     /**
-     * Configures the polling behavior for the {@link #curate} method.i
+     * Configures the polling behavior for the {@link #curate} method.
      *
      * @param maxAttempts the maximum number of polling attempts
      * @param intervalMs the sleep interval between polls in milliseconds
