@@ -24,6 +24,7 @@ import java.util.function.Consumer;
 
 import org.hyland.sdk.cic.http.client.CICSdkException;
 import org.hyland.sdk.cic.http.client.mapper.object.CICBlob;
+import org.hyland.sdk.cic.ke.object.Action;
 import org.hyland.sdk.cic.ke.object.EnrichmentResult;
 import org.hyland.sdk.cic.ke.object.PresignedUrl;
 import org.hyland.sdk.cic.ke.object.ProcessRequest;
@@ -123,7 +124,7 @@ public class KEService {
      * {@link #getResults(String)} or {@link #pollResults(String)} to get results.
      *
      * @param blob the blob to enrich
-     * @param processRequest the process request with actions
+     * @param processRequest the process request with actions (objectKey will be overridden with the presigned URL key)
      * @return the processing ID
      * @throws CICSdkException if any step fails
      */
@@ -131,35 +132,16 @@ public class KEService {
         Objects.requireNonNull(blob, "blob cannot be null");
         Objects.requireNonNull(processRequest, "processRequest cannot be null");
 
-        // 1. Get presigned URL
         var contentType = blob.getContentType().orElse("application/octet-stream");
         var presignedUrl = httpClient.getPresignedUrl(contentType);
-
-        // 2. Upload
         httpClient.upload(presignedUrl.presignedUrl(), blob);
 
-        // 3. Build a new ProcessRequest with the objectKey from the presigned URL
         var actualRequest = ProcessRequest.builder()
                                           .objectKey(presignedUrl.objectKey())
-                                          .actions(processRequest.actions());
-        if (processRequest.classes() != null) {
-            actualRequest.classes(processRequest.classes());
-        }
-        if (processRequest.kSimilarMetadata() != null) {
-            actualRequest.kSimilarMetadata(processRequest.kSimilarMetadata());
-        }
-        if (processRequest.maxWordCount() != null) {
-            actualRequest.maxWordCount(processRequest.maxWordCount());
-        }
-        if (processRequest.instructions() != null) {
-            actualRequest.instructions(processRequest.instructions());
-        }
-        if (processRequest.extraJsonPayload() != null) {
-            actualRequest.extraJsonPayload(processRequest.extraJsonPayload());
-        }
+                                          .actions(processRequest.actions())
+                                          .build();
 
-        // 4. Submit for processing
-        return httpClient.process(actualRequest.build());
+        return httpClient.process(actualRequest);
     }
 
     /**
@@ -191,16 +173,17 @@ public class KEService {
      * End-to-end enrichment workflow: upload, process, poll until done, return results.
      *
      * @param blob the blob to enrich
-     * @param actions the list of enrichment actions to perform
+     * @param actions the list of enrichment actions to perform (each with empty configuration)
      * @return the enrichment result
      * @throws CICSdkException if any step fails or polling times out
      */
-    public EnrichmentResult enrich(CICBlob blob, List<String> actions) {
+    public EnrichmentResult enrich(CICBlob blob, List<Action> actions) {
         Objects.requireNonNull(blob, "blob cannot be null");
         Objects.requireNonNull(actions, "actions cannot be null");
 
-        var processRequest = ProcessRequest.builder().objectKey("placeholder").actions(actions).build();
-        var processingId = sendForEnrichment(blob, processRequest);
+        var builder = ProcessRequest.builder().objectKey("placeholder");
+        actions.forEach(builder::action);
+        var processingId = sendForEnrichment(blob, builder.build());
         return pollResults(processingId);
     }
 

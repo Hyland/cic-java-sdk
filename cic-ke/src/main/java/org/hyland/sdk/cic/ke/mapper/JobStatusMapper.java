@@ -33,6 +33,10 @@ class JobStatusMapper implements CICMapper<JobStatus> {
         var cicObject = (CICObject) cicNode;
         var jobId = cicObject.getStringOrThrow("jobId");
         var status = cicObject.getStringOrThrow("status");
-        return new JobStatus(jobId, status);
+        var errorMessage = cicObject.getStringOrNull("error_message");
+        if (errorMessage == null) {
+            errorMessage = cicObject.getStringOrNull("errorMessage");
+        }
+        return new JobStatus(jobId, status, errorMessage);
     }
 }

@@ -19,72 +19,53 @@
 package org.hyland.sdk.cic.ke.object;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
+ * Context API v2 process request. Actions are structured as a map of action name to per-action configuration, following
+ * the v2 format where each action can carry its own classes, instructions, and other parameters.
+ *
  * @since 1.0.0
  */
 public final class ProcessRequest {
 
+    public static final String VERSION_V2 = "context.api/v2";
+
+    private final String version;
+
     private final List<ObjectKeyPath> objectKeys;
 
-    private final List<String> actions;
-
-    private final List<String> classes;
-
-    private final List<Map<String, Object>> kSimilarMetadata;
-
-    private final Integer maxWordCount;
-
-    private final String instructions;
-
-    private final String extraJsonPayload;
+    private final Map<String, ActionConfig> actions;
 
     private ProcessRequest(Builder builder) {
+        this.version = builder.version;
         this.objectKeys = List.copyOf(builder.objectKeys);
-        this.actions = builder.actions == null ? List.of() : List.copyOf(builder.actions);
-        this.classes = builder.classes == null ? null : List.copyOf(builder.classes);
-        this.kSimilarMetadata = builder.kSimilarMetadata == null ? null : List.copyOf(builder.kSimilarMetadata);
-        this.maxWordCount = builder.maxWordCount;
-        this.instructions = builder.instructions;
-        this.extraJsonPayload = builder.extraJsonPayload;
+        this.actions = Collections.unmodifiableMap(new LinkedHashMap<>(builder.actions));
     }
 
     public static Builder builder() {
         return new Builder();
     }
 
+    public String version() {
+        return version;
+    }
+
     public List<ObjectKeyPath> objectKeys() {
         return objectKeys;
     }
 
-    public List<String> actions() {
-        return actions;
-    }
-
-    public List<String> classes() {
-        return classes;
-    }
-
-    public List<Map<String, Object>> kSimilarMetadata() {
-        return kSimilarMetadata;
-    }
-
-    public Integer maxWordCount() {
-        return maxWordCount;
-    }
-
     /**
-     * Optional instructions for the model. Supported by all actions except embedding actions.
+     * Returns the actions map where each key is the camelCase action name and the value is the per-action
+     * configuration.
      */
-    public String instructions() {
-        return instructions;
-    }
-
-    public String extraJsonPayload() {
-        return extraJsonPayload;
+    public Map<String, ActionConfig> actions() {
+        return actions;
     }
 
     @Override
@@ -94,33 +75,27 @@ public final class ProcessRequest {
         if (obj == null || getClass() != obj.getClass())
             return false;
         ProcessRequest that = (ProcessRequest) obj;
-        return Objects.equals(objectKeys, that.objectKeys) && Objects.equals(actions, that.actions)
-                && Objects.equals(classes, that.classes) && Objects.equals(kSimilarMetadata, that.kSimilarMetadata)
-                && Objects.equals(maxWordCount, that.maxWordCount) && Objects.equals(instructions, that.instructions)
-                && Objects.equals(extraJsonPayload, that.extraJsonPayload);
+        return Objects.equals(version, that.version) && Objects.equals(objectKeys, that.objectKeys)
+                && Objects.equals(actions, that.actions);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(objectKeys, actions, classes, kSimilarMetadata, maxWordCount, instructions,
-                extraJsonPayload);
+        return Objects.hash(version, objectKeys, actions);
     }
 
     public static final class Builder {
 
+        private String version = VERSION_V2;
+
         private final List<ObjectKeyPath> objectKeys = new ArrayList<>();
 
-        private List<String> actions;
+        private final Map<String, ActionConfig> actions = new LinkedHashMap<>();
 
-        private List<String> classes;
-
-        private List<Map<String, Object>> kSimilarMetadata;
-
-        private Integer maxWordCount;
-
-        private String instructions;
-
-        private String extraJsonPayload;
+        public Builder version(String version) {
+            this.version = version;
+            return this;
+        }
 
         public Builder objectKey(String path) {
             objectKeys.add(new ObjectKeyPath(path));
@@ -132,61 +107,63 @@ public final class ProcessRequest {
             return this;
         }
 
-        public Builder action(String action) {
-            if (this.actions == null)
-                this.actions = new ArrayList<>();
-            this.actions.add(action);
-            return this;
-        }
-
+        /**
+         * Adds an action with empty configuration.
+         */
         public Builder action(Action action) {
-            return action(action.value());
-        }
-
-        public Builder actions(List<String> actions) {
-            this.actions = new ArrayList<>(actions);
-            return this;
-        }
-
-        public Builder classes(List<String> classes) {
-            this.classes = new ArrayList<>(classes);
-            return this;
-        }
-
-        public Builder addClass(String clazz) {
-            if (this.classes == null)
-                this.classes = new ArrayList<>();
-            this.classes.add(clazz);
-            return this;
-        }
-
-        public Builder kSimilarMetadata(List<Map<String, Object>> kSimilarMetadata) {
-            this.kSimilarMetadata = new ArrayList<>(kSimilarMetadata);
-            return this;
-        }
-
-        public Builder addSimilarMetadata(Map<String, Object> metadata) {
-            if (this.kSimilarMetadata == null)
-                this.kSimilarMetadata = new ArrayList<>();
-            this.kSimilarMetadata.add(metadata);
-            return this;
-        }
-
-        public Builder maxWordCount(int maxWordCount) {
-            this.maxWordCount = maxWordCount;
+            actions.put(action.value(), ActionConfig.empty());
             return this;
         }
 
         /**
-         * Sets optional instructions for the model. Supported by all actions except embedding actions.
+         * Adds an action with a pre-built configuration.
          */
-        public Builder instructions(String instructions) {
-            this.instructions = instructions;
+        public Builder action(Action action, ActionConfig config) {
+            actions.put(action.value(), config);
             return this;
         }
 
-        public Builder extraJsonPayload(String extraJsonPayload) {
-            this.extraJsonPayload = extraJsonPayload;
+        /**
+         * Adds an action with configuration built via a consumer.
+         */
+        public Builder action(Action action, Consumer<ActionConfig.Builder> consumer) {
+            var builder = ActionConfig.builder();
+            consumer.accept(builder);
+            actions.put(action.value(), builder.build());
+            return this;
+        }
+
+        /**
+         * Adds an action by name with empty configuration.
+         */
+        public Builder action(String actionName) {
+            actions.put(actionName, ActionConfig.empty());
+            return this;
+        }
+
+        /**
+         * Adds an action by name with a pre-built configuration.
+         */
+        public Builder action(String actionName, ActionConfig config) {
+            actions.put(actionName, config);
+            return this;
+        }
+
+        /**
+         * Adds an action by name with configuration built via a consumer.
+         */
+        public Builder action(String actionName, Consumer<ActionConfig.Builder> consumer) {
+            var builder = ActionConfig.builder();
+            consumer.accept(builder);
+            actions.put(actionName, builder.build());
+            return this;
+        }
+
+        /**
+         * Copies all actions from the given map.
+         */
+        public Builder actions(Map<String, ActionConfig> actions) {
+            this.actions.putAll(actions);
             return this;
         }
 

@@ -27,6 +27,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +36,7 @@ import org.junit.jupiter.api.Test;
 import org.hyland.sdk.cic.http.client.CICSdkException;
 import org.hyland.sdk.cic.http.client.auth.AuthenticationHttpClient;
 import org.hyland.sdk.cic.http.client.mapper.object.CICBlob;
+import org.hyland.sdk.cic.ke.object.Action;
 import org.hyland.sdk.cic.ke.object.EnrichmentResult;
 import org.hyland.sdk.cic.ke.object.PresignedUrl;
 import org.hyland.sdk.cic.ke.object.ProcessRequest;
@@ -69,7 +71,7 @@ class KEServiceTest {
     void testProcess() {
         httpClient.processResult = "processing-id-123";
 
-        var request = ProcessRequest.builder().objectKey("contents/file.pdf").action("text-summarization").build();
+        var request = ProcessRequest.builder().objectKey("contents/file.pdf").action(Action.TEXT_SUMMARIZATION).build();
 
         var processingId = service.process(request);
 
@@ -83,7 +85,7 @@ class KEServiceTest {
         httpClient.processResult = "processing-id-456";
 
         CICBlob blob = createTestBlob();
-        var request = ProcessRequest.builder().objectKey("placeholder").action("text-summarization").build();
+        var request = ProcessRequest.builder().objectKey("placeholder").action(Action.TEXT_SUMMARIZATION).build();
 
         var processingId = service.sendForEnrichment(blob, request);
 
@@ -102,7 +104,7 @@ class KEServiceTest {
                 "SUCCESS", false);
 
         CICBlob blob = createTestBlob();
-        var result = service.enrich(blob, List.of("text-summarization"));
+        var result = service.enrich(blob, List.of(Action.TEXT_SUMMARIZATION));
 
         assertNotNull(result);
         assertTrue(result.isSuccess());
@@ -113,12 +115,12 @@ class KEServiceTest {
     void testEnrichWithPolling() {
         httpClient.presignedUrl = new PresignedUrl("https://upload.url", "contents/file.pdf");
         httpClient.processResult = "processing-id-poll";
-        httpClient.resultsSequence.add(null); // first poll: still processing
+        httpClient.resultsSequence.add(null);
         httpClient.resultsSequence.add(
                 new EnrichmentResult("processing-id-poll", "2026-01-01T00:00:00Z", List.of(), "SUCCESS", false));
 
         CICBlob blob = createTestBlob();
-        var result = service.enrich(blob, List.of("text-summarization"));
+        var result = service.enrich(blob, List.of(Action.TEXT_SUMMARIZATION));
 
         assertNotNull(result);
         assertEquals(2, httpClient.getResultsIfReadyCalls);
@@ -126,7 +128,7 @@ class KEServiceTest {
 
     @Test
     void testPollResultsTimeout() {
-        httpClient.enrichmentResult = null; // always returns null (still processing)
+        httpClient.enrichmentResult = null;
 
         assertThrows(CICSdkException.class, () -> service.pollResults("processing-id-timeout"));
     }
@@ -137,7 +139,7 @@ class KEServiceTest {
     void testProcessWithConsumer() {
         httpClient.processResult = "consumer-proc-id";
 
-        var processingId = service.process(req -> req.objectKey("contents/file.pdf").action("text-summarization"));
+        var processingId = service.process(req -> req.objectKey("contents/file.pdf").action(Action.TEXT_SUMMARIZATION));
 
         assertEquals("consumer-proc-id", processingId);
         assertEquals(1, httpClient.processCalls.size());
@@ -152,25 +154,26 @@ class KEServiceTest {
                 "SUCCESS", false);
 
         CICBlob blob = createTestBlob();
-        var result = service.enrich(blob, req -> req.action("image-description").maxWordCount(100));
+        var result = service.enrich(blob, req -> req.action(Action.IMAGE_DESCRIPTION, cfg -> cfg.maxWordCount(100)));
 
         assertNotNull(result);
         assertTrue(result.isSuccess());
     }
 
-    // --- Instructions propagation ---
+    // --- v2 action config propagation ---
 
     @Test
-    void testSendForEnrichmentPropagatesInstructions() {
+    void testSendForEnrichmentPropagatesActionConfigs() {
         httpClient.presignedUrl = new PresignedUrl("https://upload.url", "contents/file.pdf");
-        httpClient.processResult = "instr-proc-id";
+        httpClient.processResult = "cfg-proc-id";
 
         CICBlob blob = createTestBlob();
         var request = ProcessRequest.builder()
                                     .objectKey("placeholder")
-                                    .action("text-summarization")
-                                    .instructions("Summarize in bullet points")
-                                    .maxWordCount(200)
+                                    .action(Action.TEXT_SUMMARIZATION, cfg -> cfg.maxWordCount(200))
+                                    .action(Action.TEXT_CLASSIFICATION,
+                                            cfg -> cfg.classes(List.of("a", "b"))
+                                                      .instructions(Map.of("context", "legal")))
                                     .build();
 
         service.sendForEnrichment(blob, request);
@@ -178,9 +181,10 @@ class KEServiceTest {
         assertEquals(1, httpClient.processCalls.size());
         var submitted = httpClient.processCalls.get(0);
         assertEquals("contents/file.pdf", submitted.objectKeys().get(0).path());
-        assertEquals(List.of("text-summarization"), submitted.actions());
-        assertEquals(200, submitted.maxWordCount());
-        assertEquals("Summarize in bullet points", submitted.instructions());
+        assertEquals(2, submitted.actions().size());
+        assertEquals(200, submitted.actions().get("textSummarization").maxWordCount());
+        assertEquals(List.of("a", "b"), submitted.actions().get("textClassification").classes());
+        assertEquals("legal", submitted.actions().get("textClassification").instructions().get("context"));
     }
 
     // --- Delegate and null validation ---
@@ -223,7 +227,7 @@ class KEServiceTest {
     void testGetActions() {
         var actions = service.getActions();
         assertNotNull(actions);
-        assertTrue(actions.contains("text-summarization"));
+        assertTrue(actions.contains("textSummarization"));
     }
 
     @Test
@@ -249,7 +253,7 @@ class KEServiceTest {
 
     @Test
     void testSendForEnrichmentNullBlobThrows() {
-        var request = ProcessRequest.builder().objectKey("x").action("y").build();
+        var request = ProcessRequest.builder().objectKey("x").action(Action.TEXT_EMBEDDINGS).build();
         assertThrows(NullPointerException.class, () -> service.sendForEnrichment(null, request));
     }
 
@@ -260,12 +264,12 @@ class KEServiceTest {
 
     @Test
     void testEnrichNullBlobThrows() {
-        assertThrows(NullPointerException.class, () -> service.enrich(null, List.of("text-summarization")));
+        assertThrows(NullPointerException.class, () -> service.enrich(null, List.of(Action.TEXT_SUMMARIZATION)));
     }
 
     @Test
     void testEnrichNullActionsThrows() {
-        assertThrows(NullPointerException.class, () -> service.enrich(createTestBlob(), (List<String>) null));
+        assertThrows(NullPointerException.class, () -> service.enrich(createTestBlob(), (List<Action>) null));
     }
 
     private CICBlob createTestBlob() {
@@ -346,7 +350,7 @@ class KEServiceTest {
 
         @Override
         public String getActions() {
-            return "[\"text-summarization\",\"image-description\"]";
+            return "[\"textSummarization\",\"imageDescription\"]";
         }
 
         @Override

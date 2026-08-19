@@ -20,12 +20,55 @@ package org.hyland.sdk.cic.ke.object;
 
 /**
  * Response from {@code GET /status/{job_id}} endpoint.
+ * <p>
+ * The status field follows the lifecycle: PENDING -> PROCESSING/IN_PROGRESS -> COMPLETED/FAILED.
+ * <p>
+ * A COMPLETED status does not always mean success — the response payload may contain an error. Use {@link #hasError()}
+ * to detect this case. A FAILED status means the pipeline exhausted all retries.
  *
  * @since 1.0.0
  */
-public record JobStatus(String jobId, String status) {
+public record JobStatus(String jobId, String status, String errorMessage) {
 
+    /**
+     * Convenience constructor for responses without an error message.
+     */
+    public JobStatus(String jobId, String status) {
+        this(jobId, status, null);
+    }
+
+    /**
+     * @return true when the job completed successfully (COMPLETED/Done with no error payload)
+     */
     public boolean isDone() {
-        return "Done".equalsIgnoreCase(status);
+        return isCompleted() && !hasError();
+    }
+
+    /**
+     * @return true when the status is COMPLETED or Done (does not imply success — check {@link #hasError()})
+     */
+    public boolean isCompleted() {
+        return "Done".equalsIgnoreCase(status) || "COMPLETED".equalsIgnoreCase(status);
+    }
+
+    /**
+     * @return true when the pipeline reached a terminal failure after exhausting retries
+     */
+    public boolean isFailed() {
+        return "FAILED".equalsIgnoreCase(status);
+    }
+
+    /**
+     * @return true when the job has reached a terminal state (COMPLETED or FAILED) and will not change further
+     */
+    public boolean isTerminal() {
+        return isCompleted() || isFailed();
+    }
+
+    /**
+     * @return true when the response contains an error message (possible even with COMPLETED status)
+     */
+    public boolean hasError() {
+        return errorMessage != null && !errorMessage.isBlank();
     }
 }

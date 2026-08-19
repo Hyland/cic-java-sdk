@@ -22,9 +22,13 @@ import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
+import org.hyland.sdk.cic.ke.object.ActionConfig;
 import org.hyland.sdk.cic.ke.object.ProcessRequest;
 
 /**
+ * Serializes {@link ProcessRequest} to Context API v2 JSON format where actions are structured as an object map with
+ * per-action configuration.
+ *
  * @since 1.0.0
  */
 class ProcessRequestMapper implements CICMapper<ProcessRequest> {
@@ -32,6 +36,8 @@ class ProcessRequestMapper implements CICMapper<ProcessRequest> {
     @Override
     public CICNode toCICNode(ProcessRequest request) {
         var cicObject = CICObject.create();
+
+        cicObject.putString("version", request.version());
 
         var objectKeysArray = CICArray.create();
         for (var objectKey : request.objectKeys()) {
@@ -41,40 +47,46 @@ class ProcessRequestMapper implements CICMapper<ProcessRequest> {
         }
         cicObject.putArray("objectKeys", objectKeysArray);
 
-        var actionsArray = CICArray.create();
-        for (var action : request.actions()) {
-            actionsArray.addString(action);
+        var actionsObj = CICObject.create();
+        for (var entry : request.actions().entrySet()) {
+            actionsObj.putObject(entry.getKey(), serializeActionConfig(entry.getValue()));
         }
-        cicObject.putArray("actions", actionsArray);
-
-        if (request.classes() != null) {
-            var classesArray = CICArray.create();
-            for (var clazz : request.classes()) {
-                classesArray.addString(clazz);
-            }
-            cicObject.putArray("classes", classesArray);
-        }
-
-        if (request.kSimilarMetadata() != null) {
-            var metadataArray = CICArray.create();
-            for (var metadata : request.kSimilarMetadata()) {
-                metadataArray.addObject(CICObject.from(metadata));
-            }
-            cicObject.putArray("kSimilarMetadata", metadataArray);
-        }
-
-        if (request.maxWordCount() != null) {
-            cicObject.putInt("maxWordCount", request.maxWordCount());
-        }
-
-        if (request.instructions() != null) {
-            cicObject.putString("instructions", request.instructions());
-        }
-
-        if (request.extraJsonPayload() != null) {
-            cicObject.putString("extraJsonPayload", request.extraJsonPayload());
-        }
+        cicObject.putObject("actions", actionsObj);
 
         return cicObject;
+    }
+
+    private CICObject serializeActionConfig(ActionConfig config) {
+        var configObj = CICObject.create();
+
+        if (config.classes() != null) {
+            var classesArr = CICArray.create();
+            for (var clazz : config.classes()) {
+                classesArr.addString(clazz);
+            }
+            configObj.putArray("classes", classesArr);
+        }
+
+        if (config.maxWordCount() != null) {
+            configObj.putInt("maxWordCount", config.maxWordCount());
+        }
+
+        if (config.kSimilarMetadata() != null) {
+            var metadataArr = CICArray.create();
+            for (var metadata : config.kSimilarMetadata()) {
+                metadataArr.addObject(CICObject.from(metadata));
+            }
+            configObj.putArray("kSimilarMetadata", metadataArr);
+        }
+
+        if (config.instructions() != null) {
+            var instrObj = CICObject.create();
+            for (var instrEntry : config.instructions().entrySet()) {
+                instrObj.putString(instrEntry.getKey(), instrEntry.getValue());
+            }
+            configObj.putObject("instructions", instrObj);
+        }
+
+        return configObj;
     }
 }

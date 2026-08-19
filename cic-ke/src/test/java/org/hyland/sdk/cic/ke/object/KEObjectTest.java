@@ -40,16 +40,16 @@ class KEObjectTest {
 
     @Test
     void testActionValues() {
-        assertEquals("image-classification", Action.IMAGE_CLASSIFICATION.value());
-        assertEquals("image-description", Action.IMAGE_DESCRIPTION.value());
-        assertEquals("image-embeddings", Action.IMAGE_EMBEDDINGS.value());
-        assertEquals("image-metadata-generation", Action.IMAGE_METADATA_GENERATION.value());
-        assertEquals("named-entity-recognition-image", Action.NAMED_ENTITY_RECOGNITION_IMAGE.value());
-        assertEquals("named-entity-recognition-text", Action.NAMED_ENTITY_RECOGNITION_TEXT.value());
-        assertEquals("text-classification", Action.TEXT_CLASSIFICATION.value());
-        assertEquals("text-embeddings", Action.TEXT_EMBEDDINGS.value());
-        assertEquals("text-metadata-generation", Action.TEXT_METADATA_GENERATION.value());
-        assertEquals("text-summarization", Action.TEXT_SUMMARIZATION.value());
+        assertEquals("imageClassification", Action.IMAGE_CLASSIFICATION.value());
+        assertEquals("imageDescription", Action.IMAGE_DESCRIPTION.value());
+        assertEquals("imageEmbeddings", Action.IMAGE_EMBEDDINGS.value());
+        assertEquals("imageMetadataGeneration", Action.IMAGE_METADATA_GENERATION.value());
+        assertEquals("namedEntityRecognitionImage", Action.NAMED_ENTITY_RECOGNITION_IMAGE.value());
+        assertEquals("namedEntityRecognitionText", Action.NAMED_ENTITY_RECOGNITION_TEXT.value());
+        assertEquals("textClassification", Action.TEXT_CLASSIFICATION.value());
+        assertEquals("textEmbeddings", Action.TEXT_EMBEDDINGS.value());
+        assertEquals("textMetadataGeneration", Action.TEXT_METADATA_GENERATION.value());
+        assertEquals("textSummarization", Action.TEXT_SUMMARIZATION.value());
     }
 
     @Test
@@ -57,55 +57,109 @@ class KEObjectTest {
         assertEquals(10, Action.values().length);
     }
 
-    // --- ProcessRequest builder ---
+    // --- ActionConfig builder ---
+
+    @Test
+    void testActionConfigEmpty() {
+        var config = ActionConfig.empty();
+        assertNull(config.classes());
+        assertNull(config.maxWordCount());
+        assertNull(config.kSimilarMetadata());
+        assertNull(config.instructions());
+    }
+
+    @Test
+    void testActionConfigBuilderWithAllFields() {
+        var config = ActionConfig.builder()
+                                 .classes(List.of("invoice", "contract"))
+                                 .maxWordCount(200)
+                                 .addSimilarMetadata(Map.of("title", "Sample"))
+                                 .instructions(Map.of("context", "legal documents"))
+                                 .build();
+
+        assertEquals(List.of("invoice", "contract"), config.classes());
+        assertEquals(200, config.maxWordCount());
+        assertEquals(1, config.kSimilarMetadata().size());
+        assertEquals("legal documents", config.instructions().get("context"));
+    }
+
+    @Test
+    void testActionConfigAddClass() {
+        var config = ActionConfig.builder().addClass("a").addClass("b").build();
+        assertEquals(List.of("a", "b"), config.classes());
+    }
+
+    @Test
+    void testActionConfigInstruction() {
+        var config = ActionConfig.builder().instruction("tone", "professional").instruction("focus", "summary").build();
+        assertEquals("professional", config.instructions().get("tone"));
+        assertEquals("summary", config.instructions().get("focus"));
+    }
+
+    @Test
+    void testActionConfigEquality() {
+        var c1 = ActionConfig.builder().maxWordCount(100).build();
+        var c2 = ActionConfig.builder().maxWordCount(100).build();
+        var c3 = ActionConfig.builder().maxWordCount(200).build();
+
+        assertEquals(c1, c2);
+        assertEquals(c1.hashCode(), c2.hashCode());
+        assertNotEquals(c1, c3);
+    }
+
+    // --- ProcessRequest builder (v2) ---
 
     @Test
     void testProcessRequestBuilderWithAllFields() {
         var request = ProcessRequest.builder()
                                     .objectKey("contents/file.pdf")
-                                    .action(Action.TEXT_SUMMARIZATION)
-                                    .action("image-description")
-                                    .addClass("invoice")
-                                    .addSimilarMetadata(Map.of("title", "Sample"))
-                                    .maxWordCount(150)
-                                    .instructions("Be concise")
-                                    .extraJsonPayload("{\"custom\":true}")
+                                    .action(Action.TEXT_SUMMARIZATION, cfg -> cfg.maxWordCount(150))
+                                    .action(Action.TEXT_CLASSIFICATION,
+                                            cfg -> cfg.classes(List.of("invoice")).instruction("context", "legal"))
                                     .build();
 
+        assertEquals(ProcessRequest.VERSION_V2, request.version());
         assertEquals(1, request.objectKeys().size());
         assertEquals("contents/file.pdf", request.objectKeys().get(0).path());
         assertEquals(2, request.actions().size());
-        assertEquals("text-summarization", request.actions().get(0));
-        assertEquals("image-description", request.actions().get(1));
-        assertEquals(List.of("invoice"), request.classes());
-        assertEquals(1, request.kSimilarMetadata().size());
-        assertEquals(150, request.maxWordCount());
-        assertEquals("Be concise", request.instructions());
-        assertEquals("{\"custom\":true}", request.extraJsonPayload());
+        assertNotNull(request.actions().get("textSummarization"));
+        assertEquals(150, request.actions().get("textSummarization").maxWordCount());
+        assertNotNull(request.actions().get("textClassification"));
+        assertEquals(List.of("invoice"), request.actions().get("textClassification").classes());
+        assertEquals("legal", request.actions().get("textClassification").instructions().get("context"));
     }
 
     @Test
     void testProcessRequestBuilderEmptyObjectKeysThrows() {
         assertThrows(IllegalArgumentException.class,
-                () -> ProcessRequest.builder().action("text-summarization").build());
+                () -> ProcessRequest.builder().action(Action.TEXT_SUMMARIZATION).build());
     }
 
     @Test
     void testProcessRequestNullOptionalFields() {
-        var request = ProcessRequest.builder().objectKey("path").action("action").build();
+        var request = ProcessRequest.builder().objectKey("path").action(Action.TEXT_EMBEDDINGS).build();
 
-        assertNull(request.classes());
-        assertNull(request.kSimilarMetadata());
-        assertNull(request.maxWordCount());
-        assertNull(request.instructions());
-        assertNull(request.extraJsonPayload());
+        assertEquals(ProcessRequest.VERSION_V2, request.version());
+        var config = request.actions().get("textEmbeddings");
+        assertNotNull(config);
+        assertNull(config.classes());
+        assertNull(config.maxWordCount());
     }
 
     @Test
     void testProcessRequestEquality() {
-        var r1 = ProcessRequest.builder().objectKey("a").action("b").maxWordCount(10).instructions("x").build();
-        var r2 = ProcessRequest.builder().objectKey("a").action("b").maxWordCount(10).instructions("x").build();
-        var r3 = ProcessRequest.builder().objectKey("a").action("b").maxWordCount(20).build();
+        var r1 = ProcessRequest.builder()
+                               .objectKey("a")
+                               .action(Action.TEXT_SUMMARIZATION, cfg -> cfg.maxWordCount(10))
+                               .build();
+        var r2 = ProcessRequest.builder()
+                               .objectKey("a")
+                               .action(Action.TEXT_SUMMARIZATION, cfg -> cfg.maxWordCount(10))
+                               .build();
+        var r3 = ProcessRequest.builder()
+                               .objectKey("a")
+                               .action(Action.TEXT_SUMMARIZATION, cfg -> cfg.maxWordCount(20))
+                               .build();
 
         assertEquals(r1, r2);
         assertEquals(r1.hashCode(), r2.hashCode());
@@ -118,10 +172,46 @@ class KEObjectTest {
                                     .objectKey("path1")
                                     .objectKey("path2")
                                     .objectKeys(List.of(new ObjectKeyPath("path3")))
-                                    .action("action")
+                                    .action(Action.TEXT_EMBEDDINGS)
                                     .build();
 
         assertEquals(3, request.objectKeys().size());
+    }
+
+    @Test
+    void testProcessRequestActionByString() {
+        var request = ProcessRequest.builder()
+                                    .objectKey("path")
+                                    .action("textSummarization")
+                                    .action("customAction", cfg -> cfg.maxWordCount(100))
+                                    .build();
+
+        assertEquals(2, request.actions().size());
+        assertNotNull(request.actions().get("textSummarization"));
+        assertEquals(100, request.actions().get("customAction").maxWordCount());
+    }
+
+    @Test
+    void testProcessRequestActionWithPrebuiltConfig() {
+        var config = ActionConfig.builder().classes(List.of("a", "b")).build();
+        var request = ProcessRequest.builder().objectKey("path").action(Action.TEXT_CLASSIFICATION, config).build();
+
+        assertEquals(List.of("a", "b"), request.actions().get("textClassification").classes());
+    }
+
+    @Test
+    void testProcessRequestActionsMapCopy() {
+        var actionsMap = Map.of("textSummarization", ActionConfig.builder().maxWordCount(100).build(), "textEmbeddings",
+                ActionConfig.empty());
+        var request = ProcessRequest.builder().objectKey("path").actions(actionsMap).build();
+
+        assertEquals(2, request.actions().size());
+    }
+
+    @Test
+    void testProcessRequestDefaultVersion() {
+        var request = ProcessRequest.builder().objectKey("path").action(Action.TEXT_EMBEDDINGS).build();
+        assertEquals("context.api/v2", request.version());
     }
 
     // --- ProcessingOptions builder ---
@@ -253,8 +343,56 @@ class KEObjectTest {
         assertTrue(new JobStatus("j", "Done").isDone());
         assertTrue(new JobStatus("j", "done").isDone());
         assertTrue(new JobStatus("j", "DONE").isDone());
+        assertTrue(new JobStatus("j", "COMPLETED").isDone());
         assertFalse(new JobStatus("j", "Processing").isDone());
-        assertFalse(new JobStatus("j", "Wait For Upload").isDone());
+        assertFalse(new JobStatus("j", "FAILED").isDone());
+        // COMPLETED with error is NOT isDone
+        assertFalse(new JobStatus("j", "COMPLETED", "delivery failed").isDone());
+    }
+
+    @Test
+    void testJobStatusIsCompleted() {
+        assertTrue(new JobStatus("j", "Done").isCompleted());
+        assertTrue(new JobStatus("j", "COMPLETED").isCompleted());
+        assertTrue(new JobStatus("j", "completed").isCompleted());
+        assertFalse(new JobStatus("j", "Processing").isCompleted());
+        assertFalse(new JobStatus("j", "FAILED").isCompleted());
+    }
+
+    @Test
+    void testJobStatusIsFailed() {
+        assertTrue(new JobStatus("j", "FAILED").isFailed());
+        assertTrue(new JobStatus("j", "failed").isFailed());
+        assertFalse(new JobStatus("j", "Done").isFailed());
+        assertFalse(new JobStatus("j", "Processing").isFailed());
+    }
+
+    @Test
+    void testJobStatusIsTerminal() {
+        assertTrue(new JobStatus("j", "Done").isTerminal());
+        assertTrue(new JobStatus("j", "COMPLETED").isTerminal());
+        assertTrue(new JobStatus("j", "FAILED").isTerminal());
+        assertFalse(new JobStatus("j", "Processing").isTerminal());
+        assertFalse(new JobStatus("j", "PENDING").isTerminal());
+    }
+
+    @Test
+    void testJobStatusHasError() {
+        assertFalse(new JobStatus("j", "Done").hasError());
+        assertFalse(new JobStatus("j", "Done", null).hasError());
+        assertFalse(new JobStatus("j", "Done", "").hasError());
+        assertFalse(new JobStatus("j", "Done", "  ").hasError());
+        assertTrue(new JobStatus("j", "COMPLETED", "delivery failed").hasError());
+        assertTrue(new JobStatus("j", "FAILED", "unrecoverable pipeline error").hasError());
+    }
+
+    @Test
+    void testJobStatusCompletedWithErrorIsNotDoneButIsTerminal() {
+        var status = new JobStatus("j", "COMPLETED", "non-retryable delivery failure");
+        assertFalse(status.isDone());
+        assertTrue(status.isCompleted());
+        assertTrue(status.isTerminal());
+        assertTrue(status.hasError());
     }
 
     // --- EnrichmentResult ---

@@ -156,9 +156,11 @@ public class KEHttpClient extends AbstractAuthenticatedHttpClient {
      * @throws CICSdkException if the request fails
      */
     public EnrichmentResult getResults(String processingId) {
-        var request = this.requestBuilder(GET, PROCESS_PATH + "/" + encodePathSegment(processingId) + "/results")
-                          .build();
-        return sendThenMapAs(request, EnrichmentResult.class);
+        var result = getResultsIfReady(processingId);
+        if (result == null) {
+            throw new CICSdkException("Enrichment results are not ready yet for processing ID: " + processingId);
+        }
+        return result;
     }
 
     /**

@@ -39,6 +39,7 @@ import com.sun.net.httpserver.HttpServer;
 import org.hyland.sdk.cic.http.client.CICSdkException;
 import org.hyland.sdk.cic.http.client.auth.AuthenticationHttpClient;
 import org.hyland.sdk.cic.http.client.retry.RetryPolicy;
+import org.hyland.sdk.cic.ke.object.Action;
 import org.hyland.sdk.cic.ke.object.ProcessRequest;
 
 /**
@@ -118,12 +119,13 @@ class KEHttpClientIntegrationTest {
         apiServer.start();
         client = buildClient();
 
-        var request = ProcessRequest.builder().objectKey("contents/doc.pdf").action("text-summarization").build();
+        var request = ProcessRequest.builder().objectKey("contents/doc.pdf").action(Action.TEXT_SUMMARIZATION).build();
         var processingId = client.process(request);
 
         assertEquals("proc-123", processingId);
-        assertTrue(capturedBody.get().contains("text-summarization"));
+        assertTrue(capturedBody.get().contains("textSummarization"));
         assertTrue(capturedBody.get().contains("contents/doc.pdf"));
+        assertTrue(capturedBody.get().contains("context.api/v2"));
     }
 
     // --- getResults ---
@@ -220,7 +222,7 @@ class KEHttpClientIntegrationTest {
         apiServer.createContext("/content/actions", exchange -> {
             TestHttpServers.assertBearerToken(exchange);
             TestHttpServers.respondJson(exchange, 200, """
-                    ["text-summarization","image-description","named-entity-recognition-text"]
+                    ["textSummarization","imageDescription","namedEntityRecognitionText"]
                     """);
         });
         apiServer.start();
@@ -229,8 +231,8 @@ class KEHttpClientIntegrationTest {
         var actions = client.getActions();
 
         assertNotNull(actions);
-        assertTrue(actions.contains("text-summarization"));
-        assertTrue(actions.contains("image-description"));
+        assertTrue(actions.contains("textSummarization"));
+        assertTrue(actions.contains("imageDescription"));
     }
 
     // --- isHealthy ---
@@ -282,7 +284,7 @@ class KEHttpClientIntegrationTest {
         apiServer.start();
         client = buildClient();
 
-        var request = ProcessRequest.builder().objectKey("key").action("action").build();
+        var request = ProcessRequest.builder().objectKey("key").action("textEmbeddings").build();
         assertThrows(CICSdkException.class, () -> client.process(request));
     }
 }

@@ -21,10 +21,12 @@ package org.hyland.sdk.cic.ke.mapper;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
+import org.hyland.sdk.cic.ke.object.Action;
 import org.hyland.sdk.cic.ke.object.ConfigOptions;
 import org.hyland.sdk.cic.ke.object.ConfigRule;
 import org.hyland.sdk.cic.ke.object.EmbeddingModel;
@@ -111,16 +113,18 @@ class KEMapperFactoryTest {
     }
 
     @Test
-    void testProcessRequestSerialization() {
+    void testProcessRequestV2Serialization() {
         var request = ProcessRequest.builder()
                                     .objectKey("contents/file.pdf")
-                                    .action("text-summarization")
-                                    .action("image-description")
-                                    .maxWordCount(150)
+                                    .action(Action.TEXT_SUMMARIZATION, cfg -> cfg.maxWordCount(150))
+                                    .action(Action.IMAGE_DESCRIPTION)
                                     .build();
 
         var json = MapperService.writeAsString(request);
         assertNotNull(json);
+        assertTrue(json.contains("\"version\":\"context.api/v2\""));
+        assertTrue(json.contains("\"textSummarization\""));
+        assertTrue(json.contains("\"imageDescription\""));
     }
 
     @Test

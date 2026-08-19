@@ -206,11 +206,12 @@ Use `KEService` for all Context API operations. It wraps `KEHttpClient` with con
 Key types used in the examples below:
 
 
-| Type               | Description                                                                                                                                                                                                          |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Action`           | Enum of available enrichment actions (e.g. `TEXT_SUMMARIZATION`, `IMAGE_DESCRIPTION`). Call `.value()` to get the API string. See [Supported Context API Actions](#supported-context-api-actions) for the full list. |
-| `ProcessRequest`   | Specifies which object keys and actions to process, with optional parameters like `instructions`, `classes`, and `maxWordCount`. Built using `ProcessRequest.builder()`.                                             |
-| `EnrichmentResult` | The response from the server containing status, timestamp, and a list of per-object results.                                                                                                                         |
+| Type               | Description                                                                                                                                                                                                                  |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Action`           | Enum of available enrichment actions (e.g. `TEXT_SUMMARIZATION`, `IMAGE_DESCRIPTION`). Call `.value()` to get the camelCase API string. See [Supported Context API Actions](#supported-context-api-actions) for the full list. |
+| `ProcessRequest`   | A v2 process request. Specifies object keys and a map of actions, where each action can carry its own configuration (`ActionConfig`). Built using `ProcessRequest.builder()`.                                                 |
+| `ActionConfig`     | Per-action configuration: `classes`, `maxWordCount`, `kSimilarMetadata`, and `instructions`. Use `ActionConfig.builder()` or the `action(Action, cfg -> ...)` shorthand on the request builder.                               |
+| `EnrichmentResult` | The response from the server containing status, timestamp, and a list of per-object results.                                                                                                                                 |
 
 
 
@@ -223,8 +224,8 @@ The simplest way to enrich a document. Handles upload, processing, and polling a
 CICBlob blob = ...; // see "Creating a CICBlob" above
 
 EnrichmentResult result = keService.enrich(blob, List.of(
-    Action.TEXT_SUMMARIZATION.value(),       // "text-summarization"
-    Action.NAMED_ENTITY_RECOGNITION_TEXT.value() // "named-entity-recognition-text"
+    Action.TEXT_SUMMARIZATION,
+    Action.NAMED_ENTITY_RECOGNITION_TEXT
 ));
 
 System.out.println("Status: " + result.status());       // "SUCCESS"
@@ -235,17 +236,14 @@ System.out.println("Complete: " + result.isComplete());  // true
 
 ### Enrich with Custom Options
 
-Use a builder consumer to set additional options like instructions, classification classes, or word count limits.
+Use a builder consumer to set per-action configuration. In v2 format, each action carries its own `classes`, `maxWordCount`, `kSimilarMetadata`, and `instructions`.
 
 ```java
 EnrichmentResult result = keService.enrich(blob, req -> req
-    .action(Action.TEXT_SUMMARIZATION)
-    .action(Action.TEXT_CLASSIFICATION)
-    .instructions("Summarize in bullet points")
-    .maxWordCount(200)
-    .addClass("Legal")
-    .addClass("Financial")
-    .addClass("Technical")
+    .action(Action.TEXT_SUMMARIZATION, cfg -> cfg.maxWordCount(200))
+    .action(Action.TEXT_CLASSIFICATION, cfg -> cfg
+        .classes(List.of("Legal", "Financial", "Technical"))
+        .instruction("context", "corporate documents"))
 );
 ```
 
@@ -262,12 +260,11 @@ PresignedUrl presignedUrl = keService.getPresignedUrl("application/pdf");
 // 2. Upload the file
 keService.upload(presignedUrl.presignedUrl(), blob);
 
-// 3. Submit for processing
+// 3. Submit for processing (v2 format: actions are an object map)
 String processingId = keService.process(req -> req
     .objectKey(presignedUrl.objectKey())
-    .action(Action.TEXT_SUMMARIZATION)
+    .action(Action.TEXT_SUMMARIZATION, cfg -> cfg.maxWordCount(300))
     .action(Action.IMAGE_DESCRIPTION)
-    .instructions("Focus on financial figures")
 );
 
 // 4. Poll for results (blocks until ready or timeout)
@@ -284,8 +281,9 @@ Upload and submit in one call, then poll separately. Useful when you want to do 
 ProcessRequest request = ProcessRequest.builder()
     .objectKey("placeholder") // overridden by sendForEnrichment
     .action(Action.IMAGE_DESCRIPTION)
-    .action(Action.IMAGE_METADATA_GENERATION)
-    .addSimilarMetadata(Map.of("title", "Annual Report"))
+    .action(Action.IMAGE_METADATA_GENERATION, cfg -> cfg
+        .addSimilarMetadata(Map.of("title", "Annual Report"))
+        .instruction("detailLevel", "high"))
     .build();
 
 // Upload + process in one call
@@ -324,25 +322,26 @@ keService.upload(presigned.presignedUrl(), blob);
 
 ### Submit a Process Request
 
-Submit a process request with specific object keys and actions.
+Submit a process request with specific object keys and actions. In v2, each action's configuration (classes, instructions, maxWordCount) is nested inside the action itself.
 
 ```java
-// Using a builder
+// Using a builder — multiple actions with per-action config
 ProcessRequest request = ProcessRequest.builder()
     .objectKey("contents/my-document.pdf")
-    .action(Action.TEXT_SUMMARIZATION)
+    .action(Action.TEXT_SUMMARIZATION, cfg -> cfg.maxWordCount(500))
     .action(Action.NAMED_ENTITY_RECOGNITION_TEXT)
-    .instructions("Extract only financial entities")
-    .maxWordCount(500)
     .build();
 
 String processingId = keService.process(request);
 ```
 
 ```java
-// Using a consumer
+// Using a consumer — classification with instructions
 String processingId = keService.process(req -> req
     .objectKey("contents/my-document.pdf")
+    .action(Action.TEXT_CLASSIFICATION, cfg -> cfg
+        .classes(List.of("invoice", "contract", "other"))
+        .instruction("context", "financial documents"))
     .action(Action.TEXT_EMBEDDINGS)
 );
 ```
@@ -381,7 +380,7 @@ Get the list of actions supported by the server.
 
 ```java
 String actionsJson = keService.getActions();
-// Returns: ["text-summarization","image-description","named-entity-recognition-text",...]
+// Returns: ["textSummarization","imageDescription","namedEntityRecognitionText",...]
 ```
 
 
@@ -469,7 +468,7 @@ Key types used in the examples below:
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ProcessingOptions` | Controls how the curation pipeline processes content — chunking, embedding, PII redaction, normalization. Built using `ProcessingOptions.builder()`. See [Processing Options Reference](#processing-options-reference). |
 | `PresignResponse`   | Contains a `jobId`, a `putUrl` (for uploading), and a `getUrl` (for downloading results).                                                                                                                               |
-| `JobStatus`         | The job's current state. Check `isDone()` to know when results are ready.                                                                                                                                               |
+| `JobStatus`         | The job's current state. Lifecycle: PENDING -> PROCESSING -> COMPLETED/FAILED. Use `isDone()` for success, `isFailed()` for terminal failure, `isTerminal()` for any final state, `hasError()` to detect error payloads. |
 
 
 
@@ -538,15 +537,24 @@ System.out.println("Download URL: " + presign.getUrl()); // a temporary signed U
 // 2. Upload the file to the presigned PUT URL
 dcClient.upload(presign.putUrl(), blob);
 
-// 3. Poll for completion
+// 3. Poll until terminal state
 JobStatus status;
 do {
     Thread.sleep(5000);
     status = dcService.getJobStatus(presign.jobId());
-    System.out.println("Status: " + status.status()); // "Processing" or "Done"
-} while (!status.isDone());
+    System.out.println("Status: " + status.status());
+} while (!status.isTerminal());
 
-// 4. Download the result
+// 4. Check for failures before downloading
+if (status.isFailed()) {
+    throw new RuntimeException("Job failed: " + status.errorMessage());
+}
+if (status.hasError()) {
+    // COMPLETED but with an error payload (e.g. non-retryable delivery failure)
+    throw new RuntimeException("Job completed with error: " + status.errorMessage());
+}
+
+// 5. Download the result
 String resultJson = dcClient.downloadResult(presign.getUrl());
 ```
 
@@ -557,9 +565,13 @@ String resultJson = dcClient.downloadResult(presign.getUrl());
 ```java
 JobStatus status = dcService.getJobStatus("job-abc-123");
 
-System.out.println(status.jobId());  // "job-abc-123"
-System.out.println(status.status()); // "Processing" or "Done"
-System.out.println(status.isDone()); // true/false
+System.out.println(status.jobId());       // "job-abc-123"
+System.out.println(status.status());      // "PENDING", "PROCESSING", "COMPLETED", or "FAILED"
+System.out.println(status.isDone());      // true only when COMPLETED with no error
+System.out.println(status.isFailed());    // true when pipeline exhausted retries
+System.out.println(status.isTerminal());  // true when COMPLETED or FAILED
+System.out.println(status.hasError());    // true when response contains error payload
+System.out.println(status.errorMessage());// error detail (may be null)
 ```
 
 
@@ -831,21 +843,21 @@ ProcessingOptions options = ProcessingOptions.builder()
 
 ## Supported Context API Actions
 
-All actions use **v2 format only**. All actions except embedding actions accept an optional `instructions` parameter.
+All actions use **v2 format** (camelCase naming). Classification and metadata generation actions accept per-action `instructions`. Embedding actions do not accept instructions.
 
 
-| Action            | Enum Constant                    | API Value                        | Input                       |
-| ----------------- | -------------------------------- | -------------------------------- | --------------------------- |
-| Text Summary      | `TEXT_SUMMARIZATION`             | `text-summarization`             | Document                    |
-| Classify Text     | `TEXT_CLASSIFICATION`            | `text-classification`            | Document + classes          |
-| Text NER          | `NAMED_ENTITY_RECOGNITION_TEXT`  | `named-entity-recognition-text`  | Document                    |
-| Text Embeddings   | `TEXT_EMBEDDINGS`                | `text-embeddings`                | Document                    |
-| Text Metadata     | `TEXT_METADATA_GENERATION`       | `text-metadata-generation`       | Document + kSimilarMetadata |
-| Image Description | `IMAGE_DESCRIPTION`              | `image-description`              | Image                       |
-| Classify Image    | `IMAGE_CLASSIFICATION`           | `image-classification`           | Image + classes             |
-| Image NER         | `NAMED_ENTITY_RECOGNITION_IMAGE` | `named-entity-recognition-image` | Image                       |
-| Image Embeddings  | `IMAGE_EMBEDDINGS`               | `image-embeddings`               | Image                       |
-| Image Metadata    | `IMAGE_METADATA_GENERATION`      | `image-metadata-generation`      | Image + kSimilarMetadata    |
+| Action            | Enum Constant                    | v2 API Value (camelCase)         | Input                       | Instructions |
+| ----------------- | -------------------------------- | -------------------------------- | --------------------------- | ------------ |
+| Text Summary      | `TEXT_SUMMARIZATION`             | `textSummarization`              | Document                    | No           |
+| Classify Text     | `TEXT_CLASSIFICATION`            | `textClassification`             | Document + classes          | Yes          |
+| Text NER          | `NAMED_ENTITY_RECOGNITION_TEXT`  | `namedEntityRecognitionText`     | Document                    | No           |
+| Text Embeddings   | `TEXT_EMBEDDINGS`                | `textEmbeddings`                 | Document                    | No           |
+| Text Metadata     | `TEXT_METADATA_GENERATION`       | `textMetadataGeneration`         | Document + kSimilarMetadata | Yes          |
+| Image Description | `IMAGE_DESCRIPTION`              | `imageDescription`               | Image                       | No           |
+| Classify Image    | `IMAGE_CLASSIFICATION`           | `imageClassification`            | Image + classes             | Yes          |
+| Image NER         | `NAMED_ENTITY_RECOGNITION_IMAGE` | `namedEntityRecognitionImage`    | Image                       | No           |
+| Image Embeddings  | `IMAGE_EMBEDDINGS`               | `imageEmbeddings`                | Image                       | No           |
+| Image Metadata    | `IMAGE_METADATA_GENERATION`      | `imageMetadataGeneration`        | Image + kSimilarMetadata    | Yes          |
 
 
 Text-based actions support all document formats that Data Curation supports (hundreds of formats), not just PDF.

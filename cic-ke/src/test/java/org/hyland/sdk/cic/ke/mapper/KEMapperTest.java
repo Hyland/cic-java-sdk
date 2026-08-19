@@ -32,6 +32,7 @@ import org.junit.jupiter.api.Test;
 import org.skyscreamer.jsonassert.JSONAssert;
 
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
+import org.hyland.sdk.cic.ke.object.Action;
 import org.hyland.sdk.cic.ke.object.ConfigOptions;
 import org.hyland.sdk.cic.ke.object.ConfigRule;
 import org.hyland.sdk.cic.ke.object.EmbeddingModel;
@@ -50,51 +51,85 @@ import org.hyland.sdk.cic.ke.object.RuleTestResponse;
  */
 class KEMapperTest {
 
-    // --- ProcessRequestMapper ---
+    // --- ProcessRequestMapper (v2 format) ---
 
     @Test
-    void testSerializeProcessRequestWithAllFields() throws JSONException {
+    void testSerializeProcessRequestV2WithActionConfigs() throws JSONException {
         var request = ProcessRequest.builder()
                                     .objectKey("contents/file.pdf")
-                                    .action("text-summarization")
-                                    .action("image-description")
-                                    .addClass("invoice")
-                                    .addClass("receipt")
-                                    .addSimilarMetadata(Map.of("title", "Sample Doc"))
-                                    .maxWordCount(150)
-                                    .instructions("Summarize in bullet points")
+                                    .action(Action.TEXT_SUMMARIZATION, cfg -> cfg.maxWordCount(150))
+                                    .action(Action.TEXT_CLASSIFICATION,
+                                            cfg -> cfg.classes(List.of("invoice", "receipt"))
+                                                      .instructions(Map.of("context", "legal documents")))
+                                    .action(Action.TEXT_EMBEDDINGS)
                                     .build();
 
         var json = MapperService.writeAsString(request);
         var expected = """
                 {
+                  "version": "context.api/v2",
                   "objectKeys": [{"path": "contents/file.pdf"}],
-                  "actions": ["text-summarization", "image-description"],
-                  "classes": ["invoice", "receipt"],
-                  "kSimilarMetadata": [{"title": "Sample Doc"}],
-                  "maxWordCount": 150,
-                  "instructions": "Summarize in bullet points"
+                  "actions": {
+                    "textSummarization": {"maxWordCount": 150},
+                    "textClassification": {
+                      "classes": ["invoice", "receipt"],
+                      "instructions": {"context": "legal documents"}
+                    },
+                    "textEmbeddings": {}
+                  }
                 }
                 """;
         JSONAssert.assertEquals(expected, json, true);
     }
 
     @Test
-    void testSerializeProcessRequestOmitsNullOptionalFields() throws JSONException {
-        var request = ProcessRequest.builder().objectKey("contents/img.jpg").action("image-description").build();
+    void testSerializeProcessRequestV2EmptyActions() throws JSONException {
+        var request = ProcessRequest.builder()
+                                    .objectKey("contents/img.jpg")
+                                    .action(Action.IMAGE_DESCRIPTION)
+                                    .action(Action.IMAGE_EMBEDDINGS)
+                                    .build();
 
         var json = MapperService.writeAsString(request);
         var expected = """
                 {
+                  "version": "context.api/v2",
                   "objectKeys": [{"path": "contents/img.jpg"}],
-                  "actions": ["image-description"]
+                  "actions": {
+                    "imageDescription": {},
+                    "imageEmbeddings": {}
+                  }
                 }
                 """;
-        JSONAssert.assertEquals(expected, json, false);
-        assertFalse(json.contains("instructions"));
-        assertFalse(json.contains("maxWordCount"));
-        assertFalse(json.contains("classes"));
-        assertFalse(json.contains("kSimilarMetadata"));
+        JSONAssert.assertEquals(expected, json, true);
+    }
+
+    @Test
+    void testSerializeProcessRequestV2WithKSimilarMetadata() throws JSONException {
+        var request = ProcessRequest.builder()
+                                    .objectKey("contents/doc.pdf")
+                                    .action(Action.TEXT_METADATA_GENERATION,
+                                            cfg -> cfg.addSimilarMetadata(
+                                                    Map.of("document:type", "Legal Contract|Agreement|NDA"))
+                                                      .instructions(Map.of("detailLevel", "high")))
+                                    .build();
+
+        var json = MapperService.writeAsString(request);
+        assertTrue(json.contains("\"version\":\"context.api/v2\""));
+        assertTrue(json.contains("\"textMetadataGeneration\""));
+        assertTrue(json.contains("kSimilarMetadata"));
+        assertTrue(json.contains("Legal Contract|Agreement|NDA"));
+        assertTrue(json.contains("\"detailLevel\":\"high\""));
+    }
+
+    @Test
+    void testSerializeProcessRequestOmitsUnsetFields() throws JSONException {
+        var request = ProcessRequest.builder().objectKey("contents/img.jpg").action(Action.IMAGE_DESCRIPTION).build();
+
+        var json = MapperService.writeAsString(request);
+        assertNotNull(json);
+        assertTrue(json.contains("\"version\":\"context.api/v2\""));
+        assertTrue(json.contains("\"imageDescription\""));
     }
 
     // --- ProcessingOptionsMapper ---
@@ -446,6 +481,51 @@ class KEMapperTest {
         var status = MapperService.read(json, JobStatus.class);
 
         assertFalse(status.isDone());
+        assertNull(status.errorMessage());
+        assertFalse(status.hasError());
+    }
+
+    @Test
+    void testJobStatusFailed() {
+        var json = """
+                {"jobId": "j-3", "status": "FAILED", "error_message": "pipeline exhausted retries"}
+                """;
+
+        var status = MapperService.read(json, JobStatus.class);
+
+        assertTrue(status.isFailed());
+        assertTrue(status.isTerminal());
+        assertFalse(status.isDone());
+        assertTrue(status.hasError());
+        assertEquals("pipeline exhausted retries", status.errorMessage());
+    }
+
+    @Test
+    void testJobStatusCompletedWithError() {
+        var json = """
+                {"jobId": "j-4", "status": "COMPLETED", "errorMessage": "delivery failed"}
+                """;
+
+        var status = MapperService.read(json, JobStatus.class);
+
+        assertTrue(status.isCompleted());
+        assertTrue(status.isTerminal());
+        assertFalse(status.isDone());
+        assertTrue(status.hasError());
+        assertEquals("delivery failed", status.errorMessage());
+    }
+
+    @Test
+    void testJobStatusFailedWithoutErrorMessage() {
+        var json = """
+                {"jobId": "j-5", "status": "FAILED"}
+                """;
+
+        var status = MapperService.read(json, JobStatus.class);
+
+        assertTrue(status.isFailed());
+        assertFalse(status.hasError());
+        assertNull(status.errorMessage());
     }
 
     // --- ConfigOptionsMapper ---

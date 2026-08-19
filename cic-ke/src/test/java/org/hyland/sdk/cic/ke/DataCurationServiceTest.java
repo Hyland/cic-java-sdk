@@ -19,8 +19,10 @@
 package org.hyland.sdk.cic.ke;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -119,6 +121,47 @@ class DataCurationServiceTest {
 
         CICBlob blob = createTestBlob();
         assertThrows(CICSdkException.class, () -> service.curate(blob, (ProcessingOptions) null));
+    }
+
+    @Test
+    void testCurateFailedJobThrowsImmediately() {
+        httpClient.presignResponse = new PresignResponse("job-f", "https://put.url", "https://get.url");
+        httpClient.jobStatuses.add(new JobStatus("job-f", "Processing"));
+        httpClient.jobStatuses.add(new JobStatus("job-f", "FAILED", "pipeline exhausted retries"));
+
+        CICBlob blob = createTestBlob();
+        var ex = assertThrows(CICSdkException.class, () -> service.curate(blob, (ProcessingOptions) null));
+
+        assertTrue(ex.getMessage().contains("failed with status"));
+        assertTrue(ex.getMessage().contains("pipeline exhausted retries"));
+        assertEquals(2, httpClient.getJobStatusCalls);
+        assertEquals(0, httpClient.downloadResultCalls);
+    }
+
+    @Test
+    void testCurateFailedJobWithoutErrorMessage() {
+        httpClient.presignResponse = new PresignResponse("job-f2", "https://put.url", "https://get.url");
+        httpClient.jobStatus = new JobStatus("job-f2", "FAILED");
+
+        CICBlob blob = createTestBlob();
+        var ex = assertThrows(CICSdkException.class, () -> service.curate(blob, (ProcessingOptions) null));
+
+        assertTrue(ex.getMessage().contains("failed with status"));
+        assertFalse(ex.getMessage().contains("—"));
+        assertEquals(0, httpClient.downloadResultCalls);
+    }
+
+    @Test
+    void testCurateCompletedWithErrorThrows() {
+        httpClient.presignResponse = new PresignResponse("job-ce", "https://put.url", "https://get.url");
+        httpClient.jobStatus = new JobStatus("job-ce", "COMPLETED", "delivery failed");
+
+        CICBlob blob = createTestBlob();
+        var ex = assertThrows(CICSdkException.class, () -> service.curate(blob, (ProcessingOptions) null));
+
+        assertTrue(ex.getMessage().contains("completed with error"));
+        assertTrue(ex.getMessage().contains("delivery failed"));
+        assertEquals(0, httpClient.downloadResultCalls);
     }
 
     @Test

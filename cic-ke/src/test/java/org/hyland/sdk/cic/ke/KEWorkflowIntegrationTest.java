@@ -42,6 +42,7 @@ import org.hyland.sdk.cic.http.client.CICSdkException;
 import org.hyland.sdk.cic.http.client.auth.AuthenticationHttpClient;
 import org.hyland.sdk.cic.http.client.mapper.object.CICBlob;
 import org.hyland.sdk.cic.http.client.retry.RetryPolicy;
+import org.hyland.sdk.cic.ke.object.Action;
 import org.hyland.sdk.cic.ke.object.ProcessRequest;
 import org.hyland.sdk.cic.ke.object.ProcessingOptions;
 
@@ -83,7 +84,6 @@ class KEWorkflowIntegrationTest {
     void keEnrichmentEndToEndWorkflow() {
         String apiBase = TestHttpServers.baseUrl(apiServer);
 
-        // 1. GET /files/upload/presigned-url -> return presignedUrl pointing to our mock
         apiServer.createContext("/files/upload/presigned-url", exchange -> {
             TestHttpServers.assertBearerToken(exchange);
             String uploadTarget = apiBase + "/upload-target";
@@ -92,7 +92,6 @@ class KEWorkflowIntegrationTest {
                     """.formatted(uploadTarget));
         });
 
-        // 2. PUT /upload-target -> accept the upload
         var uploadReceived = new AtomicInteger();
         apiServer.createContext("/upload-target", exchange -> {
             if ("PUT".equals(exchange.getRequestMethod())) {
@@ -105,7 +104,6 @@ class KEWorkflowIntegrationTest {
             exchange.close();
         });
 
-        // 3. POST /content/process -> return processingId
         apiServer.createContext("/content/process", exchange -> {
             TestHttpServers.assertBearerToken(exchange);
             TestHttpServers.readRequestBody(exchange);
@@ -114,7 +112,6 @@ class KEWorkflowIntegrationTest {
                     """);
         });
 
-        // 4. GET /content/process/wf-proc-001/results -> 202 first, then 200 with results
         var pollCount = new AtomicInteger();
         apiServer.createContext("/content/process/wf-proc-001/results", exchange -> {
             TestHttpServers.assertBearerToken(exchange);
@@ -153,7 +150,7 @@ class KEWorkflowIntegrationTest {
 
         CICBlob blob = createTestBlob("application/pdf", "PDF content bytes");
 
-        var result = keService.enrich(blob, List.of("text-summarization"));
+        var result = keService.enrich(blob, List.of(Action.TEXT_SUMMARIZATION));
 
         assertNotNull(result);
         assertTrue(result.isSuccess());
@@ -181,9 +178,10 @@ class KEWorkflowIntegrationTest {
             exchange.close();
         });
 
+        var capturedBody = new AtomicReference<String>();
         apiServer.createContext("/content/process", exchange -> {
             TestHttpServers.assertBearerToken(exchange);
-            TestHttpServers.readRequestBody(exchange);
+            capturedBody.set(TestHttpServers.readRequestBody(exchange));
             TestHttpServers.respondJson(exchange, 200, """
                     {"processingId":"sep-proc-002"}
                     """);
@@ -215,12 +213,14 @@ class KEWorkflowIntegrationTest {
         CICBlob blob = createTestBlob("image/jpeg", "JPEG data");
         var request = ProcessRequest.builder()
                                     .objectKey("placeholder")
-                                    .action("image-description")
-                                    .instructions("Describe the scene")
+                                    .action(Action.IMAGE_DESCRIPTION, cfg -> cfg.maxWordCount(100))
                                     .build();
 
         String processingId = keService.sendForEnrichment(blob, request);
         assertEquals("sep-proc-002", processingId);
+
+        assertTrue(capturedBody.get().contains("\"version\":\"context.api/v2\""));
+        assertTrue(capturedBody.get().contains("\"imageDescription\""));
 
         var result = keService.pollResults(processingId);
         assertNotNull(result);
@@ -263,7 +263,6 @@ class KEWorkflowIntegrationTest {
     void dataCurationEndToEndWorkflow() {
         String apiBase = TestHttpServers.baseUrl(apiServer);
 
-        // 1. POST /presign -> return putUrl and getUrl pointing to our mock
         apiServer.createContext("/presign", exchange -> {
             TestHttpServers.assertBearerToken(exchange);
             TestHttpServers.respondJson(exchange, 200, """
@@ -271,7 +270,6 @@ class KEWorkflowIntegrationTest {
                     """.formatted(apiBase, apiBase));
         });
 
-        // 2. PUT /dc-upload -> accept the upload
         var dcUploadReceived = new AtomicInteger();
         apiServer.createContext("/dc-upload", exchange -> {
             if ("PUT".equals(exchange.getRequestMethod())) {
@@ -284,7 +282,6 @@ class KEWorkflowIntegrationTest {
             exchange.close();
         });
 
-        // 3. GET /status/dc-job-001 -> Processing first, then Done
         var statusPollCount = new AtomicInteger();
         apiServer.createContext("/status/dc-job-001", exchange -> {
             TestHttpServers.assertBearerToken(exchange);
@@ -300,7 +297,6 @@ class KEWorkflowIntegrationTest {
             }
         });
 
-        // 4. GET /dc-download -> return the curation result
         apiServer.createContext("/dc-download", exchange -> {
             if ("GET".equals(exchange.getRequestMethod())) {
                 var resultJson = """

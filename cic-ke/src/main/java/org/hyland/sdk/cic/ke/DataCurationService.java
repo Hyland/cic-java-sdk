@@ -118,14 +118,24 @@ public class DataCurationService {
         // 2. Upload
         httpClient.upload(presignResponse.putUrl(), blob);
 
-        // 3. Poll status
+        // 3. Poll status until terminal
         for (int attempt = 1; attempt <= pollMaxAttempts; attempt++) {
             if (attempt > 1) {
                 sleep(pollIntervalMs);
             }
 
             var status = httpClient.getJobStatus(presignResponse.jobId());
-            if (status.isDone()) {
+
+            if (status.isFailed()) {
+                throw new CICSdkException("Data curation job " + presignResponse.jobId() + " failed with status: "
+                        + status.status() + (status.hasError() ? " — " + status.errorMessage() : ""));
+            }
+
+            if (status.isCompleted()) {
+                if (status.hasError()) {
+                    throw new CICSdkException("Data curation job " + presignResponse.jobId() + " completed with error: "
+                            + status.errorMessage());
+                }
                 // 4. Download result
                 return httpClient.downloadResult(presignResponse.getUrl());
             }

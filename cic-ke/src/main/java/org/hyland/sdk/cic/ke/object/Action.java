@@ -19,18 +19,18 @@
 package org.hyland.sdk.cic.ke.object;
 
 /**
+ * Context API v2 action types using camelCase naming.
+ *
  * @since 1.0.0
  */
 public enum Action {
 
-    IMAGE_CLASSIFICATION("image-classification"), IMAGE_DESCRIPTION("image-description"), IMAGE_EMBEDDINGS(
-            "image-embeddings"), IMAGE_METADATA_GENERATION("image-metadata-generation"), NAMED_ENTITY_RECOGNITION_IMAGE(
-                    "named-entity-recognition-image"), NAMED_ENTITY_RECOGNITION_TEXT(
-                            "named-entity-recognition-text"), TEXT_CLASSIFICATION(
-                                    "text-classification"), TEXT_EMBEDDINGS(
-                                            "text-embeddings"), TEXT_METADATA_GENERATION(
-                                                    "text-metadata-generation"), TEXT_SUMMARIZATION(
-                                                            "text-summarization");
+    IMAGE_CLASSIFICATION("imageClassification"), IMAGE_DESCRIPTION("imageDescription"), IMAGE_EMBEDDINGS(
+            "imageEmbeddings"), IMAGE_METADATA_GENERATION("imageMetadataGeneration"), NAMED_ENTITY_RECOGNITION_IMAGE(
+                    "namedEntityRecognitionImage"), NAMED_ENTITY_RECOGNITION_TEXT(
+                            "namedEntityRecognitionText"), TEXT_CLASSIFICATION("textClassification"), TEXT_EMBEDDINGS(
+                                    "textEmbeddings"), TEXT_METADATA_GENERATION(
+                                            "textMetadataGeneration"), TEXT_SUMMARIZATION("textSummarization");
 
     private final String value;
 
