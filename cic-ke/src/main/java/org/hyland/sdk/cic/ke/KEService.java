@@ -25,6 +25,7 @@ import java.util.function.Consumer;
 import org.hyland.sdk.cic.http.client.CICSdkException;
 import org.hyland.sdk.cic.http.client.mapper.object.CICBlob;
 import org.hyland.sdk.cic.ke.object.Action;
+import org.hyland.sdk.cic.ke.object.ActionDescriptor;
 import org.hyland.sdk.cic.ke.object.EnrichmentResult;
 import org.hyland.sdk.cic.ke.object.PresignedUrl;
 import org.hyland.sdk.cic.ke.object.ProcessRequest;
@@ -212,6 +213,17 @@ public class KEService {
      */
     public String getActions() {
         return httpClient.getActions();
+    }
+
+    /**
+     * Lists available enrichment actions as typed descriptors, including any available models and categories.
+     *
+     * @return the list of action descriptors
+     * @throws CICSdkException if the request fails
+     * @since 1.0.0
+     */
+    public List<ActionDescriptor> getActionDescriptors() {
+        return httpClient.getActionDescriptors();
     }
 
     /**

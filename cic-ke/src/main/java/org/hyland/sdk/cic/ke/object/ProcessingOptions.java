@@ -40,6 +40,8 @@ public final class ProcessingOptions {
 
     private final String embeddingsModel;
 
+    private final String embeddingPrecision;
+
     private final Object jsonSchema;
 
     private final PiiOptions pii;
@@ -51,6 +53,7 @@ public final class ProcessingOptions {
         this.chunkSize = builder.chunkSize;
         this.embedding = builder.embedding;
         this.embeddingsModel = builder.embeddingsModel;
+        this.embeddingPrecision = builder.embeddingPrecision;
         this.jsonSchema = builder.jsonSchema;
         this.pii = builder.pii;
     }
@@ -83,6 +86,10 @@ public final class ProcessingOptions {
         return embeddingsModel;
     }
 
+    public String embeddingPrecision() {
+        return embeddingPrecision;
+    }
+
     public Object jsonSchema() {
         return jsonSchema;
     }
@@ -101,13 +108,14 @@ public final class ProcessingOptions {
         return Objects.equals(normalization, that.normalization) && Objects.equals(chunking, that.chunking)
                 && Objects.equals(chunkingStrategy, that.chunkingStrategy) && Objects.equals(chunkSize, that.chunkSize)
                 && Objects.equals(embedding, that.embedding) && Objects.equals(embeddingsModel, that.embeddingsModel)
+                && Objects.equals(embeddingPrecision, that.embeddingPrecision)
                 && Objects.equals(jsonSchema, that.jsonSchema) && Objects.equals(pii, that.pii);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(normalization, chunking, chunkingStrategy, chunkSize, embedding, embeddingsModel,
-                jsonSchema, pii);
+                embeddingPrecision, jsonSchema, pii);
     }
 
     public static final class Builder {
@@ -123,6 +131,8 @@ public final class ProcessingOptions {
         private Boolean embedding;
 
         private String embeddingsModel;
+
+        private String embeddingPrecision;
 
         private Object jsonSchema;
 
@@ -162,6 +172,11 @@ public final class ProcessingOptions {
 
         public Builder embeddingsModel(String embeddingsModel) {
             this.embeddingsModel = embeddingsModel;
+            return this;
+        }
+
+        public Builder embeddingPrecision(String embeddingPrecision) {
+            this.embeddingPrecision = embeddingPrecision;
             return this;
         }
 

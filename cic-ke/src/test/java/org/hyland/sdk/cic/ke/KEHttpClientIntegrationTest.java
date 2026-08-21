@@ -219,7 +219,7 @@ class KEHttpClientIntegrationTest {
 
     @Test
     void getActionsReturnsJsonString() {
-        apiServer.createContext("/content/actions", exchange -> {
+        apiServer.createContext("/content/process/actions", exchange -> {
             TestHttpServers.assertBearerToken(exchange);
             TestHttpServers.respondJson(exchange, 200, """
                     ["textSummarization","imageDescription","namedEntityRecognitionText"]
@@ -233,6 +233,37 @@ class KEHttpClientIntegrationTest {
         assertNotNull(actions);
         assertTrue(actions.contains("textSummarization"));
         assertTrue(actions.contains("imageDescription"));
+    }
+
+    // --- getActionDescriptors ---
+
+    @Test
+    void getActionDescriptorsReturnsTypedList() {
+        apiServer.createContext("/content/process/actions", exchange -> {
+            TestHttpServers.assertBearerToken(exchange);
+            TestHttpServers.respondJson(exchange, 200,
+                    """
+                            {
+                              "actions": [
+                                {"name": "textSummarization"},
+                                {"name": "pretrainedClassification", "availableModels": ["model-a"], "availableCategories": ["cat-x", "cat-y"]},
+                                {"name": "imageDescription"}
+                              ]
+                            }
+                            """);
+        });
+        apiServer.start();
+        client = buildClient();
+
+        var descriptors = client.getActionDescriptors();
+
+        assertNotNull(descriptors);
+        assertEquals(3, descriptors.size());
+        assertEquals("textSummarization", descriptors.get(0).name());
+        assertEquals("pretrainedClassification", descriptors.get(1).name());
+        assertEquals(java.util.List.of("model-a"), descriptors.get(1).availableModels());
+        assertEquals(java.util.List.of("cat-x", "cat-y"), descriptors.get(1).availableCategories());
+        assertEquals("imageDescription", descriptors.get(2).name());
     }
 
     // --- isHealthy ---

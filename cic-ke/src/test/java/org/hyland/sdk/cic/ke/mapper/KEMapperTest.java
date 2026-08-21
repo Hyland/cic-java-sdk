@@ -33,6 +33,7 @@ import org.skyscreamer.jsonassert.JSONAssert;
 
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
 import org.hyland.sdk.cic.ke.object.Action;
+import org.hyland.sdk.cic.ke.object.ActionDescriptor;
 import org.hyland.sdk.cic.ke.object.ConfigOptions;
 import org.hyland.sdk.cic.ke.object.ConfigRule;
 import org.hyland.sdk.cic.ke.object.EmbeddingModel;
@@ -135,7 +136,7 @@ class KEMapperTest {
     // --- ProcessingOptionsMapper ---
 
     @Test
-    void testProcessingOptionsRoundTripWithAllFields() throws JSONException {
+    void testProcessingOptionsReadFlatLegacyFormat() {
         var json = """
                 {
                   "normalization": {"quotations": true, "dashes": false},
@@ -159,13 +160,60 @@ class KEMapperTest {
         assertEquals(2000, options.chunkSize());
         assertEquals(true, options.embedding());
         assertEquals("cohere.embed-multilingual-v3", options.embeddingsModel());
+        assertNull(options.embeddingPrecision());
         assertEquals("my-schema", options.jsonSchema());
         assertNotNull(options.pii());
         assertEquals("redaction", options.pii().mode());
         assertEquals(true, options.pii().entityRedaction());
+    }
+
+    @Test
+    void testProcessingOptionsReadNestedFormat() {
+        var json = """
+                {
+                  "normalization": {"quotations": true, "dashes": false},
+                  "chunking": {"strategy": "context", "chunk_size": 2000},
+                  "embedding": {"model": "cohere.embed-multilingual-v3", "precision": "float32"},
+                  "json_schema": "my-schema",
+                  "pii": {"mode": "redaction", "entity_redaction": true}
+                }
+                """;
+
+        var options = MapperService.read(json, ProcessingOptions.class);
+
+        assertEquals(true, options.chunking());
+        assertEquals("context", options.chunkingStrategy());
+        assertEquals(2000, options.chunkSize());
+        assertEquals(true, options.embedding());
+        assertEquals("cohere.embed-multilingual-v3", options.embeddingsModel());
+        assertEquals("float32", options.embeddingPrecision());
+    }
+
+    @Test
+    void testProcessingOptionsWriteNestedFormat() throws JSONException {
+        var options = ProcessingOptions.builder()
+                                       .normalization(n -> n.quotations(true).dashes(false))
+                                       .chunking(true)
+                                       .chunkingStrategy("context")
+                                       .chunkSize(2000)
+                                       .embedding(true)
+                                       .embeddingsModel("cohere.embed-multilingual-v3")
+                                       .embeddingPrecision("float32")
+                                       .jsonSchema("my-schema")
+                                       .pii(p -> p.mode("redaction").entityRedaction(true))
+                                       .build();
 
         var serialized = MapperService.writeAsString(options);
-        JSONAssert.assertEquals(json, serialized, true);
+        var expected = """
+                {
+                  "normalization": {"quotations": true, "dashes": false},
+                  "chunking": {"strategy": "context", "chunk_size": 2000},
+                  "embedding": {"model": "cohere.embed-multilingual-v3", "precision": "float32"},
+                  "json_schema": "my-schema",
+                  "pii": {"mode": "redaction", "entity_redaction": true}
+                }
+                """;
+        JSONAssert.assertEquals(expected, serialized, true);
     }
 
     @Test
@@ -183,6 +231,18 @@ class KEMapperTest {
         assertNull(options.chunkingStrategy());
         assertNull(options.chunkSize());
         assertNull(options.embeddingsModel());
+        assertNull(options.embeddingPrecision());
+    }
+
+    @Test
+    void testProcessingOptionsWriteBooleanWhenNoDetails() throws JSONException {
+        var options = ProcessingOptions.builder().chunking(false).embedding(true).build();
+
+        var serialized = MapperService.writeAsString(options);
+        var expected = """
+                {"chunking": false, "embedding": true}
+                """;
+        JSONAssert.assertEquals(expected, serialized, true);
     }
 
     // --- ConfigRuleMapper ---
@@ -241,29 +301,36 @@ class KEMapperTest {
     @Test
     void testEmbeddingModelDeserialization() {
         var json = """
-                {"id": "cohere-v3", "name": "Cohere Embed Multilingual v3"}
+                {"name": "cohere.embed-multilingual-v3", "max_chunk_size": 512, "supported_precisions": ["float32","int8"], "supported_output_dimensions": [1024], "supported_input_type": ["search_document"]}
                 """;
 
         var model = MapperService.read(json, EmbeddingModel.class);
 
-        assertEquals("cohere-v3", model.id());
-        assertEquals("Cohere Embed Multilingual v3", model.name());
+        assertEquals("cohere.embed-multilingual-v3", model.name());
+        assertEquals(512, model.maxChunkSize());
+        assertEquals(List.of("float32", "int8"), model.supportedPrecisions());
+        assertEquals(List.of(1024), model.supportedOutputDimensions());
+        assertEquals(List.of("search_document"), model.supportedInputType());
     }
 
     @Test
     void testEmbeddingModelListDeserialization() {
         var json = """
-                [
-                  {"id": "model-1", "name": "Model One"},
-                  {"id": "model-2", "name": "Model Two"}
-                ]
+                {
+                  "models": [
+                    {"name": "model-one", "max_chunk_size": 512, "supported_precisions": ["float32"], "supported_output_dimensions": [1024], "supported_input_type": ["search_document"]},
+                    {"name": "model-two", "max_chunk_size": 256, "supported_precisions": ["int8"], "supported_output_dimensions": [768], "supported_input_type": ["search_query"]}
+                  ]
+                }
                 """;
 
         var models = MapperService.read(json, EmbeddingModel.ListOf.class);
 
         assertEquals(2, models.size());
-        assertEquals("model-1", models.get(0).id());
-        assertEquals("model-2", models.get(1).id());
+        assertEquals("model-one", models.get(0).name());
+        assertEquals(512, models.get(0).maxChunkSize());
+        assertEquals("model-two", models.get(1).name());
+        assertEquals(256, models.get(1).maxChunkSize());
     }
 
     // --- EnrichmentResultMapper ---
@@ -634,5 +701,111 @@ class KEMapperTest {
         assertNull(response.matchedRule());
         assertNotNull(response.effectiveConfig());
         assertEquals(false, response.effectiveConfig().chunking());
+    }
+
+    // --- PretrainedClassification in EnrichmentResult ---
+
+    @Test
+    void testPretrainedClassificationResultDeserialization() {
+        var json = """
+                {
+                  "id": "proc-ptc",
+                  "timestamp": "2026-01-01T00:00:00Z",
+                  "status": "SUCCESS",
+                  "inProgress": false,
+                  "results": [{
+                    "objectKey": "contents/doc.pdf",
+                    "pretrainedClassification": {
+                      "isSuccess": true,
+                      "result": {"classification": "invoice", "confidence": 0.95},
+                      "error": null
+                    }
+                  }]
+                }
+                """;
+
+        var result = MapperService.read(json, EnrichmentResult.class);
+        var entry = result.results().get(0);
+
+        assertNotNull(entry.pretrainedClassification());
+        assertTrue(entry.pretrainedClassification().isSuccess());
+        assertEquals("invoice", entry.pretrainedClassification().result().classification());
+        assertEquals(0.95, entry.pretrainedClassification().result().confidence());
+    }
+
+    @Test
+    void testPretrainedClassificationFailureDeserialization() {
+        var json = """
+                {
+                  "id": "proc-ptc-fail",
+                  "timestamp": "2026-01-01T00:00:00Z",
+                  "status": "SUCCESS",
+                  "inProgress": false,
+                  "results": [{
+                    "objectKey": "contents/doc.pdf",
+                    "pretrainedClassification": {
+                      "isSuccess": false,
+                      "result": null,
+                      "error": "Model not available"
+                    }
+                  }]
+                }
+                """;
+
+        var result = MapperService.read(json, EnrichmentResult.class);
+        var entry = result.results().get(0);
+
+        assertNotNull(entry.pretrainedClassification());
+        assertFalse(entry.pretrainedClassification().isSuccess());
+        assertNull(entry.pretrainedClassification().result());
+        assertEquals("Model not available", entry.pretrainedClassification().error());
+    }
+
+    // --- ActionDescriptorMapper ---
+
+    @Test
+    void testActionDescriptorListDeserialization() {
+        var json = """
+                {
+                  "actions": [
+                    {"name": "textSummarization"},
+                    {"name": "pretrainedClassification", "availableModels": ["model-a", "model-b"], "availableCategories": ["category-x", "category-y"]},
+                    {"name": "imageDescription", "availableModels": ["vision-v1"]}
+                  ]
+                }
+                """;
+
+        var descriptors = MapperService.read(json, ActionDescriptor.ListOf.class);
+
+        assertEquals(3, descriptors.size());
+
+        assertEquals("textSummarization", descriptors.get(0).name());
+        assertNull(descriptors.get(0).availableModels());
+        assertNull(descriptors.get(0).availableCategories());
+
+        assertEquals("pretrainedClassification", descriptors.get(1).name());
+        assertEquals(List.of("model-a", "model-b"), descriptors.get(1).availableModels());
+        assertEquals(List.of("category-x", "category-y"), descriptors.get(1).availableCategories());
+
+        assertEquals("imageDescription", descriptors.get(2).name());
+        assertEquals(List.of("vision-v1"), descriptors.get(2).availableModels());
+        assertNull(descriptors.get(2).availableCategories());
+    }
+
+    @Test
+    void testActionDescriptorListDeserializationFromArray() {
+        var json = """
+                [
+                  {"name": "textSummarization"},
+                  {"name": "textClassification", "availableCategories": ["legal", "finance"]}
+                ]
+                """;
+
+        var descriptors = MapperService.read(json, ActionDescriptor.ListOf.class);
+
+        assertEquals(2, descriptors.size());
+        assertEquals("textSummarization", descriptors.get(0).name());
+        assertEquals("textClassification", descriptors.get(1).name());
+        assertEquals(List.of("legal", "finance"), descriptors.get(1).availableCategories());
     }
 }

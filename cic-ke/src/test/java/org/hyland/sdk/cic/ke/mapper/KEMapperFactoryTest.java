@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
 import org.hyland.sdk.cic.ke.object.Action;
+import org.hyland.sdk.cic.ke.object.ActionDescriptor;
 import org.hyland.sdk.cic.ke.object.ConfigOptions;
 import org.hyland.sdk.cic.ke.object.ConfigRule;
 import org.hyland.sdk.cic.ke.object.EmbeddingModel;
@@ -59,6 +60,8 @@ class KEMapperFactoryTest {
         assertNotNull(factory.getMapper(ConfigRule.class));
         assertNotNull(factory.getMapper(RuleTestRequest.class));
         assertNotNull(factory.getMapper(RuleTestResponse.class));
+        assertNotNull(factory.getMapper(ActionDescriptor.class));
+        assertNotNull(factory.getMapper(ActionDescriptor.ListOf.class));
     }
 
     @Test

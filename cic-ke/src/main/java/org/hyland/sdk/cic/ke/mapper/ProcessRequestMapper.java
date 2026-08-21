@@ -87,6 +87,38 @@ class ProcessRequestMapper implements CICMapper<ProcessRequest> {
             configObj.putObject("instructions", instrObj);
         }
 
+        if (config.globalEntities() != null) {
+            var entitiesArr = CICArray.create();
+            for (var entity : config.globalEntities()) {
+                entitiesArr.addObject(CICObject.from(entity));
+            }
+            configObj.putArray("globalEntities", entitiesArr);
+        }
+
+        if (config.domainGlossary() != null) {
+            var glossaryObj = CICObject.create();
+            for (var glossaryEntry : config.domainGlossary().entrySet()) {
+                glossaryObj.putString(glossaryEntry.getKey(), glossaryEntry.getValue());
+            }
+            configObj.putObject("domainGlossary", glossaryObj);
+        }
+
+        if (config.schemaObjectKey() != null) {
+            configObj.putString("schemaObjectKey", config.schemaObjectKey());
+        }
+
+        if (config.indexMetadata() != null) {
+            configObj.putString("indexMetadata", config.indexMetadata());
+        }
+
+        if (config.category() != null) {
+            configObj.putString("category", config.category());
+        }
+
+        if (config.model() != null) {
+            configObj.putString("model", config.model());
+        }
+
         return configObj;
     }
 }

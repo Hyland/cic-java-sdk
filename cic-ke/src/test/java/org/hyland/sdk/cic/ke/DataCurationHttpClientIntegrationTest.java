@@ -147,9 +147,10 @@ class DataCurationHttpClientIntegrationTest {
     void listModelsReturnsModels() {
         apiServer.createContext("/models", exchange -> {
             TestHttpServers.assertBearerToken(exchange);
-            TestHttpServers.respondJson(exchange, 200, """
-                    [{"id":"m1","name":"Model One"},{"id":"m2","name":"Model Two"}]
-                    """);
+            TestHttpServers.respondJson(exchange, 200,
+                    """
+                            {"models":[{"name":"model-one","max_chunk_size":512,"supported_precisions":["float32"],"supported_output_dimensions":[1024],"supported_input_type":["search_document"]},{"name":"model-two","max_chunk_size":256,"supported_precisions":["int8"],"supported_output_dimensions":[768],"supported_input_type":["search_query"]}]}
+                            """);
         });
         apiServer.start();
         client = buildClient();
@@ -157,8 +158,10 @@ class DataCurationHttpClientIntegrationTest {
         var models = client.listModels();
 
         assertEquals(2, models.size());
-        assertEquals("m1", models.get(0).id());
-        assertEquals("m2", models.get(1).id());
+        assertEquals("model-one", models.get(0).name());
+        assertEquals(512, models.get(0).maxChunkSize());
+        assertEquals("model-two", models.get(1).name());
+        assertEquals(256, models.get(1).maxChunkSize());
     }
 
     @Test

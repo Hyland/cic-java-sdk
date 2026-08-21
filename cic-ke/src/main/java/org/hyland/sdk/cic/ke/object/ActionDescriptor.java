@@ -22,16 +22,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Embedding model information from {@code GET /models} endpoint.
+ * Describes an available action from the {@code GET /content/process/actions} v2 endpoint, including any available
+ * models and categories for actions that support them.
  *
+ * @param name the action name (e.g. "pretrainedClassification", "textSummarization")
+ * @param availableModels models available for this action (nullable if not applicable)
+ * @param availableCategories categories available for this action (nullable if not applicable)
  * @since 1.0.0
  */
-public record EmbeddingModel(String name, int maxChunkSize, List<String> supportedPrecisions,
-        List<Integer> supportedOutputDimensions, List<String> supportedInputType) {
+public record ActionDescriptor(String name, List<String> availableModels, List<String> availableCategories) {
 
     /**
      * @since 1.0.0
      */
-    public static class ListOf extends ArrayList<EmbeddingModel> {
+    public static class ListOf extends ArrayList<ActionDescriptor> {
     }
 }

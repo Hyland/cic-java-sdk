@@ -48,6 +48,8 @@ public final class EnrichmentResultEntry {
 
     private final ActionResult<Map<String, List<String>>> namedEntityImage;
 
+    private final ActionResult<ClassificationResult> pretrainedClassification;
+
     private final String generalProcessingErrors;
 
     public EnrichmentResultEntry(String objectKey, ActionResult<String> imageDescription,
@@ -55,7 +57,8 @@ public final class EnrichmentResultEntry {
             ActionResult<String> textSummary, ActionResult<String> textClassification,
             ActionResult<String> imageClassification, ActionResult<List<Double>> textEmbeddings,
             ActionResult<List<Double>> imageEmbeddings, ActionResult<Map<String, List<String>>> namedEntityText,
-            ActionResult<Map<String, List<String>>> namedEntityImage, String generalProcessingErrors) {
+            ActionResult<Map<String, List<String>>> namedEntityImage,
+            ActionResult<ClassificationResult> pretrainedClassification, String generalProcessingErrors) {
         this.objectKey = objectKey;
         this.imageDescription = imageDescription;
         this.imageMetadata = imageMetadata;
@@ -67,6 +70,7 @@ public final class EnrichmentResultEntry {
         this.imageEmbeddings = imageEmbeddings;
         this.namedEntityText = namedEntityText;
         this.namedEntityImage = namedEntityImage;
+        this.pretrainedClassification = pretrainedClassification;
         this.generalProcessingErrors = generalProcessingErrors;
     }
 
@@ -112,6 +116,10 @@ public final class EnrichmentResultEntry {
 
     public ActionResult<Map<String, List<String>>> namedEntityImage() {
         return namedEntityImage;
+    }
+
+    public ActionResult<ClassificationResult> pretrainedClassification() {
+        return pretrainedClassification;
     }
 
     public String generalProcessingErrors() {

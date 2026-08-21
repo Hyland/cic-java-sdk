@@ -206,12 +206,14 @@ Use `KEService` for all Context API operations. It wraps `KEHttpClient` with con
 Key types used in the examples below:
 
 
-| Type               | Description                                                                                                                                                                                                                  |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Action`           | Enum of available enrichment actions (e.g. `TEXT_SUMMARIZATION`, `IMAGE_DESCRIPTION`). Call `.value()` to get the camelCase API string. See [Supported Context API Actions](#supported-context-api-actions) for the full list. |
-| `ProcessRequest`   | A v2 process request. Specifies object keys and a map of actions, where each action can carry its own configuration (`ActionConfig`). Built using `ProcessRequest.builder()`.                                                 |
-| `ActionConfig`     | Per-action configuration: `classes`, `maxWordCount`, `kSimilarMetadata`, and `instructions`. Use `ActionConfig.builder()` or the `action(Action, cfg -> ...)` shorthand on the request builder.                               |
-| `EnrichmentResult` | The response from the server containing status, timestamp, and a list of per-object results.                                                                                                                                 |
+| Type                   | Description                                                                                                                                                                                                                  |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Action`               | Enum of available enrichment actions (e.g. `TEXT_SUMMARIZATION`, `PRETRAINED_CLASSIFICATION`). Call `.value()` to get the camelCase API string. See [Supported Context API Actions](#supported-context-api-actions) for the full list. |
+| `ProcessRequest`       | A v2 process request. Specifies object keys and a map of actions, where each action can carry its own configuration (`ActionConfig`). Built using `ProcessRequest.builder()`.                                                 |
+| `ActionConfig`         | Per-action configuration: `classes`, `maxWordCount`, `kSimilarMetadata`, `instructions`, `category`, `model`, `globalEntities`, `domainGlossary`, `schemaObjectKey`, `indexMetadata`. Use `ActionConfig.builder()` or the `action(Action, cfg -> ...)` shorthand on the request builder. |
+| `EnrichmentResult`     | The response from the server containing status, timestamp, and a list of per-object results.                                                                                                                                 |
+| `ActionDescriptor`     | Describes an available action, including its `name`, `availableModels`, and `availableCategories`. Retrieved via `getActionDescriptors()`.                                                                                    |
+| `ClassificationResult` | Result of a pretrained classification action, containing `classification` (label) and `confidence` (score).                                                                                                                   |
 
 
 
@@ -245,6 +247,27 @@ EnrichmentResult result = keService.enrich(blob, req -> req
         .classes(List.of("Legal", "Financial", "Technical"))
         .instruction("context", "corporate documents"))
 );
+```
+
+
+
+### Pretrained Classification
+
+Use the `PRETRAINED_CLASSIFICATION` action with a `category` and `model` to classify content using a pretrained model. Use `getActionDescriptors()` to discover available models and categories for your account.
+
+```java
+EnrichmentResult result = keService.enrich(blob, req -> req
+    .action(Action.PRETRAINED_CLASSIFICATION, cfg -> cfg
+        .category("MediaType")
+        .model("nbme-media-type"))
+);
+
+var entry = result.results().get(0);
+if (entry.pretrainedClassification() != null && entry.pretrainedClassification().isSuccess()) {
+    var classification = entry.pretrainedClassification().result();
+    System.out.println("Class: " + classification.classification()); // e.g. "CT"
+    System.out.println("Confidence: " + classification.confidence()); // e.g. 0.95
+}
 ```
 
 
@@ -376,11 +399,30 @@ EnrichmentResult result = keService.pollResults(processingId);
 
 ### List Available Actions
 
-Get the list of actions supported by the server.
+Get the list of actions supported by the server as raw JSON.
 
 ```java
 String actionsJson = keService.getActions();
-// Returns: ["textSummarization","imageDescription","namedEntityRecognitionText",...]
+// Returns raw JSON: ["textSummarization","imageDescription",...]
+```
+
+Or use the typed alternative to get structured descriptors with available models and categories:
+
+```java
+List<ActionDescriptor> descriptors = keService.getActionDescriptors();
+
+for (var descriptor : descriptors) {
+    System.out.println("Action: " + descriptor.name());
+    if (descriptor.availableModels() != null) {
+        System.out.println("  Models: " + descriptor.availableModels());
+    }
+    if (descriptor.availableCategories() != null) {
+        System.out.println("  Categories: " + descriptor.availableCategories());
+    }
+}
+// e.g. "Action: pretrainedClassification"
+//      "  Models: [nbme-media-type, nbme-organ-system-1]"
+//      "  Categories: [MediaType, OrganSystem]"
 ```
 
 
@@ -439,6 +481,13 @@ for (var entry : result.results()) {
         Map<String, Object> metadata = entry.textMetadata().result();
         metadata.forEach((key, value) ->
             System.out.println(key + " = " + value));
+    }
+
+    // Pretrained Classification (ClassificationResult with classification + confidence)
+    if (entry.pretrainedClassification() != null && entry.pretrainedClassification().isSuccess()) {
+        var classification = entry.pretrainedClassification().result();
+        System.out.println("Classification: " + classification.classification());
+        System.out.println("Confidence: " + classification.confidence());
     }
 
     // Error handling
@@ -584,10 +633,13 @@ List the embedding models available on the server.
 List<EmbeddingModel> models = dcService.listModels();
 
 for (var model : models) {
-    System.out.println(model.id() + " - " + model.name());
+    System.out.println(model.name() + " (max chunk: " + model.maxChunkSize() + ")");
+    System.out.println("  Precisions: " + model.supportedPrecisions());
+    System.out.println("  Dimensions: " + model.supportedOutputDimensions());
 }
-// e.g. "cohere-v3 - Cohere Embed Multilingual v3"
-//      "titan-v2 - Amazon Titan Embed Text v2"
+// e.g. "cohere.embed-multilingual-v3 (max chunk: 512)"
+//      "  Precisions: [float32, int8]"
+//      "  Dimensions: [1024]"
 ```
 
 
@@ -825,6 +877,7 @@ ProcessingOptions options = ProcessingOptions.builder()
     .chunkingStrategy("context")                       // chunking strategy
     .embedding(true)                                   // generate embeddings
     .embeddingsModel("cohere.embed-multilingual-v3")   // model to use
+    .embeddingPrecision("float32")                     // embedding precision
     .jsonSchema("{ ... }")                             // structured extraction schema
     .normalization(norm -> norm                        // text normalization
         .quotations(true)                              //   normalize quotation marks
@@ -846,18 +899,21 @@ ProcessingOptions options = ProcessingOptions.builder()
 All actions use **v2 format** (camelCase naming). Classification and metadata generation actions accept per-action `instructions`. Embedding actions do not accept instructions.
 
 
-| Action            | Enum Constant                    | v2 API Value (camelCase)         | Input                       | Instructions |
-| ----------------- | -------------------------------- | -------------------------------- | --------------------------- | ------------ |
-| Text Summary      | `TEXT_SUMMARIZATION`             | `textSummarization`              | Document                    | No           |
-| Classify Text     | `TEXT_CLASSIFICATION`            | `textClassification`             | Document + classes          | Yes          |
-| Text NER          | `NAMED_ENTITY_RECOGNITION_TEXT`  | `namedEntityRecognitionText`     | Document                    | No           |
-| Text Embeddings   | `TEXT_EMBEDDINGS`                | `textEmbeddings`                 | Document                    | No           |
-| Text Metadata     | `TEXT_METADATA_GENERATION`       | `textMetadataGeneration`         | Document + kSimilarMetadata | Yes          |
-| Image Description | `IMAGE_DESCRIPTION`              | `imageDescription`               | Image                       | No           |
-| Classify Image    | `IMAGE_CLASSIFICATION`           | `imageClassification`            | Image + classes             | Yes          |
-| Image NER         | `NAMED_ENTITY_RECOGNITION_IMAGE` | `namedEntityRecognitionImage`    | Image                       | No           |
-| Image Embeddings  | `IMAGE_EMBEDDINGS`               | `imageEmbeddings`                | Image                       | No           |
-| Image Metadata    | `IMAGE_METADATA_GENERATION`      | `imageMetadataGeneration`        | Image + kSimilarMetadata    | Yes          |
+| Action                     | Enum Constant                    | v2 API Value (camelCase)         | Input                           | Instructions |
+| -------------------------- | -------------------------------- | -------------------------------- | ------------------------------- | ------------ |
+| Text Summary               | `TEXT_SUMMARIZATION`             | `textSummarization`              | Document                        | No           |
+| Classify Text              | `TEXT_CLASSIFICATION`            | `textClassification`             | Document + classes              | Yes          |
+| Text NER                   | `NAMED_ENTITY_RECOGNITION_TEXT`  | `namedEntityRecognitionText`     | Document                        | No           |
+| Text Embeddings            | `TEXT_EMBEDDINGS`                | `textEmbeddings`                 | Document                        | No           |
+| Text Metadata              | `TEXT_METADATA_GENERATION`       | `textMetadataGeneration`         | Document + kSimilarMetadata     | Yes          |
+| Image Description          | `IMAGE_DESCRIPTION`              | `imageDescription`               | Image                           | No           |
+| Classify Image             | `IMAGE_CLASSIFICATION`           | `imageClassification`            | Image + classes                 | Yes          |
+| Image NER                  | `NAMED_ENTITY_RECOGNITION_IMAGE` | `namedEntityRecognitionImage`    | Image                           | No           |
+| Image Embeddings           | `IMAGE_EMBEDDINGS`               | `imageEmbeddings`                | Image                           | No           |
+| Image Metadata             | `IMAGE_METADATA_GENERATION`      | `imageMetadataGeneration`        | Image + kSimilarMetadata        | Yes          |
+| Pretrained Classification  | `PRETRAINED_CLASSIFICATION`      | `pretrainedClassification`       | Document/Image + category/model | No           |
+| Global Entities            | `GLOBAL_ENTITIES`                | `globalEntities`                 | Document                        | No           |
+| Local Entities             | `LOCAL_ENTITIES`                 | `localEntities`                  | Document                        | No           |
 
 
 Text-based actions support all document formats that Data Curation supports (hundreds of formats), not just PDF.
@@ -879,3 +935,39 @@ dcService.setPollSettings(15, 3_000);   // 15 attempts, 3 second intervals
 ```
 
 If polling exceeds the max attempts, a `CICSdkException` is thrown.
+
+---
+
+
+
+## Error Handling
+
+API errors are thrown as `CICServiceException`, which wraps a `CICError` containing structured error details. The SDK supports both legacy error formats and RFC 9457 Problem Details responses.
+
+```java
+try {
+    keService.enrich(blob, req -> req
+        .action(Action.PRETRAINED_CLASSIFICATION, cfg -> cfg
+            .category("MediaType")
+            .model("invalid-model"))
+    );
+} catch (CICServiceException e) {
+    System.err.println("Status: " + e.getStatusCode());       // e.g. 400
+    System.err.println("Message: " + e.getMessage());         // human-readable summary
+
+    CICError error = e.getCicError();
+    if (error != null && error.isProblemDetail()) {
+        // RFC 9457 Problem Details fields
+        System.err.println("Type: " + error.type());          // URI reference
+        System.err.println("Title: " + error.title());        // short summary
+        System.err.println("Detail: " + error.detail());      // explanation
+        System.err.println("Instance: " + error.instance());  // occurrence URI
+
+        // API-specific extension fields (e.g. validation errors)
+        Map<String, Object> extensions = error.extensions();
+        if (extensions.containsKey("errors")) {
+            System.err.println("Validation errors: " + extensions.get("errors"));
+        }
+    }
+}
+```

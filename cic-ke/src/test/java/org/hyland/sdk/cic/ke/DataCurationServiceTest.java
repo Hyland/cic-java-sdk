@@ -63,7 +63,7 @@ class DataCurationServiceTest {
 
     @Test
     void testPresign() {
-        httpClient.presignResponse = new PresignResponse("job-1", "https://put.url", "https://get.url");
+        httpClient.presignResponse = new PresignResponse("job-1", "https://put.url", "https://get.url", null);
 
         var response = service.presign((ProcessingOptions) null);
 
@@ -84,7 +84,7 @@ class DataCurationServiceTest {
 
     @Test
     void testCurateEndToEnd() {
-        httpClient.presignResponse = new PresignResponse("job-1", "https://put.url", "https://get.url");
+        httpClient.presignResponse = new PresignResponse("job-1", "https://put.url", "https://get.url", null);
         httpClient.jobStatus = new JobStatus("job-1", "Done");
         httpClient.downloadResultBody = "{\"markdown\":{\"output\":\"Test\"}}";
 
@@ -101,7 +101,7 @@ class DataCurationServiceTest {
 
     @Test
     void testCurateWithPolling() {
-        httpClient.presignResponse = new PresignResponse("job-1", "https://put.url", "https://get.url");
+        httpClient.presignResponse = new PresignResponse("job-1", "https://put.url", "https://get.url", null);
         httpClient.jobStatuses.add(new JobStatus("job-1", "Wait For Upload"));
         httpClient.jobStatuses.add(new JobStatus("job-1", "Processing"));
         httpClient.jobStatuses.add(new JobStatus("job-1", "Done"));
@@ -116,7 +116,7 @@ class DataCurationServiceTest {
 
     @Test
     void testCurateTimeout() {
-        httpClient.presignResponse = new PresignResponse("job-1", "https://put.url", "https://get.url");
+        httpClient.presignResponse = new PresignResponse("job-1", "https://put.url", "https://get.url", null);
         httpClient.jobStatus = new JobStatus("job-1", "Processing");
 
         CICBlob blob = createTestBlob();
@@ -125,7 +125,7 @@ class DataCurationServiceTest {
 
     @Test
     void testCurateFailedJobThrowsImmediately() {
-        httpClient.presignResponse = new PresignResponse("job-f", "https://put.url", "https://get.url");
+        httpClient.presignResponse = new PresignResponse("job-f", "https://put.url", "https://get.url", null);
         httpClient.jobStatuses.add(new JobStatus("job-f", "Processing"));
         httpClient.jobStatuses.add(new JobStatus("job-f", "FAILED", "pipeline exhausted retries"));
 
@@ -140,7 +140,7 @@ class DataCurationServiceTest {
 
     @Test
     void testCurateFailedJobWithoutErrorMessage() {
-        httpClient.presignResponse = new PresignResponse("job-f2", "https://put.url", "https://get.url");
+        httpClient.presignResponse = new PresignResponse("job-f2", "https://put.url", "https://get.url", null);
         httpClient.jobStatus = new JobStatus("job-f2", "FAILED");
 
         CICBlob blob = createTestBlob();
@@ -153,7 +153,7 @@ class DataCurationServiceTest {
 
     @Test
     void testCurateCompletedWithErrorThrows() {
-        httpClient.presignResponse = new PresignResponse("job-ce", "https://put.url", "https://get.url");
+        httpClient.presignResponse = new PresignResponse("job-ce", "https://put.url", "https://get.url", null);
         httpClient.jobStatus = new JobStatus("job-ce", "COMPLETED", "delivery failed");
 
         CICBlob blob = createTestBlob();
@@ -166,19 +166,20 @@ class DataCurationServiceTest {
 
     @Test
     void testListModels() {
-        httpClient.models = List.of(new EmbeddingModel("model-1", "Model One"));
+        httpClient.models = List.of(
+                new EmbeddingModel("model-one", 512, List.of("float32"), List.of(1024), List.of("search_document")));
 
         var models = service.listModels();
 
         assertEquals(1, models.size());
-        assertEquals("model-1", models.get(0).id());
+        assertEquals("model-one", models.get(0).name());
     }
 
     // --- Consumer overloads ---
 
     @Test
     void testPresignWithConsumer() {
-        httpClient.presignResponse = new PresignResponse("job-c", "https://put.url", "https://get.url");
+        httpClient.presignResponse = new PresignResponse("job-c", "https://put.url", "https://get.url", null);
 
         var response = service.presign(opts -> opts.chunking(true).chunkSize(1000));
 
@@ -192,7 +193,7 @@ class DataCurationServiceTest {
 
     @Test
     void testCurateWithConsumer() {
-        httpClient.presignResponse = new PresignResponse("job-cc", "https://put.url", "https://get.url");
+        httpClient.presignResponse = new PresignResponse("job-cc", "https://put.url", "https://get.url", null);
         httpClient.jobStatus = new JobStatus("job-cc", "Done");
         httpClient.downloadResultBody = "{\"result\":\"consumer\"}";
 

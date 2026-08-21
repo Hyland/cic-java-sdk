@@ -21,11 +21,17 @@ package org.hyland.sdk.cic.ke.mapper;
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
+import org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive;
 import org.hyland.sdk.cic.ke.object.NormalizationOptions;
 import org.hyland.sdk.cic.ke.object.PiiOptions;
 import org.hyland.sdk.cic.ke.object.ProcessingOptions;
 
 /**
+ * Bidirectional mapper for {@link ProcessingOptions}.
+ * <p>
+ * Reads both the nested format returned by config endpoints and the flat legacy format used on presign submit. Writes
+ * using the nested format when strategy/size/model/precision details are present.
+ *
  * @since 1.0.0
  */
 class ProcessingOptionsMapper implements CICMapper<ProcessingOptions> {
@@ -48,29 +54,13 @@ class ProcessingOptionsMapper implements CICMapper<ProcessingOptions> {
             builder.normalization(normBuilder.build());
         });
 
-        var chunking = cicObject.getBooleanOrNull("chunking");
-        if (chunking != null) {
-            builder.chunking(chunking);
-        }
-
-        cicObject.getOptionalString("chunking_strategy").ifPresent(builder::chunkingStrategy);
-
-        var chunkSize = cicObject.getIntegerOrNull("chunk_size");
-        if (chunkSize != null) {
-            builder.chunkSize(chunkSize);
-        }
-
-        var embedding = cicObject.getBooleanOrNull("embedding");
-        if (embedding != null) {
-            builder.embedding(embedding);
-        }
-
-        cicObject.getOptionalString("embeddings_model").ifPresent(builder::embeddingsModel);
+        readChunking(cicObject, builder);
+        readEmbedding(cicObject, builder);
 
         var jsonSchemaNode = cicObject.getProperties().get("json_schema");
-        if (jsonSchemaNode instanceof org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive.CICBoolean b) {
+        if (jsonSchemaNode instanceof CICPrimitive.CICBoolean b) {
             builder.jsonSchema(b.value());
-        } else if (jsonSchemaNode instanceof org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive.CICString s) {
+        } else if (jsonSchemaNode instanceof CICPrimitive.CICString s) {
             builder.jsonSchema(s.value());
         }
 
@@ -85,6 +75,37 @@ class ProcessingOptionsMapper implements CICMapper<ProcessingOptions> {
         });
 
         return builder.build();
+    }
+
+    private void readChunking(CICObject cicObject, ProcessingOptions.Builder builder) {
+        var chunkingNode = cicObject.getProperties().get("chunking");
+        if (chunkingNode instanceof CICPrimitive.CICBoolean b) {
+            builder.chunking(b.value());
+            cicObject.getOptionalString("chunking_strategy").ifPresent(builder::chunkingStrategy);
+            var chunkSize = cicObject.getIntegerOrNull("chunk_size");
+            if (chunkSize != null) {
+                builder.chunkSize(chunkSize);
+            }
+        } else if (chunkingNode instanceof CICObject chunkingObj) {
+            builder.chunking(true);
+            chunkingObj.getOptionalString("strategy").ifPresent(builder::chunkingStrategy);
+            var cs = chunkingObj.getIntegerOrNull("chunk_size");
+            if (cs != null) {
+                builder.chunkSize(cs);
+            }
+        }
+    }
+
+    private void readEmbedding(CICObject cicObject, ProcessingOptions.Builder builder) {
+        var embeddingNode = cicObject.getProperties().get("embedding");
+        if (embeddingNode instanceof CICPrimitive.CICBoolean b) {
+            builder.embedding(b.value());
+            cicObject.getOptionalString("embeddings_model").ifPresent(builder::embeddingsModel);
+        } else if (embeddingNode instanceof CICObject embeddingObj) {
+            builder.embedding(true);
+            embeddingObj.getOptionalString("model").ifPresent(builder::embeddingsModel);
+            embeddingObj.getOptionalString("precision").ifPresent(builder::embeddingPrecision);
+        }
     }
 
     @Override
@@ -102,21 +123,9 @@ class ProcessingOptionsMapper implements CICMapper<ProcessingOptions> {
             cicObject.putObject("normalization", norm);
         }
 
-        if (options.chunking() != null) {
-            cicObject.putBoolean("chunking", options.chunking());
-        }
-        if (options.chunkingStrategy() != null) {
-            cicObject.putString("chunking_strategy", options.chunkingStrategy());
-        }
-        if (options.chunkSize() != null) {
-            cicObject.putInt("chunk_size", options.chunkSize());
-        }
-        if (options.embedding() != null) {
-            cicObject.putBoolean("embedding", options.embedding());
-        }
-        if (options.embeddingsModel() != null) {
-            cicObject.putString("embeddings_model", options.embeddingsModel());
-        }
+        writeChunking(options, cicObject);
+        writeEmbedding(options, cicObject);
+
         if (options.jsonSchema() != null) {
             if (options.jsonSchema() instanceof Boolean b) {
                 cicObject.putBoolean("json_schema", b);
@@ -136,5 +145,37 @@ class ProcessingOptionsMapper implements CICMapper<ProcessingOptions> {
         }
 
         return cicObject;
+    }
+
+    private void writeChunking(ProcessingOptions options, CICObject cicObject) {
+        boolean hasDetails = options.chunkingStrategy() != null || options.chunkSize() != null;
+        if (hasDetails) {
+            var chunkObj = CICObject.create();
+            if (options.chunkingStrategy() != null) {
+                chunkObj.putString("strategy", options.chunkingStrategy());
+            }
+            if (options.chunkSize() != null) {
+                chunkObj.putInt("chunk_size", options.chunkSize());
+            }
+            cicObject.putObject("chunking", chunkObj);
+        } else if (options.chunking() != null) {
+            cicObject.putBoolean("chunking", options.chunking());
+        }
+    }
+
+    private void writeEmbedding(ProcessingOptions options, CICObject cicObject) {
+        boolean hasDetails = options.embeddingsModel() != null || options.embeddingPrecision() != null;
+        if (hasDetails) {
+            var embObj = CICObject.create();
+            if (options.embeddingsModel() != null) {
+                embObj.putString("model", options.embeddingsModel());
+            }
+            if (options.embeddingPrecision() != null) {
+                embObj.putString("precision", options.embeddingPrecision());
+            }
+            cicObject.putObject("embedding", embObj);
+        } else if (options.embedding() != null) {
+            cicObject.putBoolean("embedding", options.embedding());
+        }
     }
 }

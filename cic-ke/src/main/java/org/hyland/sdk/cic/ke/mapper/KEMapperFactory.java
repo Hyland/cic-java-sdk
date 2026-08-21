@@ -20,6 +20,7 @@ package org.hyland.sdk.cic.ke.mapper;
 
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
+import org.hyland.sdk.cic.ke.object.ActionDescriptor;
 import org.hyland.sdk.cic.ke.object.ConfigOptions;
 import org.hyland.sdk.cic.ke.object.ConfigRule;
 import org.hyland.sdk.cic.ke.object.EmbeddingModel;
@@ -54,7 +55,11 @@ public class KEMapperFactory implements MapperService.MapperFactory {
             return (CICMapper<T>) new ProcessingOptionsMapper();
         }
         // Context API mappers
-        else if (PresignedUrl.class.isAssignableFrom(type)) {
+        else if (ActionDescriptor.ListOf.class.isAssignableFrom(type)) {
+            return (CICMapper<T>) new ActionDescriptorMapper.ListMapper();
+        } else if (ActionDescriptor.class.isAssignableFrom(type)) {
+            return (CICMapper<T>) new ActionDescriptorMapper();
+        } else if (PresignedUrl.class.isAssignableFrom(type)) {
             return (CICMapper<T>) new PresignedUrlMapper();
         } else if (ProcessRequest.class.isAssignableFrom(type)) {
             return (CICMapper<T>) new ProcessRequestMapper();

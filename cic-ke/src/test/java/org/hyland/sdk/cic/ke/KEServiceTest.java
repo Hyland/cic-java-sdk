@@ -37,6 +37,7 @@ import org.hyland.sdk.cic.http.client.CICSdkException;
 import org.hyland.sdk.cic.http.client.auth.AuthenticationHttpClient;
 import org.hyland.sdk.cic.http.client.mapper.object.CICBlob;
 import org.hyland.sdk.cic.ke.object.Action;
+import org.hyland.sdk.cic.ke.object.ActionDescriptor;
 import org.hyland.sdk.cic.ke.object.EnrichmentResult;
 import org.hyland.sdk.cic.ke.object.PresignedUrl;
 import org.hyland.sdk.cic.ke.object.ProcessRequest;
@@ -231,6 +232,17 @@ class KEServiceTest {
     }
 
     @Test
+    void testGetActionDescriptors() {
+        var descriptors = service.getActionDescriptors();
+        assertNotNull(descriptors);
+        assertEquals(2, descriptors.size());
+        assertEquals("textSummarization", descriptors.get(0).name());
+        assertEquals("pretrainedClassification", descriptors.get(1).name());
+        assertEquals(List.of("model-a"), descriptors.get(1).availableModels());
+        assertEquals(List.of("cat-x"), descriptors.get(1).availableCategories());
+    }
+
+    @Test
     void testIsHealthy() {
         assertTrue(service.isHealthy());
     }
@@ -351,6 +363,12 @@ class KEServiceTest {
         @Override
         public String getActions() {
             return "[\"textSummarization\",\"imageDescription\"]";
+        }
+
+        @Override
+        public List<ActionDescriptor> getActionDescriptors() {
+            return List.of(new ActionDescriptor("textSummarization", null, null),
+                    new ActionDescriptor("pretrainedClassification", List.of("model-a"), List.of("cat-x")));
         }
 
         @Override

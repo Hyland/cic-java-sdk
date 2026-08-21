@@ -54,7 +54,9 @@ public final class ErrorUtils {
             String exceptionMessage) {
         try {
             var remoteCause = MapperService.read(response.body(), CICError.class);
-            return new CICServiceException(exceptionMessage, response.statusCode(), remoteCause);
+            var message = remoteCause.message() != null ? exceptionMessage + " - " + remoteCause.message()
+                    : exceptionMessage;
+            return new CICServiceException(message, response.statusCode(), remoteCause);
         } catch (Exception parseError) {
             var exception = new CICServiceException(exceptionMessage, response.statusCode());
             exception.addSuppressed(parseError);

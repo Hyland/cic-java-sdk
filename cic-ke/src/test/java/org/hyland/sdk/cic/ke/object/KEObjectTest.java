@@ -40,12 +40,15 @@ class KEObjectTest {
 
     @Test
     void testActionValues() {
+        assertEquals("globalEntities", Action.GLOBAL_ENTITIES.value());
         assertEquals("imageClassification", Action.IMAGE_CLASSIFICATION.value());
         assertEquals("imageDescription", Action.IMAGE_DESCRIPTION.value());
         assertEquals("imageEmbeddings", Action.IMAGE_EMBEDDINGS.value());
         assertEquals("imageMetadataGeneration", Action.IMAGE_METADATA_GENERATION.value());
+        assertEquals("localEntities", Action.LOCAL_ENTITIES.value());
         assertEquals("namedEntityRecognitionImage", Action.NAMED_ENTITY_RECOGNITION_IMAGE.value());
         assertEquals("namedEntityRecognitionText", Action.NAMED_ENTITY_RECOGNITION_TEXT.value());
+        assertEquals("pretrainedClassification", Action.PRETRAINED_CLASSIFICATION.value());
         assertEquals("textClassification", Action.TEXT_CLASSIFICATION.value());
         assertEquals("textEmbeddings", Action.TEXT_EMBEDDINGS.value());
         assertEquals("textMetadataGeneration", Action.TEXT_METADATA_GENERATION.value());
@@ -54,7 +57,7 @@ class KEObjectTest {
 
     @Test
     void testActionEnumCount() {
-        assertEquals(10, Action.values().length);
+        assertEquals(13, Action.values().length);
     }
 
     // --- ActionConfig builder ---
@@ -440,10 +443,11 @@ class KEObjectTest {
 
     @Test
     void testPresignResponse() {
-        var response = new PresignResponse("job-1", "https://put.url", "https://get.url");
+        var response = new PresignResponse("job-1", "https://put.url", "https://get.url", null);
         assertEquals("job-1", response.jobId());
         assertEquals("https://put.url", response.putUrl());
         assertEquals("https://get.url", response.getUrl());
+        assertNull(response.options());
     }
 
     @Test
@@ -495,20 +499,73 @@ class KEObjectTest {
 
     @Test
     void testEmbeddingModel() {
-        var model = new EmbeddingModel("id-1", "Model Name");
-        assertEquals("id-1", model.id());
-        assertEquals("Model Name", model.name());
+        var model = new EmbeddingModel("cohere.embed-multilingual-v3", 512, List.of("float32", "int8"), List.of(1024),
+                List.of("search_document"));
+        assertEquals("cohere.embed-multilingual-v3", model.name());
+        assertEquals(512, model.maxChunkSize());
+        assertEquals(List.of("float32", "int8"), model.supportedPrecisions());
+        assertEquals(List.of(1024), model.supportedOutputDimensions());
+        assertEquals(List.of("search_document"), model.supportedInputType());
     }
 
     @Test
     void testEnrichmentResultEntry() {
         var textSummary = new ActionResult<>(true, "Summary", null);
         var entry = new EnrichmentResultEntry("key", null, null, null, textSummary, null, null, null, null, null, null,
-                null);
+                null, null);
         assertEquals("key", entry.objectKey());
         assertNotNull(entry.textSummary());
         assertEquals("Summary", entry.textSummary().result());
         assertNull(entry.imageDescription());
+        assertNull(entry.pretrainedClassification());
         assertNull(entry.generalProcessingErrors());
+    }
+
+    @Test
+    void testEnrichmentResultEntryWithPretrainedClassification() {
+        var classification = new ClassificationResult("invoice", 0.95);
+        var actionResult = new ActionResult<>(true, classification, null);
+        var entry = new EnrichmentResultEntry("key", null, null, null, null, null, null, null, null, null, null,
+                actionResult, null);
+        assertNotNull(entry.pretrainedClassification());
+        assertTrue(entry.pretrainedClassification().isSuccess());
+        assertEquals("invoice", entry.pretrainedClassification().result().classification());
+        assertEquals(0.95, entry.pretrainedClassification().result().confidence());
+    }
+
+    // --- ClassificationResult ---
+
+    @Test
+    void testClassificationResult() {
+        var result = new ClassificationResult("contract", 0.87);
+        assertEquals("contract", result.classification());
+        assertEquals(0.87, result.confidence());
+    }
+
+    // --- ActionDescriptor ---
+
+    @Test
+    void testActionDescriptor() {
+        var descriptor = new ActionDescriptor("pretrainedClassification", List.of("model-a", "model-b"),
+                List.of("category-x", "category-y"));
+        assertEquals("pretrainedClassification", descriptor.name());
+        assertEquals(List.of("model-a", "model-b"), descriptor.availableModels());
+        assertEquals(List.of("category-x", "category-y"), descriptor.availableCategories());
+    }
+
+    @Test
+    void testActionDescriptorNullableFields() {
+        var descriptor = new ActionDescriptor("textSummarization", null, null);
+        assertEquals("textSummarization", descriptor.name());
+        assertNull(descriptor.availableModels());
+        assertNull(descriptor.availableCategories());
+    }
+
+    @Test
+    void testActionDescriptorListOf() {
+        var list = new ActionDescriptor.ListOf();
+        list.add(new ActionDescriptor("a", null, null));
+        list.add(new ActionDescriptor("b", List.of("m1"), List.of("c1")));
+        assertEquals(2, list.size());
     }
 }

@@ -22,11 +22,14 @@ import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 import org.hyland.sdk.cic.ke.object.PresignResponse;
+import org.hyland.sdk.cic.ke.object.ProcessingOptions;
 
 /**
  * @since 1.0.0
  */
 class PresignResponseMapper implements CICMapper<PresignResponse> {
+
+    private final ProcessingOptionsMapper optionsMapper = new ProcessingOptionsMapper();
 
     @Override
     public PresignResponse fromCICNode(CICNode cicNode) {
@@ -34,6 +37,7 @@ class PresignResponseMapper implements CICMapper<PresignResponse> {
         var jobId = cicObject.getStringOrThrow("job_id");
         var putUrl = cicObject.getStringOrThrow("put_url");
         var getUrl = cicObject.getStringOrThrow("get_url");
-        return new PresignResponse(jobId, putUrl, getUrl);
+        ProcessingOptions options = cicObject.getOptionalObject("options").map(optionsMapper::fromCICNode).orElse(null);
+        return new PresignResponse(jobId, putUrl, getUrl, options);
     }
 }

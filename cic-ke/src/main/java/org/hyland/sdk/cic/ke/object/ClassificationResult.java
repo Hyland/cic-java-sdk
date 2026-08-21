@@ -18,20 +18,12 @@
  */
 package org.hyland.sdk.cic.ke.object;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * Embedding model information from {@code GET /models} endpoint.
+ * Structured result payload from a pretrained classification action.
  *
+ * @param classification the predicted class label
+ * @param confidence the model's confidence score (0.0 to 1.0)
  * @since 1.0.0
  */
-public record EmbeddingModel(String name, int maxChunkSize, List<String> supportedPrecisions,
-        List<Integer> supportedOutputDimensions, List<String> supportedInputType) {
-
-    /**
-     * @since 1.0.0
-     */
-    public static class ListOf extends ArrayList<EmbeddingModel> {
-    }
+public record ClassificationResult(String classification, double confidence) {
 }

@@ -29,6 +29,7 @@ import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 import org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive;
 import org.hyland.sdk.cic.ke.object.ActionResult;
+import org.hyland.sdk.cic.ke.object.ClassificationResult;
 import org.hyland.sdk.cic.ke.object.EnrichmentResult;
 import org.hyland.sdk.cic.ke.object.EnrichmentResultEntry;
 
@@ -62,7 +63,9 @@ class EnrichmentResultMapper implements CICMapper<EnrichmentResult> {
                 mapStringActionResult(obj, "textClassification"), mapStringActionResult(obj, "imageClassification"),
                 mapDoubleListActionResult(obj, "textEmbeddings"), mapDoubleListActionResult(obj, "imageEmbeddings"),
                 mapStringListMapActionResult(obj, "namedEntityText"),
-                mapStringListMapActionResult(obj, "namedEntityImage"), obj.getStringOrNull("generalProcessingErrors"));
+                mapStringListMapActionResult(obj, "namedEntityImage"),
+                mapClassificationActionResult(obj, "pretrainedClassification"),
+                obj.getStringOrNull("generalProcessingErrors"));
     }
 
     private ActionResult<String> mapStringActionResult(CICObject parent, String key) {
@@ -133,6 +136,21 @@ class EnrichmentResultMapper implements CICMapper<EnrichmentResult> {
                         result.put(entry.getKey(), arr.toListString());
                     }
                 }
+            }
+            return new ActionResult<>(isSuccess, result, error);
+        }).orElse(null);
+    }
+
+    private ActionResult<ClassificationResult> mapClassificationActionResult(CICObject parent, String key) {
+        return parent.getOptionalObject(key).map(obj -> {
+            var isSuccess = obj.getBoolean("isSuccess", false);
+            var error = obj.getStringOrNull("error");
+            ClassificationResult result = null;
+            var resultNode = obj.getProperties().get("result");
+            if (resultNode instanceof CICObject resultObj) {
+                var classification = resultObj.getStringOrNull("classification");
+                var confidence = resultObj.getDouble("confidence", 0.0);
+                result = new ClassificationResult(classification, confidence);
             }
             return new ActionResult<>(isSuccess, result, error);
         }).orElse(null);

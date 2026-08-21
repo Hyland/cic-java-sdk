@@ -18,12 +18,15 @@
  */
 package org.hyland.sdk.cic.ke.mapper;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
+import org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive;
 import org.hyland.sdk.cic.ke.object.EmbeddingModel;
 
 /**
@@ -34,9 +37,36 @@ class EmbeddingModelMapper implements CICMapper<EmbeddingModel> {
     @Override
     public EmbeddingModel fromCICNode(CICNode cicNode) {
         var cicObject = (CICObject) cicNode;
-        var id = cicObject.getStringOrThrow("id");
-        var name = cicObject.getString("name", id);
-        return new EmbeddingModel(id, name);
+        var name = cicObject.getStringOrThrow("name");
+        var maxChunkSize = cicObject.getIntegerOrNull("max_chunk_size");
+
+        List<String> supportedPrecisions = new ArrayList<>();
+        cicObject.getOptionalArray("supported_precisions").ifPresent(arr -> {
+            for (var item : arr.toListString()) {
+                supportedPrecisions.add(item);
+            }
+        });
+
+        List<Integer> supportedOutputDimensions = new ArrayList<>();
+        cicObject.getOptionalArray("supported_output_dimensions").ifPresent(arr -> {
+            for (var element : arr.getElements()) {
+                if (element instanceof CICPrimitive.CICInt i) {
+                    supportedOutputDimensions.add(i.value());
+                } else if (element instanceof CICPrimitive.CICLong l) {
+                    supportedOutputDimensions.add(Math.toIntExact(l.value()));
+                }
+            }
+        });
+
+        List<String> supportedInputType = new ArrayList<>();
+        cicObject.getOptionalArray("supported_input_type").ifPresent(arr -> {
+            for (var item : arr.toListString()) {
+                supportedInputType.add(item);
+            }
+        });
+
+        return new EmbeddingModel(name, maxChunkSize != null ? maxChunkSize : 0, supportedPrecisions,
+                supportedOutputDimensions, supportedInputType);
     }
 
     static class ListMapper implements CICMapper<EmbeddingModel.ListOf> {
@@ -45,11 +75,16 @@ class EmbeddingModelMapper implements CICMapper<EmbeddingModel> {
 
         @Override
         public EmbeddingModel.ListOf fromCICNode(CICNode cicNode) {
-            var cicArray = (CICArray) cicNode;
-            return cicArray.toListObject()
-                           .stream()
-                           .map(innerMapper::fromCICNode)
-                           .collect(Collectors.toCollection(EmbeddingModel.ListOf::new));
+            CICArray modelsArray;
+            if (cicNode instanceof CICObject cicObject) {
+                modelsArray = cicObject.getArrayOrThrow("models");
+            } else {
+                modelsArray = (CICArray) cicNode;
+            }
+            return modelsArray.toListObject()
+                              .stream()
+                              .map(innerMapper::fromCICNode)
+                              .collect(Collectors.toCollection(EmbeddingModel.ListOf::new));
         }
     }
 }

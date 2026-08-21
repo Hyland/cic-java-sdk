@@ -27,6 +27,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import org.hyland.sdk.cic.http.client.CICSdkException;
 import org.hyland.sdk.cic.http.client.auth.AbstractAuthenticatedHttpClient;
@@ -34,6 +35,7 @@ import org.hyland.sdk.cic.http.client.auth.AbstractAuthenticatedHttpClientBuilde
 import org.hyland.sdk.cic.http.client.auth.AuthenticationHttpClient;
 import org.hyland.sdk.cic.http.client.base.CICHttpRequest.CICEntity;
 import org.hyland.sdk.cic.http.client.mapper.object.CICBlob;
+import org.hyland.sdk.cic.ke.object.ActionDescriptor;
 import org.hyland.sdk.cic.ke.object.EnrichmentResult;
 import org.hyland.sdk.cic.ke.object.PresignedUrl;
 import org.hyland.sdk.cic.ke.object.ProcessRequest;
@@ -50,7 +52,7 @@ public class KEHttpClient extends AbstractAuthenticatedHttpClient {
 
     private static final String PROCESS_PATH = "/content/process";
 
-    private static final String ACTIONS_PATH = "/content/actions";
+    private static final String ACTIONS_PATH = "/content/process/actions";
 
     private static final String HEALTHY_PATH = "/healthy";
 
@@ -188,10 +190,26 @@ public class KEHttpClient extends AbstractAuthenticatedHttpClient {
      * @throws CICSdkException if the request fails
      */
     public String getActions() {
-        var request = this.requestBuilder(GET, ACTIONS_PATH).build();
+        var request = this.requestBuilder(GET, ACTIONS_PATH)
+                          .queryParameter("version", ProcessRequest.VERSION_V2)
+                          .build();
         var response = sendThenReadAsString(request);
         org.hyland.sdk.cic.http.client.util.ErrorUtils.throwExceptionOnUnexpectedStatusCode(response);
         return response.body();
+    }
+
+    /**
+     * Lists available enrichment actions as typed descriptors, including any available models and categories.
+     *
+     * @return the list of action descriptors
+     * @throws CICSdkException if the request fails
+     * @since 1.0.0
+     */
+    public List<ActionDescriptor> getActionDescriptors() {
+        var request = this.requestBuilder(GET, ACTIONS_PATH)
+                          .queryParameter("version", ProcessRequest.VERSION_V2)
+                          .build();
+        return sendThenMapAs(request, ActionDescriptor.ListOf.class);
     }
 
     /**
