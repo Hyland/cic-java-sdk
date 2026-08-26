@@ -32,6 +32,11 @@ import java.util.List;
  */
 public record ActionDescriptor(String name, List<String> availableModels, List<String> availableCategories) {
 
+    public ActionDescriptor {
+        availableModels = availableModels == null ? null : List.copyOf(availableModels);
+        availableCategories = availableCategories == null ? null : List.copyOf(availableCategories);
+    }
+
     /**
      * @since 1.0.0
      */

@@ -43,7 +43,6 @@ import org.hyland.sdk.cic.http.client.auth.AuthenticationHttpClient;
 import org.hyland.sdk.cic.http.client.mapper.object.CICBlob;
 import org.hyland.sdk.cic.http.client.retry.RetryPolicy;
 import org.hyland.sdk.cic.ke.object.Action;
-import org.hyland.sdk.cic.ke.object.ProcessRequest;
 import org.hyland.sdk.cic.ke.object.ProcessingOptions;
 
 /**
@@ -211,12 +210,8 @@ class KEWorkflowIntegrationTest {
         };
 
         CICBlob blob = createTestBlob("image/jpeg", "JPEG data");
-        var request = ProcessRequest.builder()
-                                    .objectKey("placeholder")
-                                    .action(Action.IMAGE_DESCRIPTION, cfg -> cfg.maxWordCount(100))
-                                    .build();
-
-        String processingId = keService.sendForEnrichment(blob, request);
+        String processingId = keService.sendForEnrichment(blob,
+                builder -> builder.action(Action.IMAGE_DESCRIPTION, cfg -> cfg.maxWordCount(100)));
         assertEquals("sep-proc-002", processingId);
 
         assertTrue(capturedBody.get().contains("\"version\":\"context.api/v2\""));

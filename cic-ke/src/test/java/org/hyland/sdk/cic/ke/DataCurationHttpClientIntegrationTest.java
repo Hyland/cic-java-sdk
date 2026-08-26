@@ -176,6 +176,33 @@ class DataCurationHttpClientIntegrationTest {
     }
 
     @Test
+    void getHealthDetailsReturnsDetails() {
+        apiServer.createContext("/health/details", exchange -> {
+            TestHttpServers.assertBearerToken(exchange);
+            TestHttpServers.respondJson(exchange, 200, """
+                    {
+                      "status": "healthy",
+                      "timestamp": "2026-08-26T12:54:31.936042+00:00",
+                      "application": {"version": "1.193.0-release", "uptime_seconds": 114396.2},
+                      "system": {"cpu_percent": 0.0, "memory_used_percent": 19.3, "disk_used_percent": 21.0},
+                      "checks": {"aws": {"ok": true}}
+                    }
+                    """);
+        });
+        apiServer.start();
+        client = buildClient();
+
+        var details = client.getHealthDetails();
+
+        assertNotNull(details);
+        assertEquals("healthy", details.status());
+        assertEquals("1.193.0-release", details.applicationVersion());
+        assertEquals(114396.2, details.uptimeSeconds());
+        assertEquals(19.3, details.memoryUsedPercent());
+        assertTrue(details.awsOk());
+    }
+
+    @Test
     void isHealthyReturnsFalseOnServerError() {
         apiServer.createContext("/health", exchange -> {
             TestHttpServers.respondEmpty(exchange, 503);

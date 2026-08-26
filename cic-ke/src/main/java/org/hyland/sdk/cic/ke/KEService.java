@@ -19,6 +19,7 @@
 package org.hyland.sdk.cic.ke;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -27,6 +28,7 @@ import org.hyland.sdk.cic.http.client.mapper.object.CICBlob;
 import org.hyland.sdk.cic.ke.object.Action;
 import org.hyland.sdk.cic.ke.object.ActionDescriptor;
 import org.hyland.sdk.cic.ke.object.EnrichmentResult;
+import org.hyland.sdk.cic.ke.object.ObjectKey;
 import org.hyland.sdk.cic.ke.object.PresignedUrl;
 import org.hyland.sdk.cic.ke.object.ProcessRequest;
 
@@ -49,11 +51,21 @@ public class KEService {
 
     /**
      * Configures the polling behavior for the {@link #enrich} methods.
+     * <p>
+     * <b>Thread safety:</b> This method mutates shared state. If multiple threads share this service instance, callers
+     * must synchronize externally or configure poll settings before sharing the instance.
      *
-     * @param maxAttempts the maximum number of polling attempts
-     * @param intervalMs the sleep interval between polls in milliseconds
+     * @param maxAttempts the maximum number of polling attempts (must be at least 1)
+     * @param intervalMs the sleep interval between polls in milliseconds (must be non-negative)
+     * @throws IllegalArgumentException if maxAttempts is less than 1 or intervalMs is negative
      */
     public void setPollSettings(int maxAttempts, long intervalMs) {
+        if (maxAttempts < 1) {
+            throw new IllegalArgumentException("maxAttempts must be at least 1, got: " + maxAttempts);
+        }
+        if (intervalMs < 0) {
+            throw new IllegalArgumentException("intervalMs must be non-negative, got: " + intervalMs);
+        }
         this.pollMaxAttempts = maxAttempts;
         this.pollIntervalMs = intervalMs;
     }
@@ -121,28 +133,29 @@ public class KEService {
     }
 
     /**
-     * Uploads a blob and submits it for enrichment in one step. Returns the processing ID. The caller can then use
-     * {@link #getResults(String)} or {@link #pollResults(String)} to get results.
+     * Configures a process request, uploads the blob, and submits it for enrichment in one step. The uploaded object's
+     * key is added to the request after upload, so callers only need to configure actions.
      *
      * @param blob the blob to enrich
-     * @param processRequest the process request with actions (objectKey will be overridden with the presigned URL key)
+     * @param consumer configures the process request actions
      * @return the processing ID
      * @throws CICSdkException if any step fails
      */
-    public String sendForEnrichment(CICBlob blob, ProcessRequest processRequest) {
+    public String sendForEnrichment(CICBlob blob, Consumer<ProcessRequest.Builder> consumer) {
         Objects.requireNonNull(blob, "blob cannot be null");
-        Objects.requireNonNull(processRequest, "processRequest cannot be null");
+        Objects.requireNonNull(consumer, "consumer cannot be null");
+
+        var builder = ProcessRequest.builder();
+        consumer.accept(builder);
 
         var contentType = blob.getContentType().orElse("application/octet-stream");
         var presignedUrl = httpClient.getPresignedUrl(contentType);
+
+        builder.objectKeys(List.of(ObjectKey.forPath(presignedUrl.objectKey())));
+        var processRequest = builder.build();
+
         httpClient.upload(presignedUrl.presignedUrl(), blob);
-
-        var actualRequest = ProcessRequest.builder()
-                                          .objectKey(presignedUrl.objectKey())
-                                          .actions(processRequest.actions())
-                                          .build();
-
-        return httpClient.process(actualRequest);
+        return httpClient.process(processRequest);
     }
 
     /**
@@ -182,9 +195,7 @@ public class KEService {
         Objects.requireNonNull(blob, "blob cannot be null");
         Objects.requireNonNull(actions, "actions cannot be null");
 
-        var builder = ProcessRequest.builder().objectKey("placeholder");
-        actions.forEach(builder::action);
-        var processingId = sendForEnrichment(blob, builder.build());
+        var processingId = sendForEnrichment(blob, builder -> actions.forEach(builder::action));
         return pollResults(processingId);
     }
 
@@ -192,27 +203,16 @@ public class KEService {
      * End-to-end enrichment workflow with a process request builder consumer.
      *
      * @param blob the blob to enrich
-     * @param consumer configures the process request (objectKey will be overridden)
+     * @param consumer configures the process request actions; the uploaded object's key is added automatically
      * @return the enrichment result
      * @throws CICSdkException if any step fails or polling times out
      */
     public EnrichmentResult enrich(CICBlob blob, Consumer<ProcessRequest.Builder> consumer) {
         Objects.requireNonNull(blob, "blob cannot be null");
+        Objects.requireNonNull(consumer, "consumer cannot be null");
 
-        var builder = ProcessRequest.builder().objectKey("placeholder");
-        consumer.accept(builder);
-        var processingId = sendForEnrichment(blob, builder.build());
+        var processingId = sendForEnrichment(blob, consumer);
         return pollResults(processingId);
-    }
-
-    /**
-     * Lists available enrichment actions.
-     *
-     * @return the actions response as a string
-     * @throws CICSdkException if the request fails
-     */
-    public String getActions() {
-        return httpClient.getActions();
     }
 
     /**
@@ -227,9 +227,21 @@ public class KEService {
     }
 
     /**
-     * Checks if the Context Service is available.
+     * Returns version usage statistics for content processing.
      *
-     * @return true if healthy
+     * @return a map of version identifiers to their usage counts
+     * @throws CICSdkException if the request fails
+     * @since 1.0.0
+     */
+    public Map<String, Long> getVersionUsageStats() {
+        return httpClient.getVersionUsageStats();
+    }
+
+    /**
+     * Checks availability of the Context Service. Returns {@code true} only when the service responds with HTTP 200.
+     * Authentication failures, network errors, and all other status codes return {@code false}.
+     *
+     * @return true if the service is healthy and reachable
      */
     public boolean isHealthy() {
         return httpClient.isHealthy();

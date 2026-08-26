@@ -1,0 +1,5 @@
+Patient presents with chest pain radiating to left arm, onset 2 hours ago. ECG shows ST-segment
+elevation in leads V1-V4. Troponin levels elevated at 2.5 ng/mL. Blood pressure 145/92 mmHg.
+Heart rate 96 bpm. Diagnosis: Acute ST-elevation myocardial infarction (STEMI). Treatment plan
+includes immediate percutaneous coronary intervention (PCI) with aspirin 325mg, clopidogrel
+600mg loading dose, and heparin infusion per protocol.

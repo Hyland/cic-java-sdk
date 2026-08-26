@@ -18,23 +18,13 @@
  */
 package org.hyland.sdk.cic.ke.object;
 
-import java.util.List;
+import java.util.Map;
 
 /**
+ * Version usage statistics for content processing.
+ *
+ * @param stats a map of version identifiers to their usage counts
  * @since 1.0.0
  */
-public record EnrichmentResult(String id, String timestamp, List<EnrichmentResultEntry> results, String status,
-        boolean inProgress) {
-
-    public EnrichmentResult {
-        results = results == null ? List.of() : List.copyOf(results);
-    }
-
-    public boolean isSuccess() {
-        return "SUCCESS".equalsIgnoreCase(status);
-    }
-
-    public boolean isComplete() {
-        return !inProgress;
-    }
+public record VersionUsageStats(Map<String, Long> stats) {
 }

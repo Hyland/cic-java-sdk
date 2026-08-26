@@ -27,19 +27,24 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.Map;
 
 import org.hyland.sdk.cic.http.client.CICSdkException;
 import org.hyland.sdk.cic.http.client.auth.AbstractAuthenticatedHttpClient;
 import org.hyland.sdk.cic.http.client.auth.AbstractAuthenticatedHttpClientBuilder;
 import org.hyland.sdk.cic.http.client.auth.AuthenticationHttpClient;
 import org.hyland.sdk.cic.http.client.base.CICHttpRequest.CICEntity;
+import org.hyland.sdk.cic.http.client.mapper.MapperService;
 import org.hyland.sdk.cic.http.client.mapper.object.CICBlob;
+import org.hyland.sdk.cic.http.client.util.ErrorUtils;
 import org.hyland.sdk.cic.ke.object.ActionDescriptor;
 import org.hyland.sdk.cic.ke.object.EnrichmentResult;
 import org.hyland.sdk.cic.ke.object.PresignedUrl;
 import org.hyland.sdk.cic.ke.object.ProcessRequest;
 import org.hyland.sdk.cic.ke.object.ProcessResponse;
+import org.hyland.sdk.cic.ke.object.VersionUsageStats;
 
 /**
  * HTTP client for interacting with the CIC Context (Knowledge Enrichment) API.
@@ -53,6 +58,8 @@ public class KEHttpClient extends AbstractAuthenticatedHttpClient {
     private static final String PROCESS_PATH = "/content/process";
 
     private static final String ACTIONS_PATH = "/content/process/actions";
+
+    private static final String VERSION_USAGE_STATS_PATH = "/content/process/version-usage-stats";
 
     private static final String HEALTHY_PATH = "/healthy";
 
@@ -100,7 +107,7 @@ public class KEHttpClient extends AbstractAuthenticatedHttpClient {
         try {
             tempFile = Files.createTempFile("cic-ke-upload-", ".tmp");
             try (var is = blob.getInputStream()) {
-                Files.copy(is, tempFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(is, tempFile, StandardCopyOption.REPLACE_EXISTING);
             }
             Path finalTempFile = tempFile;
             var response = sendRawWithRetry(() -> {
@@ -179,23 +186,8 @@ public class KEHttpClient extends AbstractAuthenticatedHttpClient {
         if (response.statusCode() == 202) {
             return null;
         }
-        org.hyland.sdk.cic.http.client.util.ErrorUtils.throwExceptionOnUnexpectedStatusCode(response);
-        return org.hyland.sdk.cic.http.client.mapper.MapperService.read(response.body(), EnrichmentResult.class);
-    }
-
-    /**
-     * Lists available enrichment actions.
-     *
-     * @return the actions response body as a string
-     * @throws CICSdkException if the request fails
-     */
-    public String getActions() {
-        var request = this.requestBuilder(GET, ACTIONS_PATH)
-                          .queryParameter("version", ProcessRequest.VERSION_V2)
-                          .build();
-        var response = sendThenReadAsString(request);
-        org.hyland.sdk.cic.http.client.util.ErrorUtils.throwExceptionOnUnexpectedStatusCode(response);
-        return response.body();
+        ErrorUtils.throwExceptionOnUnexpectedStatusCode(response);
+        return MapperService.read(response.body(), EnrichmentResult.class);
     }
 
     /**
@@ -213,9 +205,22 @@ public class KEHttpClient extends AbstractAuthenticatedHttpClient {
     }
 
     /**
-     * Checks availability of the Context Service.
+     * Returns version usage statistics for content processing.
      *
-     * @return true if the service is healthy
+     * @return a map of version identifiers to their usage counts
+     * @throws CICSdkException if the request fails
+     * @since 1.0.0
+     */
+    public Map<String, Long> getVersionUsageStats() {
+        var request = this.requestBuilder(GET, VERSION_USAGE_STATS_PATH).build();
+        return sendThenMapAs(request, VersionUsageStats.class).stats();
+    }
+
+    /**
+     * Checks availability of the Context Service. Returns {@code true} only when the service responds with HTTP 200.
+     * Authentication failures, network errors, and all other status codes return {@code false}.
+     *
+     * @return true if the service is healthy and reachable
      */
     public boolean isHealthy() {
         var response = sendThenReadAsString(this.requestBuilder(GET, HEALTHY_PATH).build());

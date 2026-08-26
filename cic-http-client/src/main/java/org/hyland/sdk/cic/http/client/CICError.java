@@ -26,6 +26,7 @@ import java.util.Set;
 
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
+import org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive;
 
 /**
  * Represents an error response from the CIC API, supporting both legacy OAuth2-style error responses and RFC 9457
@@ -37,39 +38,34 @@ import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
  * <p>
  * Any additional API-specific fields (e.g. "model", "category", "errors") are captured in {@link #extensions()}.
  *
+ * @param error legacy OAuth2-style error code
+ * @param errorDescription legacy OAuth2-style error description
+ * @param type RFC 9457 problem type URI
+ * @param title RFC 9457 short, human-readable problem summary
+ * @param status RFC 9457 HTTP status code
+ * @param detail RFC 9457 explanation specific to this problem occurrence
+ * @param instance RFC 9457 URI identifying this problem occurrence
+ * @param extensions API-specific fields not covered by the standard fields
  * @since 1.0.0
  */
-public final class CICError {
+public record CICError(String error, String errorDescription, String type, String title, Integer status, String detail,
+        String instance, Map<String, Object> extensions) {
 
     private static final Set<String> KNOWN_KEYS = Set.of("type", "title", "status", "detail", "instance", "error",
             "error_description");
 
-    private final String type;
+    public CICError {
+        extensions = extensions == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(extensions));
+    }
 
-    private final String title;
-
-    private final Integer status;
-
-    private final String detail;
-
-    private final String instance;
-
-    private final String error;
-
-    private final String errorDescription;
-
-    private final Map<String, Object> extensions;
-
-    private CICError(String type, String title, Integer status, String detail, String instance, String error,
-            String errorDescription, Map<String, Object> extensions) {
-        this.type = type;
-        this.title = title;
-        this.status = status;
-        this.detail = detail;
-        this.instance = instance;
-        this.error = error;
-        this.errorDescription = errorDescription;
-        this.extensions = extensions != null ? Collections.unmodifiableMap(extensions) : Map.of();
+    /**
+     * Creates a legacy OAuth2-style error, preserving the constructor available in SDK 1.0.0.
+     *
+     * @param error the legacy error code
+     * @param errorDescription the legacy error description
+     */
+    public CICError(String error, String errorDescription) {
+        this(error, errorDescription, null, null, null, null, null, Map.of());
     }
 
     /**
@@ -77,84 +73,46 @@ public final class CICError {
      * fields are placed into the {@link #extensions()} map.
      */
     public static CICError from(CICObject cicObject) {
-        String type = cicObject.getString("type", null);
-        String title = cicObject.getString("title", null);
+        String type = safeGetString(cicObject, "type");
+        String title = safeGetString(cicObject, "title");
         Integer status = cicObject.getIntegerOrNull("status");
-        String detail = cicObject.getString("detail", null);
-        String instance = cicObject.getString("instance", null);
-        String error = cicObject.getString("error", null);
-        String errorDescription = cicObject.getString("error_description", null);
+        String detail = safeGetString(cicObject, "detail");
+        String instance = safeGetString(cicObject, "instance");
+        String error = safeGetString(cicObject, "error");
+        String errorDescription = safeGetString(cicObject, "error_description");
 
         Map<String, Object> extensions = new LinkedHashMap<>();
         for (var entry : cicObject.getProperties().entrySet()) {
-            if (!KNOWN_KEYS.contains(entry.getKey())) {
-                extensions.put(entry.getKey(), toJavaValue(entry.getValue()));
+            var key = entry.getKey();
+            if (!KNOWN_KEYS.contains(key)) {
+                extensions.put(key, toJavaValue(entry.getValue()));
+            } else if (isNonStringKnownKey(cicObject, key)) {
+                extensions.put(key, toJavaValue(entry.getValue()));
             }
         }
 
-        return new CICError(type, title, status, detail, instance, error, errorDescription,
+        return new CICError(error, errorDescription, type, title, status, detail, instance,
                 extensions.isEmpty() ? null : extensions);
+    }
+
+    private static String safeGetString(CICObject cicObject, String key) {
+        var node = cicObject.getProperties().get(key);
+        if (node instanceof CICPrimitive.CICString str) {
+            return str.value();
+        }
+        return null;
+    }
+
+    private static boolean isNonStringKnownKey(CICObject cicObject, String key) {
+        if ("status".equals(key)) {
+            return false;
+        }
+        var node = cicObject.getProperties().get(key);
+        return node != null && !(node instanceof CICPrimitive.CICString) && !(node instanceof CICPrimitive.CICNull);
     }
 
     private static Object toJavaValue(CICNode node) {
         return node.toJavaValue();
-    }
-
-    /**
-     * RFC 9457 problem type URI identifying the category of problem, or {@code null} for legacy errors.
-     */
-    public String type() {
-        return type;
-    }
-
-    /**
-     * RFC 9457 short, human-readable summary of the problem type.
-     */
-    public String title() {
-        return title;
-    }
-
-    /**
-     * RFC 9457 HTTP status code echoed in the response body, or {@code null}.
-     */
-    public Integer status() {
-        return status;
-    }
-
-    /**
-     * RFC 9457 human-readable explanation specific to this occurrence of the problem.
-     */
-    public String detail() {
-        return detail;
-    }
-
-    /**
-     * RFC 9457 URI reference identifying the specific occurrence of the problem.
-     */
-    public String instance() {
-        return instance;
-    }
-
-    /**
-     * Legacy OAuth2-style error code (e.g. "invalid_request"), or {@code null}.
-     */
-    public String error() {
-        return error;
-    }
-
-    /**
-     * Legacy OAuth2-style error description, or {@code null}.
-     */
-    public String errorDescription() {
-        return errorDescription;
-    }
-
-    /**
-     * API-specific extension fields not covered by the standard fields (e.g. "model", "category", "errors"). Returns an
-     * unmodifiable map; empty if no extensions were present.
-     */
-    public Map<String, Object> extensions() {
-        return extensions;
     }
 
     /**
@@ -167,7 +125,8 @@ public final class CICError {
 
     /**
      * Best-effort human-readable message: prefers {@link #detail()}, falls back to {@link #title()}, then
-     * {@link #errorDescription()}, then {@link #error()}.
+     * {@link #errorDescription()}, then {@link #error()}, and finally checks for a {@code "message"} extension field
+     * (used by the Data Curation API).
      */
     public String message() {
         if (detail != null) {
@@ -179,6 +138,27 @@ public final class CICError {
         if (errorDescription != null) {
             return errorDescription;
         }
-        return error;
+        if (error != null) {
+            return error;
+        }
+        var extensionMessage = extensions.get("message");
+        if (extensionMessage instanceof String msg) {
+            return msg;
+        }
+        return null;
+    }
+
+    /**
+     * Preserves the SDK 1.0.0 representation for legacy errors while including all fields for RFC 9457 errors.
+     */
+    @Override
+    public String toString() {
+        if (type == null && title == null && status == null && detail == null && instance == null
+                && extensions.isEmpty()) {
+            return "CICError[error=" + error + ", errorDescription=" + errorDescription + "]";
+        }
+        return "CICError[error=" + error + ", errorDescription=" + errorDescription + ", type=" + type + ", title="
+                + title + ", status=" + status + ", detail=" + detail + ", instance=" + instance + ", extensions="
+                + extensions + "]";
     }
 }

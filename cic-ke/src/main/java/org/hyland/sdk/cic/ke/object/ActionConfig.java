@@ -42,14 +42,6 @@ public final class ActionConfig {
 
     private final Map<String, String> instructions;
 
-    private final List<Map<String, Object>> globalEntities;
-
-    private final Map<String, String> domainGlossary;
-
-    private final String schemaObjectKey;
-
-    private final String indexMetadata;
-
     private final String category;
 
     private final String model;
@@ -59,10 +51,6 @@ public final class ActionConfig {
         this.maxWordCount = builder.maxWordCount;
         this.kSimilarMetadata = builder.kSimilarMetadata == null ? null : List.copyOf(builder.kSimilarMetadata);
         this.instructions = builder.instructions == null ? null : Map.copyOf(builder.instructions);
-        this.globalEntities = builder.globalEntities == null ? null : List.copyOf(builder.globalEntities);
-        this.domainGlossary = builder.domainGlossary == null ? null : Map.copyOf(builder.domainGlossary);
-        this.schemaObjectKey = builder.schemaObjectKey;
-        this.indexMetadata = builder.indexMetadata;
         this.category = builder.category;
         this.model = builder.model;
     }
@@ -97,22 +85,6 @@ public final class ActionConfig {
         return instructions;
     }
 
-    public List<Map<String, Object>> globalEntities() {
-        return globalEntities;
-    }
-
-    public Map<String, String> domainGlossary() {
-        return domainGlossary;
-    }
-
-    public String schemaObjectKey() {
-        return schemaObjectKey;
-    }
-
-    public String indexMetadata() {
-        return indexMetadata;
-    }
-
     public String category() {
         return category;
     }
@@ -130,18 +102,13 @@ public final class ActionConfig {
         ActionConfig that = (ActionConfig) obj;
         return Objects.equals(classes, that.classes) && Objects.equals(maxWordCount, that.maxWordCount)
                 && Objects.equals(kSimilarMetadata, that.kSimilarMetadata)
-                && Objects.equals(instructions, that.instructions)
-                && Objects.equals(globalEntities, that.globalEntities)
-                && Objects.equals(domainGlossary, that.domainGlossary)
-                && Objects.equals(schemaObjectKey, that.schemaObjectKey)
-                && Objects.equals(indexMetadata, that.indexMetadata) && Objects.equals(category, that.category)
+                && Objects.equals(instructions, that.instructions) && Objects.equals(category, that.category)
                 && Objects.equals(model, that.model);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(classes, maxWordCount, kSimilarMetadata, instructions, globalEntities, domainGlossary,
-                schemaObjectKey, indexMetadata, category, model);
+        return Objects.hash(classes, maxWordCount, kSimilarMetadata, instructions, category, model);
     }
 
     public static final class Builder {
@@ -153,14 +120,6 @@ public final class ActionConfig {
         private List<Map<String, Object>> kSimilarMetadata;
 
         private Map<String, String> instructions;
-
-        private List<Map<String, Object>> globalEntities;
-
-        private Map<String, String> domainGlossary;
-
-        private String schemaObjectKey;
-
-        private String indexMetadata;
 
         private String category;
 
@@ -204,26 +163,6 @@ public final class ActionConfig {
             if (this.instructions == null)
                 this.instructions = new LinkedHashMap<>();
             this.instructions.put(key, value);
-            return this;
-        }
-
-        public Builder globalEntities(List<Map<String, Object>> globalEntities) {
-            this.globalEntities = new ArrayList<>(globalEntities);
-            return this;
-        }
-
-        public Builder domainGlossary(Map<String, String> domainGlossary) {
-            this.domainGlossary = new LinkedHashMap<>(domainGlossary);
-            return this;
-        }
-
-        public Builder schemaObjectKey(String schemaObjectKey) {
-            this.schemaObjectKey = schemaObjectKey;
-            return this;
-        }
-
-        public Builder indexMetadata(String indexMetadata) {
-            this.indexMetadata = indexMetadata;
             return this;
         }
 

@@ -64,7 +64,8 @@ class ProcessingOptionsMapper implements CICMapper<ProcessingOptions> {
             builder.jsonSchema(s.value());
         }
 
-        cicObject.getOptionalObject("pii").ifPresent(piiObj -> {
+        var piiNode = cicObject.getProperties().get("pii");
+        if (piiNode instanceof CICObject piiObj) {
             var piiBuilder = PiiOptions.builder();
             piiObj.getOptionalString("mode").ifPresent(piiBuilder::mode);
             var entityRedaction = piiObj.getBooleanOrNull("entity_redaction");
@@ -72,7 +73,7 @@ class ProcessingOptionsMapper implements CICMapper<ProcessingOptions> {
                 piiBuilder.entityRedaction(entityRedaction);
             }
             builder.pii(piiBuilder.build());
-        });
+        }
 
         return builder.build();
     }

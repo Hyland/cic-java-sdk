@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -31,6 +32,7 @@ import org.json.JSONException;
 import org.junit.jupiter.api.Test;
 import org.skyscreamer.jsonassert.JSONAssert;
 
+import org.hyland.sdk.cic.http.client.CICSdkException;
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
 import org.hyland.sdk.cic.ke.object.Action;
 import org.hyland.sdk.cic.ke.object.ActionDescriptor;
@@ -38,6 +40,7 @@ import org.hyland.sdk.cic.ke.object.ConfigOptions;
 import org.hyland.sdk.cic.ke.object.ConfigRule;
 import org.hyland.sdk.cic.ke.object.EmbeddingModel;
 import org.hyland.sdk.cic.ke.object.EnrichmentResult;
+import org.hyland.sdk.cic.ke.object.HealthDetails;
 import org.hyland.sdk.cic.ke.object.JobStatus;
 import org.hyland.sdk.cic.ke.object.PresignResponse;
 import org.hyland.sdk.cic.ke.object.PresignedUrl;
@@ -46,6 +49,7 @@ import org.hyland.sdk.cic.ke.object.ProcessResponse;
 import org.hyland.sdk.cic.ke.object.ProcessingOptions;
 import org.hyland.sdk.cic.ke.object.RuleTestRequest;
 import org.hyland.sdk.cic.ke.object.RuleTestResponse;
+import org.hyland.sdk.cic.ke.object.VersionUsageStats;
 
 /**
  * @since 1.0.0
@@ -57,11 +61,13 @@ class KEMapperTest {
     @Test
     void testSerializeProcessRequestV2WithActionConfigs() throws JSONException {
         var request = ProcessRequest.builder()
-                                    .objectKey("contents/file.pdf")
+                                    .objectPath("contents/file.pdf")
                                     .action(Action.TEXT_SUMMARIZATION, cfg -> cfg.maxWordCount(150))
                                     .action(Action.TEXT_CLASSIFICATION,
                                             cfg -> cfg.classes(List.of("invoice", "receipt"))
                                                       .instructions(Map.of("context", "legal documents")))
+                                    .action(Action.PRETRAINED_CLASSIFICATION,
+                                            cfg -> cfg.category("MediaType").model("nbme-media-type"))
                                     .action(Action.TEXT_EMBEDDINGS)
                                     .build();
 
@@ -76,7 +82,35 @@ class KEMapperTest {
                       "classes": ["invoice", "receipt"],
                       "instructions": {"context": "legal documents"}
                     },
+                    "pretrainedClassification": {
+                      "category": "MediaType",
+                      "model": "nbme-media-type"
+                    },
                     "textEmbeddings": {}
+                  }
+                }
+                """;
+        JSONAssert.assertEquals(expected, json, true);
+    }
+
+    @Test
+    void testSerializeProcessRequestWithPathAndDocumentId() throws JSONException {
+        var request = ProcessRequest.builder()
+                                    .objectPath("contents/file.pdf")
+                                    .documentId("document-123")
+                                    .action(Action.TEXT_SUMMARIZATION)
+                                    .build();
+
+        var json = MapperService.writeAsString(request);
+        var expected = """
+                {
+                  "version": "context.api/v2",
+                  "objectKeys": [
+                    {"path": "contents/file.pdf"},
+                    {"documentId": "document-123"}
+                  ],
+                  "actions": {
+                    "textSummarization": {}
                   }
                 }
                 """;
@@ -86,7 +120,7 @@ class KEMapperTest {
     @Test
     void testSerializeProcessRequestV2EmptyActions() throws JSONException {
         var request = ProcessRequest.builder()
-                                    .objectKey("contents/img.jpg")
+                                    .objectPath("contents/img.jpg")
                                     .action(Action.IMAGE_DESCRIPTION)
                                     .action(Action.IMAGE_EMBEDDINGS)
                                     .build();
@@ -108,7 +142,7 @@ class KEMapperTest {
     @Test
     void testSerializeProcessRequestV2WithKSimilarMetadata() throws JSONException {
         var request = ProcessRequest.builder()
-                                    .objectKey("contents/doc.pdf")
+                                    .objectPath("contents/doc.pdf")
                                     .action(Action.TEXT_METADATA_GENERATION,
                                             cfg -> cfg.addSimilarMetadata(
                                                     Map.of("document:type", "Legal Contract|Agreement|NDA"))
@@ -125,7 +159,7 @@ class KEMapperTest {
 
     @Test
     void testSerializeProcessRequestOmitsUnsetFields() throws JSONException {
-        var request = ProcessRequest.builder().objectKey("contents/img.jpg").action(Action.IMAGE_DESCRIPTION).build();
+        var request = ProcessRequest.builder().objectPath("contents/img.jpg").action(Action.IMAGE_DESCRIPTION).build();
 
         var json = MapperService.writeAsString(request);
         assertNotNull(json);
@@ -390,7 +424,7 @@ class KEMapperTest {
         assertTrue(entry.textClassification().isSuccess());
         assertEquals("invoice", entry.textClassification().result());
 
-        assertEquals(List.of(0.1, 0.2, 0.3), entry.textEmbeddings().result());
+        assertEquals(List.of(List.of(0.1, 0.2, 0.3)), entry.textEmbeddings().result());
         assertEquals(List.of(0.4, 0.5), entry.imageEmbeddings().result());
 
         assertTrue(entry.namedEntityText().isSuccess());
@@ -402,6 +436,46 @@ class KEMapperTest {
 
         assertEquals("Canon", entry.imageMetadata().result().get("camera"));
         assertEquals("John", entry.textMetadata().result().get("author"));
+    }
+
+    @Test
+    void testEnrichmentResultWithGeneralProcessingErrors() {
+        var json = """
+                {
+                  "id": "proc-errors",
+                  "timestamp": "2026-01-01T00:00:00Z",
+                  "status": "SUCCESS",
+                  "inProgress": false,
+                  "results": [
+                    {
+                      "objectKey": "contents/errors.pdf",
+                      "generalProcessingErrors": [
+                        {"errorType": "ValidationError", "message": "Unsupported format"},
+                        {"errorType": "ProcessingError", "message": "Some pages could not be read"}
+                      ]
+                    },
+                    {
+                      "objectKey": "contents/null-errors.pdf",
+                      "generalProcessingErrors": null
+                    },
+                    {
+                      "objectKey": "contents/no-errors.pdf",
+                      "generalProcessingErrors": []
+                    }
+                  ]
+                }
+                """;
+
+        var result = MapperService.read(json, EnrichmentResult.class);
+
+        var errors = result.results().get(0).generalProcessingErrors();
+        assertEquals(2, errors.size());
+        assertEquals("ValidationError", errors.get(0).errorType());
+        assertEquals("Unsupported format", errors.get(0).message());
+        assertEquals("ProcessingError", errors.get(1).errorType());
+        assertEquals("Some pages could not be read", errors.get(1).message());
+        assertTrue(result.results().get(1).generalProcessingErrors().isEmpty());
+        assertTrue(result.results().get(2).generalProcessingErrors().isEmpty());
     }
 
     @Test
@@ -423,8 +497,64 @@ class KEMapperTest {
         var result = MapperService.read(json, EnrichmentResult.class);
         var entry = result.results().get(0);
 
-        assertEquals(List.of(0.0, 1.0, 0.5, 2.0, -1.0), entry.textEmbeddings().result());
+        assertEquals(List.of(List.of(0.0, 1.0, 0.5, 2.0, -1.0)), entry.textEmbeddings().result());
         assertEquals(List.of(1.0, 0.0, -3.0, 0.75), entry.imageEmbeddings().result());
+    }
+
+    @Test
+    void testEnrichmentResultPreservesTextEmbeddingChunks() {
+        var json = """
+                {
+                  "id": "proc-vectors",
+                  "timestamp": "2026-01-01T00:00:00Z",
+                  "status": "SUCCESS",
+                  "inProgress": false,
+                  "results": [{
+                    "objectKey": "contents/doc.pdf",
+                    "textEmbeddings": {
+                      "isSuccess": true,
+                      "result": [[0.1, 0.2], [0.3, 0.4]],
+                      "error": null
+                    },
+                    "imageEmbeddings": {
+                      "isSuccess": true,
+                      "result": [[0.5, 0.6]],
+                      "error": null
+                    }
+                  }]
+                }
+                """;
+
+        var entry = MapperService.read(json, EnrichmentResult.class).results().get(0);
+
+        assertEquals(List.of(List.of(0.1, 0.2), List.of(0.3, 0.4)), entry.textEmbeddings().result());
+        assertEquals(List.of(0.5, 0.6), entry.imageEmbeddings().result());
+        assertThrows(UnsupportedOperationException.class, () -> entry.textEmbeddings().result().add(List.of(0.7, 0.8)));
+        assertThrows(UnsupportedOperationException.class, () -> entry.textEmbeddings().result().get(0).add(0.9));
+    }
+
+    @Test
+    void testEnrichmentResultRejectsMultipleImageEmbeddingVectors() {
+        var json = """
+                {
+                  "id": "proc-invalid-image-vectors",
+                  "timestamp": "2026-01-01T00:00:00Z",
+                  "status": "SUCCESS",
+                  "inProgress": false,
+                  "results": [{
+                    "objectKey": "contents/image.jpg",
+                    "imageEmbeddings": {
+                      "isSuccess": true,
+                      "result": [[0.1, 0.2], [0.3, 0.4]],
+                      "error": null
+                    }
+                  }]
+                }
+                """;
+
+        var exception = assertThrows(CICSdkException.class, () -> MapperService.read(json, EnrichmentResult.class));
+
+        assertTrue(exception.getMessage().contains("Invalid imageEmbeddings result"));
     }
 
     @Test
@@ -454,6 +584,7 @@ class KEMapperTest {
         assertNull(entry.textMetadata());
         assertNull(entry.textClassification());
         assertNull(entry.imageClassification());
+        assertTrue(entry.generalProcessingErrors().isEmpty());
     }
 
     @Test
@@ -807,5 +938,239 @@ class KEMapperTest {
         assertEquals("textSummarization", descriptors.get(0).name());
         assertEquals("textClassification", descriptors.get(1).name());
         assertEquals(List.of("legal", "finance"), descriptors.get(1).availableCategories());
+    }
+
+    // --- ProcessRequest saveResultInContentLakeRepository ---
+
+    @Test
+    void testSerializeProcessRequestWithSaveResult() throws JSONException {
+        var request = ProcessRequest.builder()
+                                    .objectPath("contents/doc.pdf")
+                                    .action(Action.TEXT_SUMMARIZATION)
+                                    .saveResultInContentLakeRepository(true)
+                                    .build();
+        var json = MapperService.writeAsString(request);
+        assertTrue(json.contains("\"saveResultInContentLakeRepository\":true"));
+    }
+
+    @Test
+    void testSerializeProcessRequestOmitsSaveResultWhenFalse() throws JSONException {
+        var request = ProcessRequest.builder().objectPath("contents/doc.pdf").action(Action.TEXT_SUMMARIZATION).build();
+        var json = MapperService.writeAsString(request);
+        assertFalse(json.contains("saveResultInContentLakeRepository"));
+    }
+
+    // --- VersionUsageStatsMapper ---
+
+    @Test
+    void testVersionUsageStatsDeserialization() {
+        var json = """
+                {"v2":58,"v1":6}
+                """;
+
+        var stats = MapperService.read(json, VersionUsageStats.class);
+
+        assertNotNull(stats);
+        assertEquals(58L, stats.stats().get("v2"));
+        assertEquals(6L, stats.stats().get("v1"));
+        assertEquals(2, stats.stats().size());
+    }
+
+    // --- Nullable processing error fields ---
+
+    // --- HealthDetailsMapper ---
+
+    @Test
+    void testHealthDetailsDeserialization() {
+        var json = """
+                {
+                  "status": "healthy",
+                  "timestamp": "2026-08-26T12:54:31.936042+00:00",
+                  "application": {"version": "1.193.0-release", "uptime_seconds": 114396.2},
+                  "system": {"cpu_percent": 0.0, "memory_used_percent": 19.3, "disk_used_percent": 21.0},
+                  "checks": {"aws": {"ok": true}}
+                }
+                """;
+
+        var details = MapperService.read(json, HealthDetails.class);
+
+        assertEquals("healthy", details.status());
+        assertEquals("2026-08-26T12:54:31.936042+00:00", details.timestamp());
+        assertEquals("1.193.0-release", details.applicationVersion());
+        assertEquals(114396.2, details.uptimeSeconds());
+        assertEquals(0.0, details.cpuPercent());
+        assertEquals(19.3, details.memoryUsedPercent());
+        assertEquals(21.0, details.diskUsedPercent());
+        assertTrue(details.awsOk());
+    }
+
+    @Test
+    void testHealthDetailsDeserializationWithMissingSections() {
+        var json = """
+                {"status": "degraded"}
+                """;
+
+        var details = MapperService.read(json, HealthDetails.class);
+
+        assertEquals("degraded", details.status());
+        assertNull(details.timestamp());
+        assertNull(details.applicationVersion());
+        assertEquals(0.0, details.uptimeSeconds());
+        assertEquals(0.0, details.cpuPercent());
+        assertEquals(0.0, details.memoryUsedPercent());
+        assertEquals(0.0, details.diskUsedPercent());
+        assertFalse(details.awsOk());
+    }
+
+    // --- Nullable processing error fields ---
+
+    @Test
+    void testEnrichmentResultWithNullableProcessingErrorFields() {
+        var json = """
+                {
+                  "id": "proc-nullable",
+                  "timestamp": "2026-01-01T00:00:00Z",
+                  "status": "SUCCESS",
+                  "inProgress": false,
+                  "results": [
+                    {
+                      "objectKey": "contents/partial.pdf",
+                      "generalProcessingErrors": [
+                        {"errorType": null, "message": "Something went wrong"},
+                        {"errorType": "ValidationError", "message": null},
+                        {"errorType": null, "message": null}
+                      ]
+                    }
+                  ]
+                }
+                """;
+
+        var result = MapperService.read(json, EnrichmentResult.class);
+        var errors = result.results().get(0).generalProcessingErrors();
+
+        assertEquals(3, errors.size());
+        assertNull(errors.get(0).errorType());
+        assertEquals("Something went wrong", errors.get(0).message());
+        assertEquals("ValidationError", errors.get(1).errorType());
+        assertNull(errors.get(1).message());
+        assertNull(errors.get(2).errorType());
+        assertNull(errors.get(2).message());
+    }
+
+    // --- Staging-derived golden fixtures ---
+
+    @Test
+    void goldenFixture_actionDescriptorsStagingResponse() {
+        var json = """
+                [{"name":"imageDescription"},{"name":"imageMetadataGeneration"},{"name":"textMetadataGeneration"},\
+                {"name":"textClassification"},{"name":"textSummarization"},{"name":"imageClassification"},\
+                {"name":"imageEmbeddings"},{"name":"textEmbeddings"},{"name":"namedEntityRecognitionImage"},\
+                {"name":"namedEntityRecognitionText"}]
+                """;
+
+        var descriptors = MapperService.read(json, ActionDescriptor.ListOf.class);
+
+        assertEquals(10, descriptors.size());
+        var names = descriptors.stream().map(ActionDescriptor::name).toList();
+        assertTrue(names.contains("textSummarization"));
+        assertTrue(names.contains("imageEmbeddings"));
+        assertTrue(names.contains("textEmbeddings"));
+        assertTrue(names.contains("namedEntityRecognitionText"));
+    }
+
+    @Test
+    void goldenFixture_versionUsageStatsStagingResponse() {
+        var json = """
+                {"v2":58,"v1":6}
+                """;
+
+        var stats = MapperService.read(json, VersionUsageStats.class);
+
+        assertEquals(58L, stats.stats().get("v2"));
+        assertEquals(6L, stats.stats().get("v1"));
+    }
+
+    @Test
+    void goldenFixture_presignedUrlStagingResponse() {
+        var json = """
+                {"presignedUrl":"https://bucket.s3.amazonaws.com/contents/abc/def/def?signature=xyz",\
+                "objectKey":"contents/abc/def/def"}
+                """;
+
+        var presignedUrl = MapperService.read(json, PresignedUrl.class);
+
+        assertTrue(presignedUrl.presignedUrl().startsWith("https://"));
+        assertEquals("contents/abc/def/def", presignedUrl.objectKey());
+    }
+
+    @Test
+    void goldenFixture_dcPresignStagingResponse() {
+        var json = """
+                {"job_id":"API_df9dd3c2-b902-40c3-bcdc-654f88d0058a",\
+                "put_url":"https://data-curation-api-staging.s3.amazonaws.com/drop/API_df9dd3c2",\
+                "get_url":"https://data-curation-api-staging.s3.amazonaws.com/result/API_df9dd3c2",\
+                "options":{"normalization":{"quotations":false,"dashes":false},"pii":false,"chunking":false,\
+                "embedding":false,"json_schema":false,"image_embedding":false}}
+                """;
+
+        var presign = MapperService.read(json, PresignResponse.class);
+
+        assertEquals("API_df9dd3c2-b902-40c3-bcdc-654f88d0058a", presign.jobId());
+        assertTrue(presign.putUrl().startsWith("https://"));
+        assertTrue(presign.getUrl().startsWith("https://"));
+        assertNotNull(presign.options());
+    }
+
+    @Test
+    void goldenFixture_dcModelsStagingResponse() {
+        var json = """
+                {"models":[{"name":"amazon.titan-embed-text-v2:0","max_chunk_size":8092,\
+                "supported_precisions":["float32"],"supported_output_dimensions":[1024],\
+                "supported_input_type":["text"]},{"name":"cohere.embed-multilingual-v3",\
+                "max_chunk_size":2048,"supported_precisions":["float32"],\
+                "supported_output_dimensions":[1024],"supported_input_type":["text"]}]}
+                """;
+
+        var models = MapperService.read(json, EmbeddingModel.ListOf.class);
+
+        assertEquals(2, models.size());
+        assertEquals("amazon.titan-embed-text-v2:0", models.get(0).name());
+        assertEquals(8092, models.get(0).maxChunkSize());
+        assertEquals(List.of("float32"), models.get(0).supportedPrecisions());
+        assertEquals(List.of(1024), models.get(0).supportedOutputDimensions());
+        assertEquals("cohere.embed-multilingual-v3", models.get(1).name());
+    }
+
+    @Test
+    void goldenFixture_dcHealthDetailsStagingResponse() {
+        var json = """
+                {"status":"healthy","timestamp":"2026-08-26T12:54:31.936042+00:00",\
+                "application":{"version":"1.193.0-release","uptime_seconds":114396.2},\
+                "system":{"cpu_percent":0.0,"memory_used_percent":19.3,"disk_used_percent":21.0},\
+                "checks":{"aws":{"ok":true}}}
+                """;
+
+        var health = MapperService.read(json, HealthDetails.class);
+
+        assertEquals("healthy", health.status());
+        assertEquals("2026-08-26T12:54:31.936042+00:00", health.timestamp());
+        assertEquals("1.193.0-release", health.applicationVersion());
+        assertEquals(114396.2, health.uptimeSeconds(), 0.1);
+        assertEquals(0.0, health.cpuPercent(), 0.01);
+        assertEquals(19.3, health.memoryUsedPercent(), 0.01);
+        assertEquals(21.0, health.diskUsedPercent(), 0.01);
+        assertTrue(health.awsOk());
+    }
+
+    @Test
+    void goldenFixture_dcStatusNotFoundErrorResponse() {
+        var json = """
+                {"message": "Job not found"}
+                """;
+
+        var error = org.hyland.sdk.cic.http.client.CICError.from(
+                org.hyland.sdk.cic.http.client.mapper.object.CICObject.from(Map.of("message", "Job not found")));
+
+        assertEquals("Job not found", error.message());
     }
 }

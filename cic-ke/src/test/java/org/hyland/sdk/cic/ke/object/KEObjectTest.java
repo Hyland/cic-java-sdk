@@ -26,8 +26,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
@@ -39,25 +42,27 @@ class KEObjectTest {
     // --- Action enum ---
 
     @Test
-    void testActionValues() {
-        assertEquals("globalEntities", Action.GLOBAL_ENTITIES.value());
-        assertEquals("imageClassification", Action.IMAGE_CLASSIFICATION.value());
-        assertEquals("imageDescription", Action.IMAGE_DESCRIPTION.value());
-        assertEquals("imageEmbeddings", Action.IMAGE_EMBEDDINGS.value());
-        assertEquals("imageMetadataGeneration", Action.IMAGE_METADATA_GENERATION.value());
-        assertEquals("localEntities", Action.LOCAL_ENTITIES.value());
-        assertEquals("namedEntityRecognitionImage", Action.NAMED_ENTITY_RECOGNITION_IMAGE.value());
-        assertEquals("namedEntityRecognitionText", Action.NAMED_ENTITY_RECOGNITION_TEXT.value());
-        assertEquals("pretrainedClassification", Action.PRETRAINED_CLASSIFICATION.value());
-        assertEquals("textClassification", Action.TEXT_CLASSIFICATION.value());
-        assertEquals("textEmbeddings", Action.TEXT_EMBEDDINGS.value());
-        assertEquals("textMetadataGeneration", Action.TEXT_METADATA_GENERATION.value());
-        assertEquals("textSummarization", Action.TEXT_SUMMARIZATION.value());
+    void testActionValuesMatchSupportedContract() {
+        var actionValues = Arrays.stream(Action.values())
+                                 .map(Action::value)
+                                 .collect(java.util.stream.Collectors.toSet());
+
+        assertEquals(
+                Set.of("imageClassification", "imageDescription", "imageEmbeddings", "imageMetadataGeneration",
+                        "namedEntityRecognitionImage", "namedEntityRecognitionText", "pretrainedClassification",
+                        "textClassification", "textEmbeddings", "textMetadataGeneration", "textSummarization"),
+                actionValues);
     }
 
     @Test
-    void testActionEnumCount() {
-        assertEquals(13, Action.values().length);
+    void testInternalGraphActionsAreNotExposed() {
+        var actionValues = Arrays.stream(Action.values()).map(Action::value).toList();
+
+        assertFalse(actionValues.contains("globalEntities"));
+        assertFalse(actionValues.contains("localEntities"));
+        assertFalse(actionValues.contains("domainGlossaryExtraction"));
+        assertFalse(actionValues.contains("globalEntitiesExtraction"));
+        assertFalse(actionValues.contains("localEntitiesExtraction"));
     }
 
     // --- ActionConfig builder ---
@@ -78,12 +83,16 @@ class KEObjectTest {
                                  .maxWordCount(200)
                                  .addSimilarMetadata(Map.of("title", "Sample"))
                                  .instructions(Map.of("context", "legal documents"))
+                                 .category("MediaType")
+                                 .model("nbme-media-type")
                                  .build();
 
         assertEquals(List.of("invoice", "contract"), config.classes());
         assertEquals(200, config.maxWordCount());
         assertEquals(1, config.kSimilarMetadata().size());
         assertEquals("legal documents", config.instructions().get("context"));
+        assertEquals("MediaType", config.category());
+        assertEquals("nbme-media-type", config.model());
     }
 
     @Test
@@ -115,7 +124,7 @@ class KEObjectTest {
     @Test
     void testProcessRequestBuilderWithAllFields() {
         var request = ProcessRequest.builder()
-                                    .objectKey("contents/file.pdf")
+                                    .objectPath("contents/file.pdf")
                                     .action(Action.TEXT_SUMMARIZATION, cfg -> cfg.maxWordCount(150))
                                     .action(Action.TEXT_CLASSIFICATION,
                                             cfg -> cfg.classes(List.of("invoice")).instruction("context", "legal"))
@@ -139,8 +148,16 @@ class KEObjectTest {
     }
 
     @Test
+    void testProcessRequestBuilderEmptyActionsThrows() {
+        var exception = assertThrows(IllegalArgumentException.class,
+                () -> ProcessRequest.builder().objectPath("contents/file.pdf").build());
+
+        assertEquals("At least one action is required", exception.getMessage());
+    }
+
+    @Test
     void testProcessRequestNullOptionalFields() {
-        var request = ProcessRequest.builder().objectKey("path").action(Action.TEXT_EMBEDDINGS).build();
+        var request = ProcessRequest.builder().objectPath("path").action(Action.TEXT_EMBEDDINGS).build();
 
         assertEquals(ProcessRequest.VERSION_V2, request.version());
         var config = request.actions().get("textEmbeddings");
@@ -152,15 +169,15 @@ class KEObjectTest {
     @Test
     void testProcessRequestEquality() {
         var r1 = ProcessRequest.builder()
-                               .objectKey("a")
+                               .objectPath("a")
                                .action(Action.TEXT_SUMMARIZATION, cfg -> cfg.maxWordCount(10))
                                .build();
         var r2 = ProcessRequest.builder()
-                               .objectKey("a")
+                               .objectPath("a")
                                .action(Action.TEXT_SUMMARIZATION, cfg -> cfg.maxWordCount(10))
                                .build();
         var r3 = ProcessRequest.builder()
-                               .objectKey("a")
+                               .objectPath("a")
                                .action(Action.TEXT_SUMMARIZATION, cfg -> cfg.maxWordCount(20))
                                .build();
 
@@ -170,21 +187,53 @@ class KEObjectTest {
     }
 
     @Test
-    void testProcessRequestMultipleObjectKeys() {
+    void testProcessRequestObjectKeysReplacePreviouslyAddedKeys() {
         var request = ProcessRequest.builder()
-                                    .objectKey("path1")
-                                    .objectKey("path2")
-                                    .objectKeys(List.of(new ObjectKeyPath("path3")))
+                                    .objectPath("path1")
+                                    .objectPath("path2")
+                                    .objectKeys(List.of(ObjectKey.forPath("path3")))
                                     .action(Action.TEXT_EMBEDDINGS)
                                     .build();
 
-        assertEquals(3, request.objectKeys().size());
+        assertEquals(List.of(ObjectKey.forPath("path3")), request.objectKeys());
+    }
+
+    @Test
+    void testProcessRequestSupportsMultipleObjectKeys() {
+        var request = ProcessRequest.builder()
+                                    .objectKeys(List.of(ObjectKey.forPath("path1"), ObjectKey.forPath("path2")))
+                                    .action(Action.TEXT_EMBEDDINGS)
+                                    .build();
+
+        assertEquals(2, request.objectKeys().size());
+    }
+
+    @Test
+    void testProcessRequestSupportsPathAndDocumentIdKeys() {
+        var request = ProcessRequest.builder()
+                                    .objectPath("contents/file.pdf")
+                                    .documentId("document-123")
+                                    .action(Action.TEXT_EMBEDDINGS)
+                                    .build();
+
+        assertEquals(ObjectKey.forPath("contents/file.pdf"), request.objectKeys().get(0));
+        assertEquals(ObjectKey.forDocumentId("document-123"), request.objectKeys().get(1));
+        assertThrows(UnsupportedOperationException.class,
+                () -> request.objectKeys().add(ObjectKey.forPath("another-path")));
+    }
+
+    @Test
+    void testProcessRequestRejectsNullObjectKeys() {
+        assertThrows(NullPointerException.class, () -> ProcessRequest.builder().objectKey(null));
+        assertThrows(NullPointerException.class, () -> ProcessRequest.builder().objectKeys(null));
+        assertThrows(NullPointerException.class,
+                () -> ProcessRequest.builder().objectKeys(Arrays.asList(ObjectKey.forPath("path"), null)));
     }
 
     @Test
     void testProcessRequestActionByString() {
         var request = ProcessRequest.builder()
-                                    .objectKey("path")
+                                    .objectPath("path")
                                     .action("textSummarization")
                                     .action("customAction", cfg -> cfg.maxWordCount(100))
                                     .build();
@@ -197,7 +246,7 @@ class KEObjectTest {
     @Test
     void testProcessRequestActionWithPrebuiltConfig() {
         var config = ActionConfig.builder().classes(List.of("a", "b")).build();
-        var request = ProcessRequest.builder().objectKey("path").action(Action.TEXT_CLASSIFICATION, config).build();
+        var request = ProcessRequest.builder().objectPath("path").action(Action.TEXT_CLASSIFICATION, config).build();
 
         assertEquals(List.of("a", "b"), request.actions().get("textClassification").classes());
     }
@@ -206,14 +255,14 @@ class KEObjectTest {
     void testProcessRequestActionsMapCopy() {
         var actionsMap = Map.of("textSummarization", ActionConfig.builder().maxWordCount(100).build(), "textEmbeddings",
                 ActionConfig.empty());
-        var request = ProcessRequest.builder().objectKey("path").actions(actionsMap).build();
+        var request = ProcessRequest.builder().objectPath("path").actions(actionsMap).build();
 
         assertEquals(2, request.actions().size());
     }
 
     @Test
     void testProcessRequestDefaultVersion() {
-        var request = ProcessRequest.builder().objectKey("path").action(Action.TEXT_EMBEDDINGS).build();
+        var request = ProcessRequest.builder().objectPath("path").action(Action.TEXT_EMBEDDINGS).build();
         assertEquals("context.api/v2", request.version());
     }
 
@@ -429,9 +478,17 @@ class KEObjectTest {
     }
 
     @Test
-    void testObjectKeyPath() {
-        var path = new ObjectKeyPath("contents/file.pdf");
+    void testObjectKey() {
+        var path = ObjectKey.forPath("contents/file.pdf");
+        var document = ObjectKey.forDocumentId("document-123");
+
         assertEquals("contents/file.pdf", path.path());
+        assertNull(path.documentId());
+        assertNull(document.path());
+        assertEquals("document-123", document.documentId());
+        assertThrows(IllegalArgumentException.class, () -> new ObjectKey(null, null));
+        assertThrows(IllegalArgumentException.class, () -> new ObjectKey("", null));
+        assertThrows(IllegalArgumentException.class, () -> new ObjectKey("path", "document-123"));
     }
 
     @Test
@@ -518,7 +575,21 @@ class KEObjectTest {
         assertEquals("Summary", entry.textSummary().result());
         assertNull(entry.imageDescription());
         assertNull(entry.pretrainedClassification());
-        assertNull(entry.generalProcessingErrors());
+        assertTrue(entry.generalProcessingErrors().isEmpty());
+    }
+
+    @Test
+    void testEnrichmentResultEntryDefensivelyCopiesProcessingErrors() {
+        var errors = new ArrayList<>(List.of(new ProcessingError("ValidationError", "Unsupported format")));
+        var entry = new EnrichmentResultEntry("key", null, null, null, null, null, null, null, null, null, null, null,
+                errors);
+
+        errors.clear();
+
+        assertEquals(List.of(new ProcessingError("ValidationError", "Unsupported format")),
+                entry.generalProcessingErrors());
+        assertThrows(UnsupportedOperationException.class,
+                () -> entry.generalProcessingErrors().add(new ProcessingError("Other", "Failure")));
     }
 
     @Test
@@ -567,5 +638,92 @@ class KEObjectTest {
         list.add(new ActionDescriptor("a", null, null));
         list.add(new ActionDescriptor("b", List.of("m1"), List.of("c1")));
         assertEquals(2, list.size());
+    }
+
+    // --- ProcessingErrorType enum ---
+
+    @Test
+    void testProcessingErrorTypeFromValueKnownTypes() {
+        assertEquals(ProcessingErrorType.LAMBDA_ERROR, ProcessingErrorType.fromValue("LambdaError"));
+        assertEquals(ProcessingErrorType.TIMEOUT, ProcessingErrorType.fromValue("Timeout"));
+        assertEquals(ProcessingErrorType.VALIDATION_ERROR, ProcessingErrorType.fromValue("ValidationError"));
+        assertEquals(ProcessingErrorType.LAMBDA_RESPONSE, ProcessingErrorType.fromValue("LambdaResponse"));
+        assertEquals(ProcessingErrorType.UNEXPECTED_ERROR, ProcessingErrorType.fromValue("UnexpectedError"));
+        assertEquals(ProcessingErrorType.AUTHORIZATION_ERROR, ProcessingErrorType.fromValue("AuthorizationError"));
+        assertEquals(ProcessingErrorType.DESERIALIZATION_ERROR, ProcessingErrorType.fromValue("DeserializationError"));
+        assertEquals(ProcessingErrorType.GUARDRAIL_VIOLATION, ProcessingErrorType.fromValue("GuardrailViolation"));
+    }
+
+    @Test
+    void testProcessingErrorTypeFromValueUnknown() {
+        assertEquals(ProcessingErrorType.UNKNOWN, ProcessingErrorType.fromValue("SomeFutureError"));
+        assertEquals(ProcessingErrorType.UNKNOWN, ProcessingErrorType.fromValue(null));
+    }
+
+    @Test
+    void testProcessingErrorTypeValues() {
+        assertEquals("LambdaError", ProcessingErrorType.LAMBDA_ERROR.value());
+        assertNull(ProcessingErrorType.UNKNOWN.value());
+    }
+
+    @Test
+    void testProcessingErrorKnownType() {
+        var error = new ProcessingError("ValidationError", "Unsupported format");
+        assertEquals(ProcessingErrorType.VALIDATION_ERROR, error.knownType());
+
+        var unknownError = new ProcessingError("FutureError", "Something new");
+        assertEquals(ProcessingErrorType.UNKNOWN, unknownError.knownType());
+
+        var nullError = new ProcessingError(null, "No type");
+        assertEquals(ProcessingErrorType.UNKNOWN, nullError.knownType());
+    }
+
+    @Test
+    void testProcessingErrorNullableFields() {
+        var error = new ProcessingError(null, null);
+        assertNull(error.errorType());
+        assertNull(error.message());
+        assertEquals(ProcessingErrorType.UNKNOWN, error.knownType());
+    }
+
+    // --- ProcessRequest saveResultInContentLakeRepository ---
+
+    @Test
+    void testProcessRequestSaveResultInContentLakeRepositoryDefault() {
+        var request = ProcessRequest.builder().objectPath("path").action(Action.TEXT_EMBEDDINGS).build();
+        assertFalse(request.saveResultInContentLakeRepository());
+    }
+
+    @Test
+    void testProcessRequestSaveResultInContentLakeRepositoryTrue() {
+        var request = ProcessRequest.builder()
+                                    .objectPath("path")
+                                    .action(Action.TEXT_EMBEDDINGS)
+                                    .saveResultInContentLakeRepository(true)
+                                    .build();
+        assertTrue(request.saveResultInContentLakeRepository());
+    }
+
+    @Test
+    void testProcessRequestEqualityWithSaveResult() {
+        var r1 = ProcessRequest.builder()
+                               .objectPath("a")
+                               .action(Action.TEXT_SUMMARIZATION)
+                               .saveResultInContentLakeRepository(true)
+                               .build();
+        var r2 = ProcessRequest.builder()
+                               .objectPath("a")
+                               .action(Action.TEXT_SUMMARIZATION)
+                               .saveResultInContentLakeRepository(true)
+                               .build();
+        var r3 = ProcessRequest.builder()
+                               .objectPath("a")
+                               .action(Action.TEXT_SUMMARIZATION)
+                               .saveResultInContentLakeRepository(false)
+                               .build();
+
+        assertEquals(r1, r2);
+        assertEquals(r1.hashCode(), r2.hashCode());
+        assertNotEquals(r1, r3);
     }
 }

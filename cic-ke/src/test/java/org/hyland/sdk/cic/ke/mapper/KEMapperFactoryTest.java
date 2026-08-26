@@ -32,6 +32,7 @@ import org.hyland.sdk.cic.ke.object.ConfigOptions;
 import org.hyland.sdk.cic.ke.object.ConfigRule;
 import org.hyland.sdk.cic.ke.object.EmbeddingModel;
 import org.hyland.sdk.cic.ke.object.EnrichmentResult;
+import org.hyland.sdk.cic.ke.object.HealthDetails;
 import org.hyland.sdk.cic.ke.object.JobStatus;
 import org.hyland.sdk.cic.ke.object.PresignResponse;
 import org.hyland.sdk.cic.ke.object.PresignedUrl;
@@ -39,6 +40,7 @@ import org.hyland.sdk.cic.ke.object.ProcessRequest;
 import org.hyland.sdk.cic.ke.object.ProcessingOptions;
 import org.hyland.sdk.cic.ke.object.RuleTestRequest;
 import org.hyland.sdk.cic.ke.object.RuleTestResponse;
+import org.hyland.sdk.cic.ke.object.VersionUsageStats;
 
 /**
  * @since 1.0.0
@@ -62,6 +64,8 @@ class KEMapperFactoryTest {
         assertNotNull(factory.getMapper(RuleTestResponse.class));
         assertNotNull(factory.getMapper(ActionDescriptor.class));
         assertNotNull(factory.getMapper(ActionDescriptor.ListOf.class));
+        assertNotNull(factory.getMapper(VersionUsageStats.class));
+        assertNotNull(factory.getMapper(HealthDetails.class));
     }
 
     @Test
@@ -118,7 +122,7 @@ class KEMapperFactoryTest {
     @Test
     void testProcessRequestV2Serialization() {
         var request = ProcessRequest.builder()
-                                    .objectKey("contents/file.pdf")
+                                    .objectPath("contents/file.pdf")
                                     .action(Action.TEXT_SUMMARIZATION, cfg -> cfg.maxWordCount(150))
                                     .action(Action.IMAGE_DESCRIPTION)
                                     .build();

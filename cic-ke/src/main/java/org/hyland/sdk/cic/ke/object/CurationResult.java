@@ -28,4 +28,9 @@ import java.util.Map;
  */
 public record CurationResult(String markdownOutput, List<Map<String, Object>> chunksWithEmbeddings,
         List<Map<String, Object>> piiMatches, Map<String, Object> rawResult) {
+
+    public CurationResult {
+        chunksWithEmbeddings = chunksWithEmbeddings == null ? List.of() : List.copyOf(chunksWithEmbeddings);
+        piiMatches = piiMatches == null ? List.of() : List.copyOf(piiMatches);
+    }
 }

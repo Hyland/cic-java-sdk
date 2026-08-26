@@ -133,7 +133,7 @@ class DataCurationHttpClientUploadTest {
     }
 
     @Test
-    void uploadSendsContentTypeHeader() {
+    void uploadAlwaysSendsOctetStreamContentType() {
         var capturedContentType = new AtomicReference<String>();
         server.createContext("/upload", exchange -> {
             capturedContentType.set(exchange.getRequestHeaders().getFirst("Content-Type"));
@@ -144,7 +144,7 @@ class DataCurationHttpClientUploadTest {
 
         var client = buildClient(RetryPolicy.none());
         assertDoesNotThrow(() -> client.upload(baseUrl + "/upload", createTestBlob()));
-        assertEquals("application/pdf", capturedContentType.get());
+        assertEquals("application/octet-stream", capturedContentType.get());
     }
 
     // --- Download result tests ---

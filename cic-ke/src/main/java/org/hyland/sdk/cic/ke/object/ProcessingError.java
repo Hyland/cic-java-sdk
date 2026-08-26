@@ -18,23 +18,20 @@
  */
 package org.hyland.sdk.cic.ke.object;
 
-import java.util.List;
-
 /**
+ * Describes a document-level processing error returned by the Context API.
+ *
+ * @param errorType the category of the processing error
+ * @param message the human-readable error description
  * @since 1.0.0
  */
-public record EnrichmentResult(String id, String timestamp, List<EnrichmentResultEntry> results, String status,
-        boolean inProgress) {
+public record ProcessingError(String errorType, String message) {
 
-    public EnrichmentResult {
-        results = results == null ? List.of() : List.copyOf(results);
-    }
-
-    public boolean isSuccess() {
-        return "SUCCESS".equalsIgnoreCase(status);
-    }
-
-    public boolean isComplete() {
-        return !inProgress;
+    /**
+     * Returns the known {@link ProcessingErrorType} for this error, or {@link ProcessingErrorType#UNKNOWN} if the type
+     * is null or unrecognized.
+     */
+    public ProcessingErrorType knownType() {
+        return ProcessingErrorType.fromValue(errorType);
     }
 }

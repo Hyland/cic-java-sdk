@@ -25,6 +25,7 @@ import org.hyland.sdk.cic.ke.object.ConfigOptions;
 import org.hyland.sdk.cic.ke.object.ConfigRule;
 import org.hyland.sdk.cic.ke.object.EmbeddingModel;
 import org.hyland.sdk.cic.ke.object.EnrichmentResult;
+import org.hyland.sdk.cic.ke.object.HealthDetails;
 import org.hyland.sdk.cic.ke.object.JobStatus;
 import org.hyland.sdk.cic.ke.object.PresignResponse;
 import org.hyland.sdk.cic.ke.object.PresignedUrl;
@@ -33,6 +34,7 @@ import org.hyland.sdk.cic.ke.object.ProcessResponse;
 import org.hyland.sdk.cic.ke.object.ProcessingOptions;
 import org.hyland.sdk.cic.ke.object.RuleTestRequest;
 import org.hyland.sdk.cic.ke.object.RuleTestResponse;
+import org.hyland.sdk.cic.ke.object.VersionUsageStats;
 
 /**
  * @since 1.0.0
@@ -79,6 +81,10 @@ public class KEMapperFactory implements MapperService.MapperFactory {
             return (CICMapper<T>) new RuleTestRequestMapper();
         } else if (RuleTestResponse.class.isAssignableFrom(type)) {
             return (CICMapper<T>) new RuleTestResponseMapper();
+        } else if (VersionUsageStats.class.isAssignableFrom(type)) {
+            return (CICMapper<T>) new VersionUsageStatsMapper();
+        } else if (HealthDetails.class.isAssignableFrom(type)) {
+            return (CICMapper<T>) new HealthDetailsMapper();
         }
         return null;
     }

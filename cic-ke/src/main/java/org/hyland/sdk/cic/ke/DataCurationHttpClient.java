@@ -29,6 +29,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 
 import org.hyland.sdk.cic.http.client.CICSdkException;
@@ -41,6 +42,7 @@ import org.hyland.sdk.cic.http.client.util.ErrorUtils;
 import org.hyland.sdk.cic.ke.object.ConfigOptions;
 import org.hyland.sdk.cic.ke.object.ConfigRule;
 import org.hyland.sdk.cic.ke.object.EmbeddingModel;
+import org.hyland.sdk.cic.ke.object.HealthDetails;
 import org.hyland.sdk.cic.ke.object.JobStatus;
 import org.hyland.sdk.cic.ke.object.PresignResponse;
 import org.hyland.sdk.cic.ke.object.ProcessingOptions;
@@ -61,6 +63,8 @@ public class DataCurationHttpClient extends AbstractAuthenticatedHttpClient {
     private static final String MODELS_PATH = "/models";
 
     private static final String HEALTH_PATH = "/health";
+
+    private static final String HEALTH_DETAILS_PATH = "/health/details";
 
     private static final String CONFIG_OPTIONS_PATH = "/config/options";
 
@@ -140,15 +144,14 @@ public class DataCurationHttpClient extends AbstractAuthenticatedHttpClient {
         try {
             tempFile = Files.createTempFile("cic-dc-upload-", ".tmp");
             try (var is = blob.getInputStream()) {
-                Files.copy(is, tempFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(is, tempFile, StandardCopyOption.REPLACE_EXISTING);
             }
             Path finalTempFile = tempFile;
             var response = sendRawWithRetry(() -> {
                 try {
                     var uploadRequest = HttpRequest.newBuilder(URI.create(putUrl))
                                                    .PUT(HttpRequest.BodyPublishers.ofFile(finalTempFile))
-                                                   .header("Content-Type",
-                                                           blob.getContentType().orElse("application/octet-stream"));
+                                                   .header("Content-Type", "application/octet-stream");
                     if (requestTimeout != null) {
                         uploadRequest.timeout(requestTimeout);
                     }
@@ -201,13 +204,29 @@ public class DataCurationHttpClient extends AbstractAuthenticatedHttpClient {
     // ---------------
 
     /**
-     * Basic health check probe.
+     * Checks availability of the Data Curation service. Returns {@code true} only when the service responds with HTTP
+     * 200. Authentication failures, network errors, and all other status codes return {@code false}.
+     * <p>
+     * Note: This endpoint works without authentication, but the SDK currently sends credentials because the client
+     * inherits authenticated request handling. Use {@link #getHealthDetails()} for richer diagnostics.
      *
-     * @return true if the service is healthy
+     * @return true if the service is healthy and reachable
      */
     public boolean isHealthy() {
         var response = sendThenReadAsString(this.requestBuilder(GET, HEALTH_PATH).build());
         return response.statusCode() == 200;
+    }
+
+    /**
+     * Returns detailed health information including application version, system metrics, and dependency checks.
+     *
+     * @return the detailed health information
+     * @throws CICSdkException if the request fails
+     * @since 1.0.0
+     */
+    public HealthDetails getHealthDetails() {
+        var request = this.requestBuilder(GET, HEALTH_DETAILS_PATH).build();
+        return sendThenMapAs(request, HealthDetails.class);
     }
 
     // ---------------

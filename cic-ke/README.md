@@ -141,7 +141,7 @@ var keClient = KEHttpClient.from("https://ke.api.example.hyland.com")
 
 | Method             | Purpose                                                                                                            |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| `getInputStream()` | Returns a fresh `InputStream` of the file bytes. Called on each upload attempt (including retries).                |
+| `getInputStream()` | Returns an `InputStream` of the file bytes. Called once; the SDK buffers the content to a temporary file for retries. |
 | `getDigest()`      | Optional content hash. Return `Optional.empty()` if not available.                                                 |
 | `getContentType()` | MIME type of the file (e.g. `"application/pdf"`, `"image/jpeg"`). Used as the `Content-Type` header during upload. |
 
@@ -209,11 +209,13 @@ Key types used in the examples below:
 | Type                   | Description                                                                                                                                                                                                                  |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Action`               | Enum of available enrichment actions (e.g. `TEXT_SUMMARIZATION`, `PRETRAINED_CLASSIFICATION`). Call `.value()` to get the camelCase API string. See [Supported Context API Actions](#supported-context-api-actions) for the full list. |
+| `ObjectKey`            | Identifies content by either an uploaded object `path` or an existing platform `documentId`. Exactly one identifier is required.                                                                                             |
 | `ProcessRequest`       | A v2 process request. Specifies object keys and a map of actions, where each action can carry its own configuration (`ActionConfig`). Built using `ProcessRequest.builder()`.                                                 |
-| `ActionConfig`         | Per-action configuration: `classes`, `maxWordCount`, `kSimilarMetadata`, `instructions`, `category`, `model`, `globalEntities`, `domainGlossary`, `schemaObjectKey`, `indexMetadata`. Use `ActionConfig.builder()` or the `action(Action, cfg -> ...)` shorthand on the request builder. |
+| `ActionConfig`         | Per-action configuration: `classes`, `maxWordCount`, `kSimilarMetadata`, `instructions`, `category`, and `model`. Use `ActionConfig.builder()` or the `action(Action, cfg -> ...)` shorthand on the request builder. |
 | `EnrichmentResult`     | The response from the server containing status, timestamp, and a list of per-object results.                                                                                                                                 |
 | `ActionDescriptor`     | Describes an available action, including its `name`, `availableModels`, and `availableCategories`. Retrieved via `getActionDescriptors()`.                                                                                    |
 | `ClassificationResult` | Result of a pretrained classification action, containing `classification` (label) and `confidence` (score).                                                                                                                   |
+| `ProcessingError`      | A document-level processing error containing an `errorType` and human-readable `message`.                                                                                                                                    |
 
 
 
@@ -285,7 +287,7 @@ keService.upload(presignedUrl.presignedUrl(), blob);
 
 // 3. Submit for processing (v2 format: actions are an object map)
 String processingId = keService.process(req -> req
-    .objectKey(presignedUrl.objectKey())
+    .objectPath(presignedUrl.objectKey())
     .action(Action.TEXT_SUMMARIZATION, cfg -> cfg.maxWordCount(300))
     .action(Action.IMAGE_DESCRIPTION)
 );
@@ -301,16 +303,12 @@ EnrichmentResult result = keService.pollResults(processingId);
 Upload and submit in one call, then poll separately. Useful when you want to do other work between submission and polling.
 
 ```java
-ProcessRequest request = ProcessRequest.builder()
-    .objectKey("placeholder") // overridden by sendForEnrichment
+// The uploaded file's object key is added automatically.
+String processingId = keService.sendForEnrichment(blob, request -> request
     .action(Action.IMAGE_DESCRIPTION)
     .action(Action.IMAGE_METADATA_GENERATION, cfg -> cfg
         .addSimilarMetadata(Map.of("title", "Annual Report"))
-        .instruction("detailLevel", "high"))
-    .build();
-
-// Upload + process in one call
-String processingId = keService.sendForEnrichment(blob, request);
+        .instruction("detailLevel", "high")));
 
 // ... do other work ...
 
@@ -350,7 +348,7 @@ Submit a process request with specific object keys and actions. In v2, each acti
 ```java
 // Using a builder — multiple actions with per-action config
 ProcessRequest request = ProcessRequest.builder()
-    .objectKey("contents/my-document.pdf")
+    .objectPath("contents/my-document.pdf")
     .action(Action.TEXT_SUMMARIZATION, cfg -> cfg.maxWordCount(500))
     .action(Action.NAMED_ENTITY_RECOGNITION_TEXT)
     .build();
@@ -358,10 +356,19 @@ ProcessRequest request = ProcessRequest.builder()
 String processingId = keService.process(request);
 ```
 
+Use a document ID when processing content that is already known to the platform:
+
+```java
+String processingId = keService.process(req -> req
+    .documentId("document-123")
+    .action(Action.TEXT_SUMMARIZATION)
+);
+```
+
 ```java
 // Using a consumer — classification with instructions
 String processingId = keService.process(req -> req
-    .objectKey("contents/my-document.pdf")
+    .objectPath("contents/my-document.pdf")
     .action(Action.TEXT_CLASSIFICATION, cfg -> cfg
         .classes(List.of("invoice", "contract", "other"))
         .instruction("context", "financial documents"))
@@ -399,14 +406,7 @@ EnrichmentResult result = keService.pollResults(processingId);
 
 ### List Available Actions
 
-Get the list of actions supported by the server as raw JSON.
-
-```java
-String actionsJson = keService.getActions();
-// Returns raw JSON: ["textSummarization","imageDescription",...]
-```
-
-Or use the typed alternative to get structured descriptors with available models and categories:
+Get structured descriptors for the actions supported by the server, including available models and categories:
 
 ```java
 List<ActionDescriptor> descriptors = keService.getActionDescriptors();
@@ -470,10 +470,18 @@ for (var entry : result.results()) {
         System.out.println("Description: " + entry.imageDescription().result());
     }
 
-    // Text Embeddings (List<Double> result)
+    // Text Embeddings (one vector per text chunk)
     if (entry.textEmbeddings() != null && entry.textEmbeddings().isSuccess()) {
-        List<Double> vector = entry.textEmbeddings().result();
-        System.out.println("Embedding dimension: " + vector.size());
+        List<List<Double>> vectors = entry.textEmbeddings().result();
+        for (int chunk = 0; chunk < vectors.size(); chunk++) {
+            System.out.println("Chunk " + chunk + " embedding dimension: " + vectors.get(chunk).size());
+        }
+    }
+
+    // Image Embeddings (one vector for the image)
+    if (entry.imageEmbeddings() != null && entry.imageEmbeddings().isSuccess()) {
+        List<Double> vector = entry.imageEmbeddings().result();
+        System.out.println("Image embedding dimension: " + vector.size());
     }
 
     // Text Metadata (Map<String, Object> result)
@@ -496,8 +504,8 @@ for (var entry : result.results()) {
     }
 
     // General processing errors
-    if (entry.generalProcessingErrors() != null) {
-        System.err.println("Errors: " + entry.generalProcessingErrors());
+    for (var error : entry.generalProcessingErrors()) {
+        System.err.println(error.errorType() + ": " + error.message());
     }
 }
 ```
@@ -912,8 +920,9 @@ All actions use **v2 format** (camelCase naming). Classification and metadata ge
 | Image Embeddings           | `IMAGE_EMBEDDINGS`               | `imageEmbeddings`                | Image                           | No           |
 | Image Metadata             | `IMAGE_METADATA_GENERATION`      | `imageMetadataGeneration`        | Image + kSimilarMetadata        | Yes          |
 | Pretrained Classification  | `PRETRAINED_CLASSIFICATION`      | `pretrainedClassification`       | Document/Image + category/model | No           |
-| Global Entities            | `GLOBAL_ENTITIES`                | `globalEntities`                 | Document                        | No           |
-| Local Entities             | `LOCAL_ENTITIES`                 | `localEntities`                  | Document                        | No           |
+
+
+Pretrained classification is available only when the caller has access to a supported category and model. Use `getActionDescriptors()` to discover whether it is enabled for the current environment.
 
 
 Text-based actions support all document formats that Data Curation supports (hundreds of formats), not just PDF.
@@ -971,3 +980,37 @@ try {
     }
 }
 ```
+
+---
+
+
+
+## CI / E2E Testing
+
+The project includes end-to-end tests that run against a real staging CIC environment. These are excluded from the default `mvn install` and only run when the `e2e` Maven profile is activated.
+
+### Running E2E Tests Locally
+
+```bash
+export CIC_CLIENT_ID="your-client-id"
+export CIC_CLIENT_SECRET="your-client-secret"
+export CIC_BASE_URL="https://api.app.hyland.com"
+export CIC_AUTH_URL="https://auth.iam.hyland.com"
+export CIC_DC_BASE_URL="https://dc.app.hyland.com"
+
+mvn verify -Pe2e -pl cic-ke -am
+```
+
+If the environment variables are not set, E2E tests are skipped (not failed) via JUnit 5 assumptions.
+
+### GitHub Actions
+
+The `integration-test` job in `.github/workflows/build.yml` runs E2E tests automatically on pushes to `main` and on manual `workflow_dispatch` triggers. It requires the following **repository secrets** (Settings > Secrets and variables > Actions):
+
+| Secret | Description |
+|--------|-------------|
+| `CIC_CLIENT_ID` | OAuth2 client ID for the staging CIC application |
+| `CIC_CLIENT_SECRET` | OAuth2 client secret for the staging CIC application |
+| `CIC_BASE_URL` | Context API base URL (e.g. `https://api.app.hyland.com`) |
+| `CIC_AUTH_URL` | Auth token endpoint base URL (e.g. `https://auth.iam.hyland.com`) |
+| `CIC_DC_BASE_URL` | Data Curation API base URL (e.g. `https://dc.app.hyland.com`) |

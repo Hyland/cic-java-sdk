@@ -26,4 +26,8 @@ import java.util.List;
  * @since 1.0.0
  */
 public record ConfigOptions(ProcessingOptions defaults, List<ConfigRule> rules) {
+
+    public ConfigOptions {
+        rules = rules == null ? List.of() : List.copyOf(rules);
+    }
 }

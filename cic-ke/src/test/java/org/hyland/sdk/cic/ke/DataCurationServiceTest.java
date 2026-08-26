@@ -39,6 +39,7 @@ import org.hyland.sdk.cic.http.client.mapper.object.CICBlob;
 import org.hyland.sdk.cic.ke.object.ConfigOptions;
 import org.hyland.sdk.cic.ke.object.ConfigRule;
 import org.hyland.sdk.cic.ke.object.EmbeddingModel;
+import org.hyland.sdk.cic.ke.object.HealthDetails;
 import org.hyland.sdk.cic.ke.object.JobStatus;
 import org.hyland.sdk.cic.ke.object.PresignResponse;
 import org.hyland.sdk.cic.ke.object.ProcessingOptions;
@@ -370,11 +371,33 @@ class DataCurationServiceTest {
         assertThrows(NullPointerException.class, () -> service.testConfigRules(null));
     }
 
+    // --- Health details ---
+
+    @Test
+    void testGetHealthDetails() {
+        httpClient.healthDetails = new HealthDetails("healthy", "2026-08-26T12:54:31Z", "1.193.0-release", 114396.2,
+                0.0, 19.3, 21.0, true);
+
+        var details = service.getHealthDetails();
+
+        assertNotNull(details);
+        assertEquals("healthy", details.status());
+        assertEquals("1.193.0-release", details.applicationVersion());
+        assertEquals(1, httpClient.getHealthDetailsCalls);
+    }
+
     // --- Null validation for core methods ---
 
     @Test
     void testGetJobStatusNullThrows() {
         assertThrows(NullPointerException.class, () -> service.getJobStatus(null));
+    }
+
+    @Test
+    void testSetPollSettingsRejectsInvalidValues() {
+        assertThrows(IllegalArgumentException.class, () -> service.setPollSettings(0, 1000));
+        assertThrows(IllegalArgumentException.class, () -> service.setPollSettings(-1, 1000));
+        assertThrows(IllegalArgumentException.class, () -> service.setPollSettings(5, -1));
     }
 
     @Test
@@ -455,6 +478,10 @@ class DataCurationServiceTest {
         RuleTestResponse ruleTestResponse;
 
         int testConfigRulesCalls;
+
+        HealthDetails healthDetails;
+
+        int getHealthDetailsCalls;
 
         public TestDataCurationHttpClient() {
             super(DataCurationHttpClient.from("https://localhost",
@@ -556,6 +583,12 @@ class DataCurationServiceTest {
         public RuleTestResponse testConfigRules(RuleTestRequest testRequest) {
             testConfigRulesCalls++;
             return ruleTestResponse;
+        }
+
+        @Override
+        public HealthDetails getHealthDetails() {
+            getHealthDetailsCalls++;
+            return healthDetails;
         }
     }
 }

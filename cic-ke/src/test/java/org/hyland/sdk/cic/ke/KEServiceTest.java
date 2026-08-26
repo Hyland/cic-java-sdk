@@ -72,7 +72,10 @@ class KEServiceTest {
     void testProcess() {
         httpClient.processResult = "processing-id-123";
 
-        var request = ProcessRequest.builder().objectKey("contents/file.pdf").action(Action.TEXT_SUMMARIZATION).build();
+        var request = ProcessRequest.builder()
+                                    .objectPath("contents/file.pdf")
+                                    .action(Action.TEXT_SUMMARIZATION)
+                                    .build();
 
         var processingId = service.process(request);
 
@@ -86,15 +89,29 @@ class KEServiceTest {
         httpClient.processResult = "processing-id-456";
 
         CICBlob blob = createTestBlob();
-        var request = ProcessRequest.builder().objectKey("placeholder").action(Action.TEXT_SUMMARIZATION).build();
-
-        var processingId = service.sendForEnrichment(blob, request);
+        var processingId = service.sendForEnrichment(blob, builder -> builder.action(Action.TEXT_SUMMARIZATION));
 
         assertEquals("processing-id-456", processingId);
         assertEquals(1, httpClient.getPresignedUrlCalls);
         assertEquals(1, httpClient.uploadCalls.size());
         assertEquals(1, httpClient.processCalls.size());
+        assertEquals(1, httpClient.processCalls.get(0).objectKeys().size());
         assertEquals("contents/file.pdf", httpClient.processCalls.get(0).objectKeys().get(0).path());
+    }
+
+    @Test
+    void testSendForEnrichmentValidatesRequestBeforeUpload() {
+        httpClient.presignedUrl = new PresignedUrl("https://upload.url", "contents/file.pdf");
+
+        var exception = assertThrows(IllegalArgumentException.class,
+                () -> service.sendForEnrichment(createTestBlob(), builder -> {
+                    // no actions configured
+                }));
+
+        assertEquals("At least one action is required", exception.getMessage());
+        assertEquals(1, httpClient.getPresignedUrlCalls);
+        assertTrue(httpClient.uploadCalls.isEmpty());
+        assertTrue(httpClient.processCalls.isEmpty());
     }
 
     @Test
@@ -140,7 +157,8 @@ class KEServiceTest {
     void testProcessWithConsumer() {
         httpClient.processResult = "consumer-proc-id";
 
-        var processingId = service.process(req -> req.objectKey("contents/file.pdf").action(Action.TEXT_SUMMARIZATION));
+        var processingId = service.process(
+                req -> req.objectPath("contents/file.pdf").action(Action.TEXT_SUMMARIZATION));
 
         assertEquals("consumer-proc-id", processingId);
         assertEquals(1, httpClient.processCalls.size());
@@ -169,18 +187,15 @@ class KEServiceTest {
         httpClient.processResult = "cfg-proc-id";
 
         CICBlob blob = createTestBlob();
-        var request = ProcessRequest.builder()
-                                    .objectKey("placeholder")
-                                    .action(Action.TEXT_SUMMARIZATION, cfg -> cfg.maxWordCount(200))
-                                    .action(Action.TEXT_CLASSIFICATION,
-                                            cfg -> cfg.classes(List.of("a", "b"))
-                                                      .instructions(Map.of("context", "legal")))
-                                    .build();
-
-        service.sendForEnrichment(blob, request);
+        service.sendForEnrichment(blob,
+                builder -> builder.action(Action.TEXT_SUMMARIZATION, cfg -> cfg.maxWordCount(200))
+                                  .action(Action.TEXT_CLASSIFICATION,
+                                          cfg -> cfg.classes(List.of("a", "b"))
+                                                    .instructions(Map.of("context", "legal"))));
 
         assertEquals(1, httpClient.processCalls.size());
         var submitted = httpClient.processCalls.get(0);
+        assertEquals(1, submitted.objectKeys().size());
         assertEquals("contents/file.pdf", submitted.objectKeys().get(0).path());
         assertEquals(2, submitted.actions().size());
         assertEquals(200, submitted.actions().get("textSummarization").maxWordCount());
@@ -225,10 +240,10 @@ class KEServiceTest {
     }
 
     @Test
-    void testGetActions() {
-        var actions = service.getActions();
-        assertNotNull(actions);
-        assertTrue(actions.contains("textSummarization"));
+    void testSetPollSettingsRejectsInvalidValues() {
+        assertThrows(IllegalArgumentException.class, () -> service.setPollSettings(0, 1000));
+        assertThrows(IllegalArgumentException.class, () -> service.setPollSettings(-1, 1000));
+        assertThrows(IllegalArgumentException.class, () -> service.setPollSettings(5, -1));
     }
 
     @Test
@@ -245,6 +260,14 @@ class KEServiceTest {
     @Test
     void testIsHealthy() {
         assertTrue(service.isHealthy());
+    }
+
+    @Test
+    void testGetVersionUsageStats() {
+        var stats = service.getVersionUsageStats();
+        assertNotNull(stats);
+        assertEquals(58L, stats.get("v2"));
+        assertEquals(6L, stats.get("v1"));
     }
 
     @Test
@@ -265,12 +288,12 @@ class KEServiceTest {
 
     @Test
     void testSendForEnrichmentNullBlobThrows() {
-        var request = ProcessRequest.builder().objectKey("x").action(Action.TEXT_EMBEDDINGS).build();
-        assertThrows(NullPointerException.class, () -> service.sendForEnrichment(null, request));
+        assertThrows(NullPointerException.class,
+                () -> service.sendForEnrichment(null, builder -> builder.action(Action.TEXT_EMBEDDINGS)));
     }
 
     @Test
-    void testSendForEnrichmentNullRequestThrows() {
+    void testSendForEnrichmentNullConsumerThrows() {
         assertThrows(NullPointerException.class, () -> service.sendForEnrichment(createTestBlob(), null));
     }
 
@@ -361,11 +384,6 @@ class KEServiceTest {
         }
 
         @Override
-        public String getActions() {
-            return "[\"textSummarization\",\"imageDescription\"]";
-        }
-
-        @Override
         public List<ActionDescriptor> getActionDescriptors() {
             return List.of(new ActionDescriptor("textSummarization", null, null),
                     new ActionDescriptor("pretrainedClassification", List.of("model-a"), List.of("cat-x")));
@@ -374,6 +392,11 @@ class KEServiceTest {
         @Override
         public boolean isHealthy() {
             return true;
+        }
+
+        @Override
+        public Map<String, Long> getVersionUsageStats() {
+            return Map.of("v2", 58L, "v1", 6L);
         }
     }
 }

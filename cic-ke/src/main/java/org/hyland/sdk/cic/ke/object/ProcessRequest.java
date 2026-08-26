@@ -38,14 +38,17 @@ public final class ProcessRequest {
 
     private final String version;
 
-    private final List<ObjectKeyPath> objectKeys;
+    private final List<ObjectKey> objectKeys;
 
     private final Map<String, ActionConfig> actions;
+
+    private final boolean saveResultInContentLakeRepository;
 
     private ProcessRequest(Builder builder) {
         this.version = builder.version;
         this.objectKeys = List.copyOf(builder.objectKeys);
         this.actions = Collections.unmodifiableMap(new LinkedHashMap<>(builder.actions));
+        this.saveResultInContentLakeRepository = builder.saveResultInContentLakeRepository;
     }
 
     public static Builder builder() {
@@ -56,8 +59,12 @@ public final class ProcessRequest {
         return version;
     }
 
-    public List<ObjectKeyPath> objectKeys() {
+    public List<ObjectKey> objectKeys() {
         return objectKeys;
+    }
+
+    public boolean saveResultInContentLakeRepository() {
+        return saveResultInContentLakeRepository;
     }
 
     /**
@@ -75,35 +82,46 @@ public final class ProcessRequest {
         if (obj == null || getClass() != obj.getClass())
             return false;
         ProcessRequest that = (ProcessRequest) obj;
-        return Objects.equals(version, that.version) && Objects.equals(objectKeys, that.objectKeys)
+        return saveResultInContentLakeRepository == that.saveResultInContentLakeRepository
+                && Objects.equals(version, that.version) && Objects.equals(objectKeys, that.objectKeys)
                 && Objects.equals(actions, that.actions);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(version, objectKeys, actions);
+        return Objects.hash(version, objectKeys, actions, saveResultInContentLakeRepository);
     }
 
     public static final class Builder {
 
         private String version = VERSION_V2;
 
-        private final List<ObjectKeyPath> objectKeys = new ArrayList<>();
+        private final List<ObjectKey> objectKeys = new ArrayList<>();
 
         private final Map<String, ActionConfig> actions = new LinkedHashMap<>();
 
-        public Builder version(String version) {
-            this.version = version;
+        private boolean saveResultInContentLakeRepository = false;
+
+        public Builder objectPath(String path) {
+            return objectKey(ObjectKey.forPath(path));
+        }
+
+        public Builder documentId(String documentId) {
+            return objectKey(ObjectKey.forDocumentId(documentId));
+        }
+
+        public Builder objectKey(ObjectKey objectKey) {
+            objectKeys.add(Objects.requireNonNull(objectKey, "objectKey cannot be null"));
             return this;
         }
 
-        public Builder objectKey(String path) {
-            objectKeys.add(new ObjectKeyPath(path));
-            return this;
-        }
-
-        public Builder objectKeys(List<ObjectKeyPath> objectKeys) {
-            this.objectKeys.addAll(objectKeys);
+        /**
+         * Replaces all previously configured object keys.
+         */
+        public Builder objectKeys(List<ObjectKey> objectKeys) {
+            Objects.requireNonNull(objectKeys, "objectKeys cannot be null");
+            this.objectKeys.clear();
+            objectKeys.forEach(this::objectKey);
             return this;
         }
 
@@ -167,9 +185,17 @@ public final class ProcessRequest {
             return this;
         }
 
+        public Builder saveResultInContentLakeRepository(boolean saveResultInContentLakeRepository) {
+            this.saveResultInContentLakeRepository = saveResultInContentLakeRepository;
+            return this;
+        }
+
         public ProcessRequest build() {
             if (objectKeys.isEmpty()) {
                 throw new IllegalArgumentException("At least one objectKey is required");
+            }
+            if (actions.isEmpty()) {
+                throw new IllegalArgumentException("At least one action is required");
             }
             return new ProcessRequest(this);
         }

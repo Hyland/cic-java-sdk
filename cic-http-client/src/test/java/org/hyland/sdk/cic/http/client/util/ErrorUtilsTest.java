@@ -76,6 +76,17 @@ public class ErrorUtilsTest {
     }
 
     @Test
+    public void throwExceptionOnUnexpectedStatusCode_usesStandardMessageWhenBodyCannotBeParsed() {
+        var response = responseOf(400, "not-json");
+
+        var exception = assertThrows(CICServiceException.class,
+                () -> ErrorUtils.throwExceptionOnUnexpectedStatusCode(response));
+
+        assertEquals("HTTP response returned with status code: 400", exception.getMessage());
+        assertEquals(1, exception.getSuppressed().length);
+    }
+
+    @Test
     public void throwException_remoteCauseIsEmptyWhenBodyIsUnparseable() {
         // Without a CICSerializer on the test classpath the MapperService throws CICSdkException,
         // which ErrorUtils catches and proceeds with an empty remoteCause.

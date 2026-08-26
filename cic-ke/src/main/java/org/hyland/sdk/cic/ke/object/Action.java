@@ -25,16 +25,15 @@ package org.hyland.sdk.cic.ke.object;
  */
 public enum Action {
 
-    GLOBAL_ENTITIES("globalEntities"), IMAGE_CLASSIFICATION("imageClassification"), IMAGE_DESCRIPTION(
-            "imageDescription"), IMAGE_EMBEDDINGS("imageEmbeddings"), IMAGE_METADATA_GENERATION(
-                    "imageMetadataGeneration"), LOCAL_ENTITIES("localEntities"), NAMED_ENTITY_RECOGNITION_IMAGE(
-                            "namedEntityRecognitionImage"), NAMED_ENTITY_RECOGNITION_TEXT(
-                                    "namedEntityRecognitionText"), PRETRAINED_CLASSIFICATION(
-                                            "pretrainedClassification"), TEXT_CLASSIFICATION(
-                                                    "textClassification"), TEXT_EMBEDDINGS(
-                                                            "textEmbeddings"), TEXT_METADATA_GENERATION(
-                                                                    "textMetadataGeneration"), TEXT_SUMMARIZATION(
-                                                                            "textSummarization");
+    IMAGE_CLASSIFICATION("imageClassification"), IMAGE_DESCRIPTION("imageDescription"), IMAGE_EMBEDDINGS(
+            "imageEmbeddings"), IMAGE_METADATA_GENERATION("imageMetadataGeneration"), NAMED_ENTITY_RECOGNITION_IMAGE(
+                    "namedEntityRecognitionImage"), NAMED_ENTITY_RECOGNITION_TEXT(
+                            "namedEntityRecognitionText"), PRETRAINED_CLASSIFICATION(
+                                    "pretrainedClassification"), TEXT_CLASSIFICATION(
+                                            "textClassification"), TEXT_EMBEDDINGS(
+                                                    "textEmbeddings"), TEXT_METADATA_GENERATION(
+                                                            "textMetadataGeneration"), TEXT_SUMMARIZATION(
+                                                                    "textSummarization");
 
     private final String value;
 

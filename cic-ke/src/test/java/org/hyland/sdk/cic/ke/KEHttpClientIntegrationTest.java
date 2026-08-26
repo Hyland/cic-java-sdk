@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -119,12 +120,17 @@ class KEHttpClientIntegrationTest {
         apiServer.start();
         client = buildClient();
 
-        var request = ProcessRequest.builder().objectKey("contents/doc.pdf").action(Action.TEXT_SUMMARIZATION).build();
+        var request = ProcessRequest.builder()
+                                    .objectPath("contents/doc.pdf")
+                                    .documentId("document-123")
+                                    .action(Action.TEXT_SUMMARIZATION)
+                                    .build();
         var processingId = client.process(request);
 
         assertEquals("proc-123", processingId);
         assertTrue(capturedBody.get().contains("textSummarization"));
         assertTrue(capturedBody.get().contains("contents/doc.pdf"));
+        assertTrue(capturedBody.get().contains("\"documentId\":\"document-123\""));
         assertTrue(capturedBody.get().contains("context.api/v2"));
     }
 
@@ -139,7 +145,10 @@ class KEHttpClientIntegrationTest {
                       "id":"proc-1","timestamp":"2026-01-01T00:00:00Z","status":"SUCCESS","inProgress":false,
                       "results":[{
                         "objectKey":"contents/doc.pdf",
-                        "textSummary":{"isSuccess":true,"result":"A summary","error":null}
+                        "textSummary":{"isSuccess":true,"result":"A summary","error":null},
+                        "generalProcessingErrors":[
+                          {"errorType":"PartialProcessingFailure","message":"Some pages could not be read"}
+                        ]
                       }]
                     }
                     """);
@@ -154,6 +163,9 @@ class KEHttpClientIntegrationTest {
         assertTrue(result.isSuccess());
         assertEquals(1, result.results().size());
         assertEquals("A summary", result.results().get(0).textSummary().result());
+        assertEquals("PartialProcessingFailure", result.results().get(0).generalProcessingErrors().get(0).errorType());
+        assertEquals("Some pages could not be read",
+                result.results().get(0).generalProcessingErrors().get(0).message());
     }
 
     // --- getResultsIfReady ---
@@ -215,26 +227,6 @@ class KEHttpClientIntegrationTest {
         assertEquals(3, attemptCount.get());
     }
 
-    // --- getActions ---
-
-    @Test
-    void getActionsReturnsJsonString() {
-        apiServer.createContext("/content/process/actions", exchange -> {
-            TestHttpServers.assertBearerToken(exchange);
-            TestHttpServers.respondJson(exchange, 200, """
-                    ["textSummarization","imageDescription","namedEntityRecognitionText"]
-                    """);
-        });
-        apiServer.start();
-        client = buildClient();
-
-        var actions = client.getActions();
-
-        assertNotNull(actions);
-        assertTrue(actions.contains("textSummarization"));
-        assertTrue(actions.contains("imageDescription"));
-    }
-
     // --- getActionDescriptors ---
 
     @Test
@@ -245,9 +237,17 @@ class KEHttpClientIntegrationTest {
                     """
                             {
                               "actions": [
+                                {"name": "imageClassification"},
+                                {"name": "imageDescription"},
+                                {"name": "imageEmbeddings"},
+                                {"name": "imageMetadataGeneration"},
+                                {"name": "namedEntityRecognitionImage"},
+                                {"name": "namedEntityRecognitionText"},
                                 {"name": "textSummarization"},
                                 {"name": "pretrainedClassification", "availableModels": ["model-a"], "availableCategories": ["cat-x", "cat-y"]},
-                                {"name": "imageDescription"}
+                                {"name": "textClassification"},
+                                {"name": "textEmbeddings"},
+                                {"name": "textMetadataGeneration"}
                               ]
                             }
                             """);
@@ -258,12 +258,40 @@ class KEHttpClientIntegrationTest {
         var descriptors = client.getActionDescriptors();
 
         assertNotNull(descriptors);
-        assertEquals(3, descriptors.size());
-        assertEquals("textSummarization", descriptors.get(0).name());
-        assertEquals("pretrainedClassification", descriptors.get(1).name());
-        assertEquals(java.util.List.of("model-a"), descriptors.get(1).availableModels());
-        assertEquals(java.util.List.of("cat-x", "cat-y"), descriptors.get(1).availableCategories());
-        assertEquals("imageDescription", descriptors.get(2).name());
+        var names = descriptors.stream()
+                               .map(descriptor -> descriptor.name())
+                               .collect(java.util.stream.Collectors.toSet());
+        assertEquals(Set.of("imageClassification", "imageDescription", "imageEmbeddings", "imageMetadataGeneration",
+                "namedEntityRecognitionImage", "namedEntityRecognitionText", "pretrainedClassification",
+                "textClassification", "textEmbeddings", "textMetadataGeneration", "textSummarization"), names);
+
+        var pretrained = descriptors.stream()
+                                    .filter(descriptor -> "pretrainedClassification".equals(descriptor.name()))
+                                    .findFirst()
+                                    .orElseThrow();
+        assertEquals(java.util.List.of("model-a"), pretrained.availableModels());
+        assertEquals(java.util.List.of("cat-x", "cat-y"), pretrained.availableCategories());
+    }
+
+    // --- getVersionUsageStats ---
+
+    @Test
+    void getVersionUsageStatsReturnsMap() {
+        apiServer.createContext("/content/process/version-usage-stats", exchange -> {
+            TestHttpServers.assertBearerToken(exchange);
+            TestHttpServers.respondJson(exchange, 200, """
+                    {"v2":58,"v1":6}
+                    """);
+        });
+        apiServer.start();
+        client = buildClient();
+
+        var stats = client.getVersionUsageStats();
+
+        assertNotNull(stats);
+        assertEquals(58L, stats.get("v2"));
+        assertEquals(6L, stats.get("v1"));
+        assertEquals(2, stats.size());
     }
 
     // --- isHealthy ---
@@ -315,7 +343,7 @@ class KEHttpClientIntegrationTest {
         apiServer.start();
         client = buildClient();
 
-        var request = ProcessRequest.builder().objectKey("key").action("textEmbeddings").build();
+        var request = ProcessRequest.builder().objectPath("key").action("textEmbeddings").build();
         assertThrows(CICSdkException.class, () -> client.process(request));
     }
 }

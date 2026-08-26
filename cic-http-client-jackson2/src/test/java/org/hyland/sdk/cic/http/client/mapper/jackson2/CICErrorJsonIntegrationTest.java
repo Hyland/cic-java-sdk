@@ -16,7 +16,7 @@
  * Contributors:
  *     Abhishek Gupta
  */
-package org.hyland.sdk.cic.ke;
+package org.hyland.sdk.cic.http.client.mapper.jackson2;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -35,18 +35,15 @@ import org.hyland.sdk.cic.http.client.base.CICHttpResponse;
 import org.hyland.sdk.cic.http.client.util.ErrorUtils;
 
 /**
- * Integration tests for {@link org.hyland.sdk.cic.http.client.CICError} verifying that RFC 9457 Problem Details
- * responses are correctly parsed, including extension fields used by the Context API for pretrained classification
- * errors.
+ * Integration tests for RFC 9457 and legacy error JSON deserialization through the Jackson serializer.
  *
  * @since 1.0.0
  */
-class CICErrorIntegrationTest {
+class CICErrorJsonIntegrationTest {
 
     @Test
-    void legacyErrorFieldsAreParsed() {
-        var body = "{\"error\": \"invalid_request\", \"error_description\": \"Bad request body\"}";
-        var response = responseOf(400, body);
+    void parsesLegacyErrorJson() {
+        var response = responseOf(400, "{\"error\": \"invalid_request\", \"error_description\": \"Bad request body\"}");
 
         var exception = assertThrows(CICServiceException.class,
                 () -> ErrorUtils.throwException(response, "HTTP error"));
@@ -57,34 +54,20 @@ class CICErrorIntegrationTest {
         assertEquals("invalid_request", error.error());
         assertEquals("Bad request body", error.errorDescription());
         assertEquals("Bad request body", error.message());
+        assertEquals("HTTP error - Bad request body", exception.getMessage());
     }
 
     @Test
-    void legacyErrorIncludedInExceptionMessage() {
-        var body = "{\"error\": \"invalid_request\", \"error_description\": \"Bad request body\"}";
-        var response = responseOf(400, body);
-
+    void malformedJsonProducesExceptionWithoutRemoteCause() {
         var exception = assertThrows(CICServiceException.class,
-                () -> ErrorUtils.throwException(response, "HTTP error"));
-
-        assertTrue(exception.getMessage().contains("Bad request body"));
-    }
-
-    @Test
-    void malformedJsonResultsInEmptyRemoteCause() {
-        var response = responseOf(500, "Internal Server Error");
-
-        var exception = assertThrows(CICServiceException.class,
-                () -> ErrorUtils.throwException(response, "Server error"));
+                () -> ErrorUtils.throwException(responseOf(500, "Internal Server Error"), "Server error"));
 
         assertTrue(exception.remoteCause().isEmpty());
         assertEquals("Server error", exception.getMessage());
     }
 
-    // --- RFC 9457 Problem Details: 403 Forbidden (unauthorized model access) ---
-
     @Test
-    void parsesProblemDetails403WithModelAndCategoryExtensions() {
+    void parsesProblemDetailsWithExtensionFields() {
         var body = """
                 {
                   "type": "https://tools.ietf.org/html/rfc9110#section-15.5.4",
@@ -95,14 +78,11 @@ class CICErrorIntegrationTest {
                   "category": "OrganSystem"
                 }
                 """;
-        var response = responseOf(403, body);
 
         var exception = assertThrows(CICServiceException.class,
-                () -> ErrorUtils.throwException(response, "HTTP error"));
+                () -> ErrorUtils.throwException(responseOf(403, body), "HTTP error"));
 
-        assertTrue(exception.remoteCause().isPresent());
-        var error = exception.remoteCause().get();
-
+        var error = exception.remoteCause().orElseThrow();
         assertTrue(error.isProblemDetail());
         assertEquals("https://tools.ietf.org/html/rfc9110#section-15.5.4", error.type());
         assertEquals("Request Processing Error", error.title());
@@ -110,19 +90,14 @@ class CICErrorIntegrationTest {
         assertEquals("Requested model 'nbme-organ-system-1' is not available for this caller.", error.detail());
         assertNull(error.error());
         assertNull(error.errorDescription());
-
         assertEquals("nbme-organ-system-1", error.extensions().get("model"));
         assertEquals("OrganSystem", error.extensions().get("category"));
-
-        assertEquals("Requested model 'nbme-organ-system-1' is not available for this caller.", error.message());
         assertTrue(exception.getMessage().contains(error.detail()));
     }
 
-    // --- RFC 9457 Problem Details: 400 Bad Request (validation errors) ---
-
     @Test
     @SuppressWarnings("unchecked")
-    void parsesProblemDetails400WithNestedValidationErrors() {
+    void parsesNestedValidationErrorExtensions() {
         var body = """
                 {
                   "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
@@ -130,39 +105,26 @@ class CICErrorIntegrationTest {
                   "status": 400,
                   "errors": {
                     "Actions.pretrainedClassification.model": [
-                      "Model 'nbme-organ-system-1' is not valid for category 'MediaType'. Allowed models: nbme-media-type."
+                      "Model 'nbme-organ-system-1' is not valid for category 'MediaType'."
                     ]
                   }
                 }
                 """;
-        var response = responseOf(400, body);
 
         var exception = assertThrows(CICServiceException.class,
-                () -> ErrorUtils.throwException(response, "HTTP error"));
+                () -> ErrorUtils.throwException(responseOf(400, body), "HTTP error"));
 
-        assertTrue(exception.remoteCause().isPresent());
-        var error = exception.remoteCause().get();
-
-        assertTrue(error.isProblemDetail());
-        assertEquals("https://tools.ietf.org/html/rfc9110#section-15.5.1", error.type());
-        assertEquals("One or more validation errors occurred.", error.title());
-        assertEquals(400, error.status());
-        assertNull(error.detail());
-
+        var error = exception.remoteCause().orElseThrow();
         assertNotNull(error.extensions().get("errors"));
         var errors = (Map<String, Object>) error.extensions().get("errors");
-        assertNotNull(errors.get("Actions.pretrainedClassification.model"));
         var modelErrors = (List<Object>) errors.get("Actions.pretrainedClassification.model");
         assertEquals(1, modelErrors.size());
         assertTrue(modelErrors.get(0).toString().contains("nbme-organ-system-1"));
-
         assertEquals("One or more validation errors occurred.", error.message());
     }
 
-    // --- Edge cases ---
-
     @Test
-    void problemDetailWithNoExtensions() {
+    void parsesProblemDetailWithoutExtensions() {
         var body = """
                 {
                   "type": "https://tools.ietf.org/html/rfc9110#section-15.5.5",
@@ -171,19 +133,18 @@ class CICErrorIntegrationTest {
                   "detail": "The requested resource does not exist."
                 }
                 """;
-        var response = responseOf(404, body);
 
         var exception = assertThrows(CICServiceException.class,
-                () -> ErrorUtils.throwException(response, "HTTP error"));
+                () -> ErrorUtils.throwException(responseOf(404, body), "HTTP error"));
 
-        var error = exception.remoteCause().get();
+        var error = exception.remoteCause().orElseThrow();
         assertTrue(error.isProblemDetail());
         assertTrue(error.extensions().isEmpty());
         assertEquals("The requested resource does not exist.", error.message());
     }
 
     @Test
-    void mixedFormatWithBothLegacyAndProblemDetailFields() {
+    void parsesMixedLegacyAndProblemDetailFields() {
         var body = """
                 {
                   "error": "forbidden",
@@ -193,12 +154,11 @@ class CICErrorIntegrationTest {
                   "detail": "You do not have permission to access this resource."
                 }
                 """;
-        var response = responseOf(403, body);
 
         var exception = assertThrows(CICServiceException.class,
-                () -> ErrorUtils.throwException(response, "HTTP error"));
+                () -> ErrorUtils.throwException(responseOf(403, body), "HTTP error"));
 
-        var error = exception.remoteCause().get();
+        var error = exception.remoteCause().orElseThrow();
         assertTrue(error.isProblemDetail());
         assertEquals("forbidden", error.error());
         assertEquals("Access denied", error.errorDescription());
@@ -207,17 +167,24 @@ class CICErrorIntegrationTest {
     }
 
     @Test
-    void nonProblemDetailWithOnlyLegacyErrorCode() {
-        var body = "{\"error\": \"server_error\"}";
-        var response = responseOf(500, body);
-
+    void parsesLegacyErrorCodeWithoutDescription() {
         var exception = assertThrows(CICServiceException.class,
-                () -> ErrorUtils.throwException(response, "HTTP error"));
+                () -> ErrorUtils.throwException(responseOf(500, "{\"error\": \"server_error\"}"), "HTTP error"));
 
-        var error = exception.remoteCause().get();
+        var error = exception.remoteCause().orElseThrow();
         assertFalse(error.isProblemDetail());
         assertEquals("server_error", error.error());
         assertEquals("server_error", error.message());
+    }
+
+    @Test
+    void parsesDataCurationMessageOnlyError() {
+        var exception = assertThrows(CICServiceException.class,
+                () -> ErrorUtils.throwException(responseOf(404, "{\"message\": \"Job not found\"}"), "HTTP error"));
+
+        assertTrue(exception.remoteCause().isPresent());
+        assertEquals("Job not found", exception.remoteCause().get().message());
+        assertTrue(exception.getMessage().contains("Job not found"));
     }
 
     private static CICHttpResponse<String> responseOf(int statusCode, String body) {

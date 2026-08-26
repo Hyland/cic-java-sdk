@@ -42,7 +42,11 @@ class ProcessRequestMapper implements CICMapper<ProcessRequest> {
         var objectKeysArray = CICArray.create();
         for (var objectKey : request.objectKeys()) {
             var keyObj = CICObject.create();
-            keyObj.putString("path", objectKey.path());
+            if (objectKey.path() != null) {
+                keyObj.putString("path", objectKey.path());
+            } else {
+                keyObj.putString("documentId", objectKey.documentId());
+            }
             objectKeysArray.addObject(keyObj);
         }
         cicObject.putArray("objectKeys", objectKeysArray);
@@ -52,6 +56,10 @@ class ProcessRequestMapper implements CICMapper<ProcessRequest> {
             actionsObj.putObject(entry.getKey(), serializeActionConfig(entry.getValue()));
         }
         cicObject.putObject("actions", actionsObj);
+
+        if (request.saveResultInContentLakeRepository()) {
+            cicObject.putBoolean("saveResultInContentLakeRepository", true);
+        }
 
         return cicObject;
     }
@@ -85,30 +93,6 @@ class ProcessRequestMapper implements CICMapper<ProcessRequest> {
                 instrObj.putString(instrEntry.getKey(), instrEntry.getValue());
             }
             configObj.putObject("instructions", instrObj);
-        }
-
-        if (config.globalEntities() != null) {
-            var entitiesArr = CICArray.create();
-            for (var entity : config.globalEntities()) {
-                entitiesArr.addObject(CICObject.from(entity));
-            }
-            configObj.putArray("globalEntities", entitiesArr);
-        }
-
-        if (config.domainGlossary() != null) {
-            var glossaryObj = CICObject.create();
-            for (var glossaryEntry : config.domainGlossary().entrySet()) {
-                glossaryObj.putString(glossaryEntry.getKey(), glossaryEntry.getValue());
-            }
-            configObj.putObject("domainGlossary", glossaryObj);
-        }
-
-        if (config.schemaObjectKey() != null) {
-            configObj.putString("schemaObjectKey", config.schemaObjectKey());
-        }
-
-        if (config.indexMetadata() != null) {
-            configObj.putString("indexMetadata", config.indexMetadata());
         }
 
         if (config.category() != null) {

@@ -27,6 +27,7 @@ import org.hyland.sdk.cic.http.client.mapper.object.CICBlob;
 import org.hyland.sdk.cic.ke.object.ConfigOptions;
 import org.hyland.sdk.cic.ke.object.ConfigRule;
 import org.hyland.sdk.cic.ke.object.EmbeddingModel;
+import org.hyland.sdk.cic.ke.object.HealthDetails;
 import org.hyland.sdk.cic.ke.object.JobStatus;
 import org.hyland.sdk.cic.ke.object.PresignResponse;
 import org.hyland.sdk.cic.ke.object.ProcessingOptions;
@@ -52,11 +53,21 @@ public class DataCurationService {
 
     /**
      * Configures the polling behavior for the {@link #curate} method.
+     * <p>
+     * <b>Thread safety:</b> This method mutates shared state. If multiple threads share this service instance, callers
+     * must synchronize externally or configure poll settings before sharing the instance.
      *
-     * @param maxAttempts the maximum number of polling attempts
-     * @param intervalMs the sleep interval between polls in milliseconds
+     * @param maxAttempts the maximum number of polling attempts (must be at least 1)
+     * @param intervalMs the sleep interval between polls in milliseconds (must be non-negative)
+     * @throws IllegalArgumentException if maxAttempts is less than 1 or intervalMs is negative
      */
     public void setPollSettings(int maxAttempts, long intervalMs) {
+        if (maxAttempts < 1) {
+            throw new IllegalArgumentException("maxAttempts must be at least 1, got: " + maxAttempts);
+        }
+        if (intervalMs < 0) {
+            throw new IllegalArgumentException("intervalMs must be non-negative, got: " + intervalMs);
+        }
         this.pollMaxAttempts = maxAttempts;
         this.pollIntervalMs = intervalMs;
     }
@@ -306,6 +317,17 @@ public class DataCurationService {
     public RuleTestResponse testConfigRules(RuleTestRequest testRequest) {
         Objects.requireNonNull(testRequest, "testRequest cannot be null");
         return httpClient.testConfigRules(testRequest);
+    }
+
+    /**
+     * Returns detailed health information including application version, system metrics, and dependency checks.
+     *
+     * @return the detailed health information
+     * @throws CICSdkException if the request fails
+     * @since 1.0.0
+     */
+    public HealthDetails getHealthDetails() {
+        return httpClient.getHealthDetails();
     }
 
     protected void sleep(long millis) {

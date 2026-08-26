@@ -29,6 +29,13 @@ import java.util.List;
 public record EmbeddingModel(String name, int maxChunkSize, List<String> supportedPrecisions,
         List<Integer> supportedOutputDimensions, List<String> supportedInputType) {
 
+    public EmbeddingModel {
+        supportedPrecisions = supportedPrecisions == null ? List.of() : List.copyOf(supportedPrecisions);
+        supportedOutputDimensions = supportedOutputDimensions == null ? List.of()
+                : List.copyOf(supportedOutputDimensions);
+        supportedInputType = supportedInputType == null ? List.of() : List.copyOf(supportedInputType);
+    }
+
     /**
      * @since 1.0.0
      */
