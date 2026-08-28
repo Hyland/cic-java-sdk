@@ -21,5 +21,5 @@ package org.hyland.sdk.cic.ke.object;
 /**
  * @since 1.0.0
  */
-public record ActionResult<T>(boolean isSuccess, T result, String error) {
+public record ActionResult<T>(boolean isSuccess, T result, ProcessingError error) {
 }

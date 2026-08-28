@@ -500,7 +500,7 @@ for (var entry : result.results()) {
 
     // Error handling
     if (entry.textSummary() != null && !entry.textSummary().isSuccess()) {
-        System.err.println("Summary failed: " + entry.textSummary().error());
+        System.err.println("Summary failed: " + entry.textSummary().error().message());
     }
 
     // General processing errors
@@ -961,11 +961,11 @@ try {
             .model("invalid-model"))
     );
 } catch (CICServiceException e) {
-    System.err.println("Status: " + e.getStatusCode());       // e.g. 400
+    System.err.println("Status: " + e.statusCode());          // e.g. 400
     System.err.println("Message: " + e.getMessage());         // human-readable summary
 
-    CICError error = e.getCicError();
-    if (error != null && error.isProblemDetail()) {
+    e.remoteCause().ifPresent(error -> {
+    if (error.isProblemDetail()) {
         // RFC 9457 Problem Details fields
         System.err.println("Type: " + error.type());          // URI reference
         System.err.println("Title: " + error.title());        // short summary
@@ -978,6 +978,7 @@ try {
             System.err.println("Validation errors: " + extensions.get("errors"));
         }
     }
+    });
 }
 ```
 

@@ -79,11 +79,28 @@ class EnrichmentResultMapper implements CICMapper<EnrichmentResult> {
         return List.copyOf(errors);
     }
 
+    private ProcessingError mapActionError(CICObject actionObj) {
+        var errorNode = actionObj.getProperties().get("error");
+        if (errorNode != null && !(errorNode instanceof CICPrimitive.CICNull)) {
+            if (errorNode instanceof CICObject errorObj) {
+                return new ProcessingError(errorObj.getStringOrNull("errorType"), errorObj.getStringOrNull("message"));
+            }
+            if (errorNode instanceof CICPrimitive.CICString errorStr) {
+                return new ProcessingError(null, errorStr.value());
+            }
+        }
+        var errorMessageNode = actionObj.getProperties().get("errorMessage");
+        if (errorMessageNode instanceof CICPrimitive.CICString msgStr) {
+            return new ProcessingError(null, msgStr.value());
+        }
+        return null;
+    }
+
     private ActionResult<String> mapStringActionResult(CICObject parent, String key) {
         return parent.getOptionalObject(key).map(obj -> {
             var isSuccess = obj.getBoolean("isSuccess", false);
             var result = obj.getStringOrNull("result");
-            var error = obj.getStringOrNull("error");
+            var error = mapActionError(obj);
             return new ActionResult<>(isSuccess, result, error);
         }).orElse(null);
     }
@@ -92,7 +109,7 @@ class EnrichmentResultMapper implements CICMapper<EnrichmentResult> {
     private ActionResult<Map<String, Object>> mapMapActionResult(CICObject parent, String key) {
         return parent.getOptionalObject(key).map(obj -> {
             var isSuccess = obj.getBoolean("isSuccess", false);
-            var error = obj.getStringOrNull("error");
+            var error = mapActionError(obj);
             Map<String, Object> result = null;
             var resultNode = obj.getProperties().get("result");
             if (resultNode instanceof CICObject resultObj) {
@@ -105,7 +122,7 @@ class EnrichmentResultMapper implements CICMapper<EnrichmentResult> {
     private ActionResult<List<List<Double>>> mapTextEmbeddingsActionResult(CICObject parent) {
         return parent.getOptionalObject("textEmbeddings").map(obj -> {
             var isSuccess = obj.getBoolean("isSuccess", false);
-            var error = obj.getStringOrNull("error");
+            var error = mapActionError(obj);
             List<List<Double>> result = null;
             var resultNode = obj.getProperties().get("result");
             if (resultNode instanceof CICArray resultArr) {
@@ -133,7 +150,7 @@ class EnrichmentResultMapper implements CICMapper<EnrichmentResult> {
     private ActionResult<List<Double>> mapImageEmbeddingsActionResult(CICObject parent) {
         return parent.getOptionalObject("imageEmbeddings").map(obj -> {
             var isSuccess = obj.getBoolean("isSuccess", false);
-            var error = obj.getStringOrNull("error");
+            var error = mapActionError(obj);
             List<Double> result = null;
             var resultNode = obj.getProperties().get("result");
             if (resultNode instanceof CICArray resultArr) {
@@ -174,7 +191,7 @@ class EnrichmentResultMapper implements CICMapper<EnrichmentResult> {
     private ActionResult<Map<String, List<String>>> mapStringListMapActionResult(CICObject parent, String key) {
         return parent.getOptionalObject(key).map(obj -> {
             var isSuccess = obj.getBoolean("isSuccess", false);
-            var error = obj.getStringOrNull("error");
+            var error = mapActionError(obj);
             Map<String, List<String>> result = null;
             var resultNode = obj.getProperties().get("result");
             if (resultNode instanceof CICObject resultObj) {
@@ -192,7 +209,7 @@ class EnrichmentResultMapper implements CICMapper<EnrichmentResult> {
     private ActionResult<ClassificationResult> mapClassificationActionResult(CICObject parent, String key) {
         return parent.getOptionalObject(key).map(obj -> {
             var isSuccess = obj.getBoolean("isSuccess", false);
-            var error = obj.getStringOrNull("error");
+            var error = mapActionError(obj);
             ClassificationResult result = null;
             var resultNode = obj.getProperties().get("result");
             if (resultNode instanceof CICObject resultObj) {

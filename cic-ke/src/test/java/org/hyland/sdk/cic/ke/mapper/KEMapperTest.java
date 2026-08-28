@@ -432,7 +432,7 @@ class KEMapperTest {
         assertEquals(List.of("Hyland"), entry.namedEntityText().result().get("ORG"));
 
         assertFalse(entry.namedEntityImage().isSuccess());
-        assertEquals("Not supported", entry.namedEntityImage().error());
+        assertEquals("Not supported", entry.namedEntityImage().error().message());
 
         assertEquals("Canon", entry.imageMetadata().result().get("camera"));
         assertEquals("John", entry.textMetadata().result().get("author"));
@@ -889,7 +889,35 @@ class KEMapperTest {
         assertNotNull(entry.pretrainedClassification());
         assertFalse(entry.pretrainedClassification().isSuccess());
         assertNull(entry.pretrainedClassification().result());
-        assertEquals("Model not available", entry.pretrainedClassification().error());
+        assertEquals("Model not available", entry.pretrainedClassification().error().message());
+    }
+
+    @Test
+    void testActionResultWithErrorMessageField() {
+        var json = """
+                {
+                  "id": "proc-errmsg",
+                  "timestamp": "2026-01-01T00:00:00Z",
+                  "status": "SUCCESS",
+                  "inProgress": false,
+                  "results": [{
+                    "objectKey": "contents/image.jpg",
+                    "pretrainedClassification": {
+                      "isSuccess": false,
+                      "errorMessage": "Image format not supported"
+                    }
+                  }]
+                }
+                """;
+
+        var result = MapperService.read(json, EnrichmentResult.class);
+        var entry = result.results().get(0);
+
+        assertNotNull(entry.pretrainedClassification());
+        assertFalse(entry.pretrainedClassification().isSuccess());
+        assertNull(entry.pretrainedClassification().result());
+        assertNotNull(entry.pretrainedClassification().error());
+        assertEquals("Image format not supported", entry.pretrainedClassification().error().message());
     }
 
     // --- ActionDescriptorMapper ---

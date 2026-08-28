@@ -232,7 +232,7 @@ class KEMapperFactoryTest {
         assertEquals("This is a summary.", entry.textSummary().result());
         assertNotNull(entry.imageDescription());
         assertEquals(false, entry.imageDescription().isSuccess());
-        assertEquals("Not an image", entry.imageDescription().error());
+        assertEquals("Not an image", entry.imageDescription().error().message());
     }
 
     @Test

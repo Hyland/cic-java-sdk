@@ -472,9 +472,9 @@ class KEObjectTest {
         assertEquals("result-value", success.result());
         assertNull(success.error());
 
-        var failure = new ActionResult<>(false, null, "error-msg");
+        var failure = new ActionResult<>(false, null, new ProcessingError(null, "error-msg"));
         assertFalse(failure.isSuccess());
-        assertEquals("error-msg", failure.error());
+        assertEquals("error-msg", failure.error().message());
     }
 
     @Test
