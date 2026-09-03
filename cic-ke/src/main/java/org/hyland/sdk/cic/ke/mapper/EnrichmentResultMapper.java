@@ -214,7 +214,15 @@ class EnrichmentResultMapper implements CICMapper<EnrichmentResult> {
             var resultNode = obj.getProperties().get("result");
             if (resultNode instanceof CICObject resultObj) {
                 var classification = resultObj.getStringOrNull("classification");
-                var confidence = resultObj.getDouble("confidence", 0.0);
+                var confidenceNode = resultObj.getProperties().get("confidence");
+                double confidence = 0.0;
+                if (confidenceNode instanceof CICPrimitive.CICDouble d) {
+                    confidence = d.value();
+                } else if (confidenceNode instanceof CICPrimitive.CICInt i) {
+                    confidence = (double) i.value();
+                } else if (confidenceNode instanceof CICPrimitive.CICLong l) {
+                    confidence = (double) l.value();
+                }
                 result = new ClassificationResult(classification, confidence);
             }
             return new ActionResult<>(isSuccess, result, error);

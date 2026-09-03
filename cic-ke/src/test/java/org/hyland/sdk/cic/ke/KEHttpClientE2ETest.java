@@ -18,6 +18,7 @@
  */
 package org.hyland.sdk.cic.ke;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -40,6 +41,7 @@ import org.hyland.sdk.cic.http.client.auth.AuthenticationHttpClient;
 import org.hyland.sdk.cic.http.client.mapper.object.CICBlob;
 import org.hyland.sdk.cic.ke.object.Action;
 import org.hyland.sdk.cic.ke.object.ActionConfig;
+import org.hyland.sdk.cic.ke.object.ActionDescriptor;
 import org.hyland.sdk.cic.ke.object.EnrichmentResult;
 import org.hyland.sdk.cic.ke.object.ProcessRequest;
 
@@ -64,6 +66,12 @@ class KEHttpClientE2ETest {
     private static final String SAMPLE_DOCUMENT = "/e2e/sample-document.txt";
 
     private static final String SAMPLE_SHORT = "/e2e/sample-short.txt";
+
+    private static final String MEDICAL_XRAY = "/e2e/medical-xray.jpg";
+
+    private static final String MEDICAL_XRAY_SPINE = "/e2e/medical-xray-spine.png";
+
+    private static final String MEDICAL_MRI_SHOULDER = "/e2e/medical-mri-shoulder.webp";
 
     private static final Set<String> STANDARD_PUBLIC_ACTIONS = Set.of("imageClassification", "imageDescription",
             "imageEmbeddings", "imageMetadataGeneration", "namedEntityRecognitionImage", "namedEntityRecognitionText",
@@ -283,36 +291,57 @@ class KEHttpClientE2ETest {
     }
 
     // -------------------------------------------------------
-    // Pretrained classification (conditional)
+    // Pretrained classification (conditional — requires NBME whitelist)
     // -------------------------------------------------------
 
-    @Test
-    void enrichmentWithPretrainedClassification() throws InterruptedException {
-        var descriptors = client.getActionDescriptors();
-        var pretrainedDescriptor = descriptors.stream()
+    private static ActionDescriptor pretrainedDescriptor;
+
+    private void assumePretrainedAvailable() {
+        if (pretrainedDescriptor == null) {
+            var descriptors = client.getActionDescriptors();
+            pretrainedDescriptor = descriptors.stream()
                                               .filter(d -> "pretrainedClassification".equals(d.name()))
                                               .findFirst()
                                               .orElse(null);
+        }
         assumeTrue(pretrainedDescriptor != null,
                 "Skipping: pretrainedClassification not available on this environment");
+        assumeTrue(pretrainedDescriptor.availableModels() != null && !pretrainedDescriptor.availableModels().isEmpty(),
+                "Skipping: no models available for pretrainedClassification");
         assumeTrue(
                 pretrainedDescriptor.availableCategories() != null
                         && !pretrainedDescriptor.availableCategories().isEmpty(),
                 "Skipping: no categories available for pretrainedClassification");
-        assumeTrue(pretrainedDescriptor.availableModels() != null && !pretrainedDescriptor.availableModels().isEmpty(),
-                "Skipping: no models available for pretrainedClassification");
+    }
 
-        String category = pretrainedDescriptor.availableCategories().get(0);
+    private void assumeModelAvailable(String model) {
+        assumePretrainedAvailable();
+        assumeTrue(pretrainedDescriptor.availableModels().contains(model),
+                "Skipping: model '" + model + "' not available. Available: " + pretrainedDescriptor.availableModels());
+    }
+
+    private String categoryForModel(String model) {
+        if (model.contains("media-type")) {
+            return "MediaType";
+        }
+        return "OrganSystem";
+    }
+
+    @Test
+    void pretrainedClassificationWithFirstAvailableModel() throws InterruptedException {
+        assumePretrainedAvailable();
+
         String model = pretrainedDescriptor.availableModels().get(0);
+        String category = pretrainedDescriptor.availableCategories().get(0);
 
-        var blob = loadResourceBlob(SAMPLE_DOCUMENT, "text/plain");
-        var presigned = client.getPresignedUrl("text/plain");
+        var blob = loadResourceBlob(MEDICAL_XRAY, "image/jpeg");
+        var presigned = client.getPresignedUrl("image/jpeg");
         client.upload(presigned.presignedUrl(), blob);
 
-        var config = ActionConfig.builder().category(category).model(model).build();
         var processRequest = ProcessRequest.builder()
                                            .objectPath(presigned.objectKey())
-                                           .action(Action.PRETRAINED_CLASSIFICATION, config)
+                                           .action(Action.PRETRAINED_CLASSIFICATION,
+                                                   cfg -> cfg.category(category).model(model))
                                            .build();
 
         var processingId = client.process(processRequest);
@@ -326,6 +355,174 @@ class KEHttpClientE2ETest {
         assertNotNull(entry.pretrainedClassification());
         assertTrue(entry.pretrainedClassification().isSuccess());
         assertNotNull(entry.pretrainedClassification().result());
+        assertNotNull(entry.pretrainedClassification().result().classification());
+        assertTrue(entry.pretrainedClassification().result().confidence() > 0.0);
+    }
+
+    @Test
+    void pretrainedMediaTypeClassificationOnXray() throws InterruptedException {
+        assumeModelAvailable("nbme-media-type");
+
+        var blob = loadResourceBlob(MEDICAL_XRAY, "image/jpeg");
+        var presigned = client.getPresignedUrl("image/jpeg");
+        client.upload(presigned.presignedUrl(), blob);
+
+        var processRequest = ProcessRequest.builder()
+                                           .objectPath(presigned.objectKey())
+                                           .action(Action.PRETRAINED_CLASSIFICATION,
+                                                   cfg -> cfg.category("MediaType").model("nbme-media-type"))
+                                           .build();
+
+        var result = pollForResult(client.process(processRequest), 30, 5000);
+
+        assertNotNull(result, "Media type classification did not complete within timeout");
+        var classification = result.results().get(0).pretrainedClassification();
+        assertNotNull(classification);
+        assertTrue(classification.isSuccess());
+        assertNotNull(classification.result().classification());
+        assertTrue(classification.result().confidence() > 0.0,
+                "Expected positive confidence, got: " + classification.result().confidence());
+    }
+
+    @Test
+    void pretrainedOrganSystemClassificationOnXray() throws InterruptedException {
+        assumeModelAvailable("nbme-organ-system-1");
+
+        var blob = loadResourceBlob(MEDICAL_XRAY_SPINE, "image/png");
+        var presigned = client.getPresignedUrl("image/png");
+        client.upload(presigned.presignedUrl(), blob);
+
+        var processRequest = ProcessRequest.builder()
+                                           .objectPath(presigned.objectKey())
+                                           .action(Action.PRETRAINED_CLASSIFICATION,
+                                                   cfg -> cfg.category("OrganSystem").model("nbme-organ-system-1"))
+                                           .build();
+
+        var result = pollForResult(client.process(processRequest), 30, 5000);
+
+        assertNotNull(result, "Organ system classification did not complete within timeout");
+        var classification = result.results().get(0).pretrainedClassification();
+        assertNotNull(classification);
+        assertTrue(classification.isSuccess());
+        assertNotNull(classification.result().classification());
+        assertTrue(classification.result().confidence() > 0.0);
+    }
+
+    @Test
+    void pretrainedClassificationBatchMultipleImages() throws InterruptedException {
+        assumePretrainedAvailable();
+
+        String model = pretrainedDescriptor.availableModels().get(0);
+        String category = categoryForModel(model);
+
+        var xrayBlob = loadResourceBlob(MEDICAL_XRAY, "image/jpeg");
+        var spineBlob = loadResourceBlob(MEDICAL_XRAY_SPINE, "image/png");
+
+        var presigned1 = client.getPresignedUrl("image/jpeg");
+        client.upload(presigned1.presignedUrl(), xrayBlob);
+
+        var presigned2 = client.getPresignedUrl("image/png");
+        client.upload(presigned2.presignedUrl(), spineBlob);
+
+        var processRequest = ProcessRequest.builder()
+                                           .objectPath(presigned1.objectKey())
+                                           .objectPath(presigned2.objectKey())
+                                           .action(Action.PRETRAINED_CLASSIFICATION,
+                                                   cfg -> cfg.category(category).model(model))
+                                           .build();
+
+        var result = pollForResult(client.process(processRequest), 30, 5000);
+
+        assertNotNull(result, "Batch classification did not complete within timeout");
+        assertTrue(result.isSuccess());
+        assertEquals(2, result.results().size(), "Expected results for both images");
+
+        for (var entry : result.results()) {
+            assertNotNull(entry.pretrainedClassification());
+            assertTrue(entry.pretrainedClassification().isSuccess());
+            assertNotNull(entry.pretrainedClassification().result());
+        }
+    }
+
+    @Test
+    void pretrainedClassificationCombinedWithImageDescription() throws InterruptedException {
+        assumePretrainedAvailable();
+
+        String model = pretrainedDescriptor.availableModels().get(0);
+        String category = categoryForModel(model);
+
+        var blob = loadResourceBlob(MEDICAL_XRAY, "image/jpeg");
+        var presigned = client.getPresignedUrl("image/jpeg");
+        client.upload(presigned.presignedUrl(), blob);
+
+        var processRequest = ProcessRequest.builder()
+                                           .objectPath(presigned.objectKey())
+                                           .action(Action.PRETRAINED_CLASSIFICATION,
+                                                   cfg -> cfg.category(category).model(model))
+                                           .action(Action.IMAGE_DESCRIPTION)
+                                           .build();
+
+        var result = pollForResult(client.process(processRequest), 30, 5000);
+
+        assertNotNull(result, "Combined enrichment did not complete within timeout");
+        assertTrue(result.isSuccess());
+
+        var entry = result.results().get(0);
+        assertNotNull(entry.pretrainedClassification(), "Expected pretrainedClassification result");
+        assertTrue(entry.pretrainedClassification().isSuccess());
+        assertNotNull(entry.imageDescription(), "Expected imageDescription result");
+        assertTrue(entry.imageDescription().isSuccess());
+        assertNotNull(entry.imageDescription().result());
+    }
+
+    @Test
+    void pretrainedClassificationAllAvailableModels() throws InterruptedException {
+        assumePretrainedAvailable();
+
+        var blob = loadResourceBlob(MEDICAL_XRAY, "image/jpeg");
+
+        for (var model : pretrainedDescriptor.availableModels()) {
+            String category = categoryForModel(model);
+
+            var presigned = client.getPresignedUrl("image/jpeg");
+            client.upload(presigned.presignedUrl(), blob);
+
+            var processRequest = ProcessRequest.builder()
+                                               .objectPath(presigned.objectKey())
+                                               .action(Action.PRETRAINED_CLASSIFICATION,
+                                                       cfg -> cfg.category(category).model(model))
+                                               .build();
+
+            var result = pollForResult(client.process(processRequest), 30, 5000);
+
+            assertNotNull(result, "Classification with model '" + model + "' did not complete within timeout");
+            assertTrue(result.isSuccess(), "Classification with model '" + model + "' was not successful");
+
+            var classification = result.results().get(0).pretrainedClassification();
+            assertNotNull(classification, "No pretrainedClassification result for model: " + model);
+            assertTrue(classification.isSuccess(), "Classification failed for model: " + model);
+            assertNotNull(classification.result(), "Null result for model: " + model);
+            assertNotNull(classification.result().classification(), "Null classification label for model: " + model);
+        }
+    }
+
+    @Test
+    void pretrainedClassificationInvalidModelCategoryReturnsError() {
+        assumePretrainedAvailable();
+
+        var blob = loadResourceBlob(MEDICAL_XRAY, "image/jpeg");
+        var presigned = client.getPresignedUrl("image/jpeg");
+        client.upload(presigned.presignedUrl(), blob);
+
+        var processRequest = ProcessRequest.builder()
+                                           .objectPath(presigned.objectKey())
+                                           .action(Action.PRETRAINED_CLASSIFICATION,
+                                                   cfg -> cfg.category("MediaType").model("nbme-organ-system-1"))
+                                           .build();
+
+        var exception = assertThrows(CICServiceException.class, () -> client.process(processRequest));
+        assertTrue(exception.statusCode() == 400 || exception.statusCode() == 403,
+                "Expected 400 or 403 for invalid model-category pairing, got: " + exception.statusCode());
     }
 
     // -------------------------------------------------------

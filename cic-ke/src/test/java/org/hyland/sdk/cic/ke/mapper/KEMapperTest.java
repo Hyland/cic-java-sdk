@@ -865,6 +865,61 @@ class KEMapperTest {
     }
 
     @Test
+    void testPretrainedClassificationWithIntegerConfidence() {
+        var json = """
+                {
+                  "id": "proc-ptc-int",
+                  "timestamp": "2026-01-01T00:00:00Z",
+                  "status": "SUCCESS",
+                  "inProgress": false,
+                  "results": [{
+                    "objectKey": "contents/xray.jpg",
+                    "pretrainedClassification": {
+                      "isSuccess": true,
+                      "result": {"classification": "X-Ray", "confidence": 1},
+                      "error": null
+                    }
+                  }]
+                }
+                """;
+
+        var result = MapperService.read(json, EnrichmentResult.class);
+        var entry = result.results().get(0);
+
+        assertNotNull(entry.pretrainedClassification());
+        assertTrue(entry.pretrainedClassification().isSuccess());
+        assertEquals("X-Ray", entry.pretrainedClassification().result().classification());
+        assertEquals(1.0, entry.pretrainedClassification().result().confidence());
+    }
+
+    @Test
+    void testPretrainedClassificationWithZeroConfidence() {
+        var json = """
+                {
+                  "id": "proc-ptc-zero",
+                  "timestamp": "2026-01-01T00:00:00Z",
+                  "status": "SUCCESS",
+                  "inProgress": false,
+                  "results": [{
+                    "objectKey": "contents/image.jpg",
+                    "pretrainedClassification": {
+                      "isSuccess": true,
+                      "result": {"classification": "Unknown", "confidence": 0},
+                      "error": null
+                    }
+                  }]
+                }
+                """;
+
+        var result = MapperService.read(json, EnrichmentResult.class);
+        var classification = result.results().get(0).pretrainedClassification();
+
+        assertTrue(classification.isSuccess());
+        assertEquals("Unknown", classification.result().classification());
+        assertEquals(0.0, classification.result().confidence());
+    }
+
+    @Test
     void testPretrainedClassificationFailureDeserialization() {
         var json = """
                 {
