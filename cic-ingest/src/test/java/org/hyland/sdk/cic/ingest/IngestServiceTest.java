@@ -21,12 +21,9 @@ package org.hyland.sdk.cic.ingest;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -181,22 +178,7 @@ class IngestServiceTest {
     }
 
     private CICBlob createTestBlob(String digest) {
-        return new CICBlob() {
-            @Override
-            public InputStream getInputStream() {
-                return new ByteArrayInputStream("test content".getBytes());
-            }
-
-            @Override
-            public Optional<String> getDigest() {
-                return Optional.ofNullable(digest);
-            }
-
-            @Override
-            public Optional<String> getContentType() {
-                return Optional.of("application/pdf");
-            }
-        };
+        return CICBlob.builder("test content").digest(digest).contentType("application/pdf").build();
     }
 
     private record CheckDigestCall(String sourceId, String objectId, String digest) {
