@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -34,7 +35,7 @@ class IngestEventTest {
 
     @Test
     void testNullObjectIdThrows() {
-        assertThrows(NullPointerException.class,
+        assertThrows(IllegalArgumentException.class,
                 () -> IngestEvent.builder(IngestEvent.Type.CREATE, null).sourceId("src1").build());
     }
 
@@ -45,13 +46,28 @@ class IngestEventTest {
     }
 
     @Test
+    void testNullPropertyKeyThrows() {
+        assertThrows(NullPointerException.class,
+                () -> IngestEvent.builder(IngestEvent.Type.CREATE, "obj1").putProperty(null, "value"));
+    }
+
+    @Test
+    void testNullPropertyValueThrows() {
+        assertThrows(NullPointerException.class,
+                () -> IngestEvent.builder(IngestEvent.Type.CREATE, "obj1").putProperty("key", (Instant) null));
+        assertThrows(NullPointerException.class,
+                () -> IngestEvent.builder(IngestEvent.Type.CREATE, "obj1").putProperty("key", (String) null));
+        assertThrows(NullPointerException.class, () -> IngestEvent.builder(IngestEvent.Type.CREATE, "obj1")
+                                                                  .putProperty("key", (IngestEventProperty) null));
+    }
+
+    @Test
     void testToBuilderPreservesAllFields() {
         var date = Instant.ofEpochMilli(1609459200000L);
-        var props = IngestEventProperties.builder().put("key", "value").build();
         var original = IngestEvent.builder(IngestEvent.Type.CREATE, "doc1")
                                   .sourceId("src1")
                                   .date(date)
-                                  .properties(props)
+                                  .putProperty("key", "value")
                                   .build();
 
         var copy = original.toBuilder().build();
@@ -68,12 +84,65 @@ class IngestEventTest {
     void testToBuilderAllowsOverride() {
         var original = IngestEvent.builder(IngestEvent.Type.CREATE, "doc1").sourceId("src1").build();
 
-        var modified = original.toBuilder().date(Instant.ofEpochMilli(9999999L)).putProperty("extra", "val").build();
+        var modified = original.toBuilder().date(Instant.ofEpochMilli(9999999L)).putProperty("key2", "value2").build();
 
         assertEquals(IngestEvent.Type.CREATE, modified.type());
         assertEquals(Optional.of("src1"), modified.sourceId());
         assertEquals("doc1", modified.objectId());
         assertEquals(Instant.ofEpochMilli(9999999L), modified.date());
-        assertEquals("val", modified.properties().toMap().get("extra"));
+        assertEquals("value2", ((IngestEventPropertyValue) modified.properties().get("key2")).value().toJavaValue());
+    }
+
+    @Test
+    void testPropertiesReplacesExisting() {
+        var builder = IngestEvent.builder(IngestEvent.Type.CREATE, "doc1")
+                                 .putProperty("key1", "value1")
+                                 .putProperty("key2", "value2");
+
+        var event = builder.properties(Map.of("key3", IngestEventPropertyValue.builder("value3").build())).build();
+
+        assertEquals(1, event.properties().size());
+        assertEquals("value3", ((IngestEventPropertyValue) event.properties().get("key3")).value().toJavaValue());
+    }
+
+    @Test
+    void testPutPropertiesAddsToExisting() {
+        var builder = IngestEvent.builder(IngestEvent.Type.CREATE, "doc1").putProperty("key1", "value1");
+
+        var event = builder.putProperties(Map.of("key2", IngestEventPropertyValue.builder("value2").build())).build();
+
+        assertEquals(2, event.properties().size());
+        assertEquals("value1", ((IngestEventPropertyValue) event.properties().get("key1")).value().toJavaValue());
+        assertEquals("value2", ((IngestEventPropertyValue) event.properties().get("key2")).value().toJavaValue());
+    }
+
+    @Test
+    void testPropertiesNullThrows() {
+        assertThrows(NullPointerException.class,
+                () -> IngestEvent.builder(IngestEvent.Type.CREATE, "doc1").properties(null));
+    }
+
+    @Test
+    void testPutPropertiesNullThrows() {
+        assertThrows(NullPointerException.class,
+                () -> IngestEvent.builder(IngestEvent.Type.CREATE, "doc1").putProperties(null));
+    }
+
+    @Test
+    void testReplaceProperties() {
+        var event = IngestEvent.builder(IngestEvent.Type.CREATE, "doc1")
+                               .putProperty("key1", "value1")
+                               .putProperty("key2", "value2")
+                               .build();
+
+        var replaced = event.toBuilder()
+                            .replaceProperties(
+                                    (key, property) -> IngestEventPropertyValue.builder("replaced-" + key).build())
+                            .build();
+
+        assertEquals("replaced-key1",
+                ((IngestEventPropertyValue) replaced.properties().get("key1")).value().toJavaValue());
+        assertEquals("replaced-key2",
+                ((IngestEventPropertyValue) replaced.properties().get("key2")).value().toJavaValue());
     }
 }

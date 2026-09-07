@@ -18,13 +18,16 @@
  */
 package org.hyland.sdk.cic.ingest.mapper;
 
+import java.util.Map;
+
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 import org.hyland.sdk.cic.ingest.object.IngestEvent;
-import org.hyland.sdk.cic.ingest.object.IngestEventProperties;
-import org.hyland.sdk.cic.ingest.object.PropertyArray;
+import org.hyland.sdk.cic.ingest.object.IngestEventProperty;
+import org.hyland.sdk.cic.ingest.object.IngestEventPropertyFile;
+import org.hyland.sdk.cic.ingest.object.IngestEventPropertyValue;
 
 /**
  * @since 1.0.0
@@ -44,54 +47,38 @@ class IngestEventMapper implements CICMapper<IngestEvent> {
         return cicObject;
     }
 
-    private CICObject toPropertiesObject(IngestEventProperties properties) {
+    private CICObject toPropertiesObject(Map<String, IngestEventProperty> properties) {
         var cicObject = CICObject.create();
-        properties.toMap().forEach((key, value) -> putValue(cicObject, key, value));
-        return cicObject;
-    }
+        properties.forEach((key, property) -> {
+            if (property instanceof IngestEventPropertyValue propertyValue) {
+                var propertyObject = CICObject.create();
+                propertyObject.putString("type", propertyValue.type().label());
+                propertyObject.putNode("value", propertyValue.value());
+                propertyValue.extras().forEach(propertyObject::putNode);
+                cicObject.putObject(key, propertyObject);
+            } else if (property instanceof IngestEventPropertyFile propertyBlob) {
+                if (propertyBlob.blob().isPresent() && propertyBlob.id().isEmpty()) {
+                    throw new IllegalStateException("the file has not been uploaded");
+                }
+                var propertyObject = CICObject.create();
+                propertyBlob.id().ifPresent(id -> propertyObject.putString("id", id));
+                propertyBlob.contentType().ifPresent(ct -> propertyObject.putString("content-type", ct));
 
-    private void putValue(CICObject target, String key, Object value) {
-        if (value == null) {
-            target.putNull(key);
-        } else if (value instanceof String s) {
-            target.putString(key, s);
-        } else if (value instanceof Integer i) {
-            target.putInt(key, i);
-        } else if (value instanceof Long l) {
-            target.putLong(key, l);
-        } else if (value instanceof Double d) {
-            target.putDouble(key, d);
-        } else if (value instanceof Boolean b) {
-            target.putBoolean(key, b);
-        } else if (value instanceof PropertyArray array) {
-            target.putArray(key, toArray(array));
-        } else if (value instanceof IngestEventProperties nested) {
-            target.putObject(key, toPropertiesObject(nested));
-        } else {
-            throw new IllegalArgumentException("Unsupported property value type: " + value.getClass().getName());
-        }
-    }
+                var metadataObject = CICObject.create();
+                propertyBlob.size().ifPresent(size -> metadataObject.putLong("size", size));
+                propertyBlob.name().ifPresent(name -> metadataObject.putString("name", name));
+                propertyBlob.contentType().ifPresent(ct -> metadataObject.putString("content-type", ct));
+                propertyBlob.digest().ifPresent(digest -> metadataObject.putString("digest", digest));
+                propertyObject.putObject("content-metadata", metadataObject);
 
-    private CICArray toArray(PropertyArray propertyArray) {
-        var array = CICArray.create();
-        for (var item : propertyArray.elements()) {
-            if (item instanceof String s) {
-                array.addString(s);
-            } else if (item instanceof Integer i) {
-                array.addInt(i);
-            } else if (item instanceof Long l) {
-                array.addLong(l);
-            } else if (item instanceof Double d) {
-                array.addDouble(d);
-            } else if (item instanceof Boolean b) {
-                array.addBoolean(b);
-            } else if (item instanceof IngestEventProperties nested) {
-                array.addObject(toPropertiesObject(nested));
+                var fileObject = CICObject.create();
+                fileObject.putObject("file", propertyObject);
+                cicObject.putObject(key, fileObject);
             } else {
-                throw new IllegalArgumentException("Unsupported array element type: " + item.getClass().getName());
+                throw new IllegalArgumentException("Unable to serialize property of type: " + property.getClass());
             }
-        }
-        return array;
+        });
+        return cicObject;
     }
 
     static class BatchMapper implements CICMapper<IngestEvent.Batch> {

@@ -21,9 +21,11 @@ package org.hyland.sdk.cic.ingest;
 import java.util.Deque;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.stream.Collectors;
 
 import org.hyland.sdk.cic.http.client.mapper.object.CICBlob;
 import org.hyland.sdk.cic.ingest.object.IngestEvent;
+import org.hyland.sdk.cic.ingest.object.IngestEventPropertyFile;
 import org.hyland.sdk.cic.ingest.object.PreSignedUrl;
 
 /**
@@ -76,7 +78,26 @@ public class IngestService {
     }
 
     public void ingest(IngestEvent event) {
-        httpClient.ingest(event);
+        ingest(IngestEvent.Batch.of(event));
+    }
+
+    public void ingest(IngestEvent.Batch batch) {
+        httpClient.ingest(
+                batch.stream().map(this::uploadBlobsIfNeeded).collect(Collectors.toCollection(IngestEvent.Batch::new)));
+    }
+
+    protected IngestEvent uploadBlobsIfNeeded(IngestEvent event) {
+        return event.toBuilder().replaceProperties((key, property) -> {
+            if (property instanceof IngestEventPropertyFile propertyFile && propertyFile.blob().isPresent()) {
+                // upload the blob
+                var propertyFileBuilder = propertyFile.toBuilder();
+                uploadBlobIfNeeded(event, propertyFile.blob().get()).map(PreSignedUrl::id)
+                                                                    .ifPresent(propertyFileBuilder::id);
+                return propertyFileBuilder.build();
+            } else {
+                return property;
+            }
+        }).build();
     }
 
     protected PreSignedUrl getPreSignedUrl() {
