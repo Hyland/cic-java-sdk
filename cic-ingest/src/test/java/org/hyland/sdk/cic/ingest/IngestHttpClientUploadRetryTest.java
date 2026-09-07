@@ -22,15 +22,12 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.http.HttpTimeoutException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -200,22 +197,7 @@ class IngestHttpClientUploadRetryTest {
                                             .backoffStrategy(BackoffStrategy.fixedDelay(Duration.ZERO))
                                             .build());
 
-        CICBlob blob = new CICBlob() {
-            @Override
-            public InputStream getInputStream() {
-                return new ByteArrayInputStream(expectedContent);
-            }
-
-            @Override
-            public Optional<String> getDigest() {
-                return Optional.of("sha256:abc123");
-            }
-
-            @Override
-            public Optional<String> getContentType() {
-                return Optional.of("application/pdf");
-            }
-        };
+        CICBlob blob = CICBlob.builder(expectedContent).digest("sha256:abc123").contentType("application/pdf").build();
 
         assertDoesNotThrow(() -> client.upload(baseUrl + "/upload", blob));
         assertEquals(3, attemptCount.get());
@@ -252,22 +234,7 @@ class IngestHttpClientUploadRetryTest {
         server.start();
 
         var client = buildClient(RetryPolicy.none());
-        CICBlob blob = new CICBlob() {
-            @Override
-            public InputStream getInputStream() {
-                return new ByteArrayInputStream(content);
-            }
-
-            @Override
-            public Optional<String> getDigest() {
-                return Optional.empty();
-            }
-
-            @Override
-            public Optional<String> getContentType() {
-                return Optional.of("application/octet-stream");
-            }
-        };
+        CICBlob blob = CICBlob.builder(content).contentType("application/octet-stream").build();
 
         assertDoesNotThrow(() -> client.upload(baseUrl + "/upload", blob));
         assertEquals(String.valueOf(content.length), capturedContentLength.get());
@@ -284,22 +251,7 @@ class IngestHttpClientUploadRetryTest {
         server.start();
 
         var client = buildClient(RetryPolicy.none());
-        CICBlob emptyBlob = new CICBlob() {
-            @Override
-            public InputStream getInputStream() {
-                return new ByteArrayInputStream(new byte[0]);
-            }
-
-            @Override
-            public Optional<String> getDigest() {
-                return Optional.empty();
-            }
-
-            @Override
-            public Optional<String> getContentType() {
-                return Optional.of("application/pdf");
-            }
-        };
+        CICBlob emptyBlob = CICBlob.builder(new byte[0]).contentType("application/pdf").build();
 
         assertDoesNotThrow(() -> client.upload(baseUrl + "/upload", emptyBlob));
         assertEquals("0", capturedContentLength.get());
@@ -390,21 +342,6 @@ class IngestHttpClientUploadRetryTest {
     }
 
     private CICBlob createTestBlob() {
-        return new CICBlob() {
-            @Override
-            public InputStream getInputStream() {
-                return new ByteArrayInputStream("test content".getBytes());
-            }
-
-            @Override
-            public Optional<String> getDigest() {
-                return Optional.of("sha256:abc123");
-            }
-
-            @Override
-            public Optional<String> getContentType() {
-                return Optional.of("application/pdf");
-            }
-        };
+        return CICBlob.builder("test content").digest("sha256:abc123").contentType("application/pdf").build();
     }
 }

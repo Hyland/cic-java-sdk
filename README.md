@@ -165,6 +165,69 @@ See the `cic-http-client-jackson2` module for a full implementation.
 - Keep mappers and serializers stateless and thread-safe.
 - Use SPI for easy extension and modularity.
 
+**`CICBlob`:**
+- **Package:** `org.hyland.sdk.cic.http.client.mapper.object`
+- Represents a binary payload (content, digest, and optional content type/name/size) exchanged with CIC, e.g. when uploading a document via `IngestService`.
+- `getInputStream()` is expected to return a **new** `InputStream` on every call, so the same `CICBlob` instance can be safely re-read (e.g. across upload retries).
+- Build instances with `CICBlob.builder(...)` instead of writing an anonymous class — handy in tests and call sites alike:
+  - `CICBlob.builder(String content)` — content encoded as UTF-8.
+  - `CICBlob.builder(byte[] content)` — content is already available in memory.
+  - `CICBlob.builder(Supplier<InputStream> inputStreamSupplier)` — for larger/streamed content (e.g. a `File`). The supplier is invoked each time `getInputStream()` is called, so it must produce a fresh stream every time rather than reusing an already-consumed one.
+- **Performance note:** the `Builder` is primarily meant for convenience (e.g. tests, small/one-off blobs). Integrations dealing with large files should implement `CICBlob` directly instead, so the content is only ever streamed from its source (e.g. disk) and never fully loaded into memory.
+
+**Example: Building a CICBlob**
+```java
+CICBlob textBlob = CICBlob.builder("Hello, world!").contentType("text/plain").build();
+
+byte[] content = Files.readAllBytes(path);
+CICBlob fileBlob = CICBlob.builder(content)
+    .contentType("application/pdf")
+    .name("invoice.pdf")
+    .digest("sha256:abc123")
+    .build();
+```
+
+**Example: Implementing CICBlob to stream a file without loading it into memory**
+```java
+public record FileCICBlob(Path path, String contentType, String digest) implements CICBlob {
+
+    @Override
+    public InputStream getInputStream() {
+        try {
+            return Files.newInputStream(path);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    @Override
+    public Optional<String> getDigest() {
+        return Optional.ofNullable(digest);
+    }
+
+    @Override
+    public Optional<String> getContentType() {
+        return Optional.ofNullable(contentType);
+    }
+
+    @Override
+    public Optional<String> getName() {
+        return Optional.of(path.getFileName().toString());
+    }
+
+    @Override
+    public OptionalLong getSize() {
+        try {
+            return OptionalLong.of(Files.size(path));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+}
+
+CICBlob streamedFileBlob = new FileCICBlob(Paths.get("invoice.pdf"), "application/pdf", "sha256:abc123");
+```
+
 ---
 
 ### 4. CIC Ingest Integration
