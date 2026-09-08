@@ -22,13 +22,18 @@ package org.hyland.sdk.cic.ke.object;
  * Known processing error types from the Context API. Use {@link #fromValue(String)} for forward-compatible parsing that
  * returns {@link #UNKNOWN} for unrecognized values.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
 public enum ProcessingErrorType {
-    LAMBDA_ERROR("LambdaError"), TIMEOUT("Timeout"), VALIDATION_ERROR("ValidationError"), LAMBDA_RESPONSE(
-            "LambdaResponse"), UNEXPECTED_ERROR("UnexpectedError"), AUTHORIZATION_ERROR(
-                    "AuthorizationError"), DESERIALIZATION_ERROR(
-                            "DeserializationError"), GUARDRAIL_VIOLATION("GuardrailViolation"), UNKNOWN(null);
+    LAMBDA_ERROR("LambdaError"),
+    TIMEOUT("Timeout"),
+    VALIDATION_ERROR("ValidationError"),
+    LAMBDA_RESPONSE("LambdaResponse"),
+    UNEXPECTED_ERROR("UnexpectedError"),
+    AUTHORIZATION_ERROR("AuthorizationError"),
+    DESERIALIZATION_ERROR("DeserializationError"),
+    GUARDRAIL_VIOLATION("GuardrailViolation"),
+    UNKNOWN(null);
 
     private final String value;
 

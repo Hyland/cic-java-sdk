@@ -29,7 +29,7 @@ import org.hyland.sdk.cic.ke.object.ProcessRequest;
  * Serializes {@link ProcessRequest} to Context API v2 JSON format where actions are structured as an object map with
  * per-action configuration.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
 class ProcessRequestMapper implements CICMapper<ProcessRequest> {
 
@@ -67,7 +67,7 @@ class ProcessRequestMapper implements CICMapper<ProcessRequest> {
     private CICObject serializeActionConfig(ActionConfig config) {
         var configObj = CICObject.create();
 
-        if (config.classes() != null) {
+        if (!config.classes().isEmpty()) {
             var classesArr = CICArray.create();
             for (var clazz : config.classes()) {
                 classesArr.addString(clazz);
@@ -79,7 +79,7 @@ class ProcessRequestMapper implements CICMapper<ProcessRequest> {
             configObj.putInt("maxWordCount", config.maxWordCount());
         }
 
-        if (config.kSimilarMetadata() != null) {
+        if (!config.kSimilarMetadata().isEmpty()) {
             var metadataArr = CICArray.create();
             for (var metadata : config.kSimilarMetadata()) {
                 metadataArr.addObject(CICObject.from(metadata));
@@ -87,7 +87,7 @@ class ProcessRequestMapper implements CICMapper<ProcessRequest> {
             configObj.putArray("kSimilarMetadata", metadataArr);
         }
 
-        if (config.instructions() != null) {
+        if (!config.instructions().isEmpty()) {
             var instrObj = CICObject.create();
             for (var instrEntry : config.instructions().entrySet()) {
                 instrObj.putString(instrEntry.getKey(), instrEntry.getValue());

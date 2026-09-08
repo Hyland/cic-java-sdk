@@ -18,25 +18,26 @@
  */
 package org.hyland.sdk.cic.ke.mapper;
 
-import org.hyland.sdk.cic.http.client.mapper.CICMapper;
-import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
-import org.hyland.sdk.cic.ke.object.JobStatus;
+import org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive;
+import org.hyland.sdk.cic.ke.object.ClassificationResult;
 
 /**
  * @since 1.1.0
  */
-class JobStatusMapper implements CICMapper<JobStatus> {
+class ClassificationResultMapper {
 
-    @Override
-    public JobStatus fromCICNode(CICNode cicNode) {
-        var cicObject = (CICObject) cicNode;
-        var jobId = cicObject.getStringOrThrow("jobId");
-        var status = cicObject.getStringOrThrow("status");
-        var errorMessage = cicObject.getStringOrNull("error_message");
-        if (errorMessage == null) {
-            errorMessage = cicObject.getStringOrNull("errorMessage");
+    ClassificationResult fromCICObject(CICObject resultObj) {
+        var classification = resultObj.getStringOrNull("classification");
+        var confidenceNode = resultObj.getProperties().get("confidence");
+        double confidence = 0.0;
+        if (confidenceNode instanceof CICPrimitive.CICDouble d) {
+            confidence = d.value();
+        } else if (confidenceNode instanceof CICPrimitive.CICInt i) {
+            confidence = (double) i.value();
+        } else if (confidenceNode instanceof CICPrimitive.CICLong l) {
+            confidence = (double) l.value();
         }
-        return new JobStatus(jobId, status, errorMessage);
+        return new ClassificationResult(classification, confidence);
     }
 }

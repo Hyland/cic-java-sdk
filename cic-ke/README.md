@@ -261,7 +261,7 @@ Use the `PRETRAINED_CLASSIFICATION` action with a `category` and `model` to clas
 EnrichmentResult result = keService.enrich(blob, req -> req
     .action(Action.PRETRAINED_CLASSIFICATION, cfg -> cfg
         .category("MediaType")
-        .model("nbme-media-type"))
+        .model("pretrained-model-a"))
 );
 
 var entry = result.results().get(0);
@@ -413,15 +413,15 @@ List<ActionDescriptor> descriptors = keService.getActionDescriptors();
 
 for (var descriptor : descriptors) {
     System.out.println("Action: " + descriptor.name());
-    if (descriptor.availableModels() != null) {
+    if (!descriptor.availableModels().isEmpty()) {
         System.out.println("  Models: " + descriptor.availableModels());
     }
-    if (descriptor.availableCategories() != null) {
+    if (!descriptor.availableCategories().isEmpty()) {
         System.out.println("  Categories: " + descriptor.availableCategories());
     }
 }
 // e.g. "Action: pretrainedClassification"
-//      "  Models: [nbme-media-type, nbme-organ-system-1]"
+//      "  Models: [pretrained-model-a, pretrained-model-b]"
 //      "  Categories: [MediaType, OrganSystem]"
 ```
 
@@ -937,10 +937,10 @@ Both services poll asynchronously for results. Configure the polling behavior:
 
 ```java
 // KEService -- default: 20 attempts, 5s intervals
-keService.setPollSettings(30, 10_000);  // 30 attempts, 10 second intervals
+keService.setPollSettings(30, Duration.ofSeconds(10));  // 30 attempts, 10 second intervals
 
 // DataCurationService -- default: 20 attempts, 5s intervals
-dcService.setPollSettings(15, 3_000);   // 15 attempts, 3 second intervals
+dcService.setPollSettings(15, Duration.ofSeconds(3));   // 15 attempts, 3 second intervals
 ```
 
 If polling exceeds the max attempts, a `CICSdkException` is thrown.
@@ -993,11 +993,11 @@ The project includes end-to-end tests that run against a real staging CIC enviro
 ### Running E2E Tests Locally
 
 ```bash
-export CIC_CLIENT_ID="your-client-id"
-export CIC_CLIENT_SECRET="your-client-secret"
-export CIC_BASE_URL="https://api.app.hyland.com"
-export CIC_AUTH_URL="https://auth.iam.hyland.com"
-export CIC_DC_BASE_URL="https://dc.app.hyland.com"
+export CIC_KE_CLIENT_ID="your-client-id"
+export CIC_KE_CLIENT_SECRET="your-client-secret"
+export CIC_KE_BASE_URL="https://api.app.hyland.com"
+export CIC_KE_AUTH_URL="https://auth.iam.hyland.com"
+export CIC_KE_DC_BASE_URL="https://dc.app.hyland.com"
 
 mvn verify -Pe2e -pl cic-ke -am
 ```
@@ -1010,8 +1010,8 @@ The `integration-test` job in `.github/workflows/build.yml` runs E2E tests autom
 
 | Secret | Description |
 |--------|-------------|
-| `CIC_CLIENT_ID` | OAuth2 client ID for the staging CIC application |
-| `CIC_CLIENT_SECRET` | OAuth2 client secret for the staging CIC application |
-| `CIC_BASE_URL` | Context API base URL (e.g. `https://api.app.hyland.com`) |
-| `CIC_AUTH_URL` | Auth token endpoint base URL (e.g. `https://auth.iam.hyland.com`) |
-| `CIC_DC_BASE_URL` | Data Curation API base URL (e.g. `https://dc.app.hyland.com`) |
+| `CIC_KE_CLIENT_ID` | OAuth2 client ID for the staging CIC application |
+| `CIC_KE_CLIENT_SECRET` | OAuth2 client secret for the staging CIC application |
+| `CIC_KE_BASE_URL` | Context API base URL (e.g. `https://api.app.hyland.com`) |
+| `CIC_KE_AUTH_URL` | Auth token endpoint base URL (e.g. `https://auth.iam.hyland.com`) |
+| `CIC_KE_DC_BASE_URL` | Data Curation API base URL (e.g. `https://dc.app.hyland.com`) |

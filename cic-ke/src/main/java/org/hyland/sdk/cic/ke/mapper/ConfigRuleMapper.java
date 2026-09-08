@@ -18,7 +18,7 @@
  */
 package org.hyland.sdk.cic.ke.mapper;
 
-import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
@@ -26,14 +26,15 @@ import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 import org.hyland.sdk.cic.ke.object.ConfigRule;
-import org.hyland.sdk.cic.ke.object.RuleCondition;
 
 /**
- * @since 1.0.0
+ * @since 1.1.0
  */
 class ConfigRuleMapper implements CICMapper<ConfigRule> {
 
     private final ProcessingOptionsMapper optionsMapper = new ProcessingOptionsMapper();
+
+    private final RuleConditionMapper conditionMapper = new RuleConditionMapper();
 
     @Override
     public ConfigRule fromCICNode(CICNode cicNode) {
@@ -43,15 +44,10 @@ class ConfigRuleMapper implements CICMapper<ConfigRule> {
         cicObject.getOptionalString("id").ifPresent(builder::id);
         cicObject.getOptionalString("name").ifPresent(builder::name);
 
-        cicObject.getOptionalArray("conditions").ifPresent(arr -> {
-            var conditions = new ArrayList<RuleCondition>();
-            for (var condObj : arr.toListObject()) {
-                var field = condObj.getStringOrThrow("field");
-                var value = condObj.getStringOrThrow("value");
-                conditions.add(new RuleCondition(field, value));
-            }
-            builder.conditions(conditions);
-        });
+        builder.conditions(
+                cicObject.getOptionalArray("conditions")
+                         .map(arr -> arr.toListObject().stream().map(conditionMapper::fromCICObject).toList())
+                         .orElseGet(List::of));
 
         cicObject.getOptionalObject("config").ifPresent(configObj -> {
             builder.config(optionsMapper.fromCICNode(configObj));
@@ -68,7 +64,7 @@ class ConfigRuleMapper implements CICMapper<ConfigRule> {
             cicObject.putString("name", rule.name());
         }
 
-        if (rule.conditions() != null && !rule.conditions().isEmpty()) {
+        if (!rule.conditions().isEmpty()) {
             var conditionsArray = CICArray.create();
             for (var condition : rule.conditions()) {
                 var condObj = CICObject.create();

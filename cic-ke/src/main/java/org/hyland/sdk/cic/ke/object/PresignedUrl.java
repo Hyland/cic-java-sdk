@@ -19,7 +19,7 @@
 package org.hyland.sdk.cic.ke.object;
 
 /**
- * @since 1.0.0
+ * @since 1.1.0
  */
 public record PresignedUrl(String presignedUrl, String objectKey) {
 }

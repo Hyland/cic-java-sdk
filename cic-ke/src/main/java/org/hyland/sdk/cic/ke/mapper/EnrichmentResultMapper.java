@@ -18,214 +18,32 @@
  */
 package org.hyland.sdk.cic.ke.mapper;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import org.hyland.sdk.cic.http.client.CICSdkException;
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
-import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
-import org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive;
-import org.hyland.sdk.cic.ke.object.ActionResult;
-import org.hyland.sdk.cic.ke.object.ClassificationResult;
 import org.hyland.sdk.cic.ke.object.EnrichmentResult;
-import org.hyland.sdk.cic.ke.object.EnrichmentResultEntry;
-import org.hyland.sdk.cic.ke.object.ProcessingError;
 
 /**
- * @since 1.0.0
+ * @since 1.1.0
  */
 class EnrichmentResultMapper implements CICMapper<EnrichmentResult> {
+
+    private final EnrichmentResultEntryMapper entryMapper = new EnrichmentResultEntryMapper();
 
     @Override
     public EnrichmentResult fromCICNode(CICNode cicNode) {
         var cicObject = (CICObject) cicNode;
         var id = cicObject.getStringOrThrow("id");
-        var timestamp = cicObject.getStringOrThrow("timestamp");
-        var status = cicObject.getStringOrThrow("status");
+        var timestamp = cicObject.getStringOrNull("timestamp");
+        var status = cicObject.getStringOrNull("status");
         var inProgress = cicObject.getBoolean("inProgress", false);
 
-        var results = new ArrayList<EnrichmentResultEntry>();
-        cicObject.getOptionalArray("results").ifPresent(arr -> {
-            for (var resultObj : arr.toListObject()) {
-                results.add(mapResultEntry(resultObj));
-            }
-        });
+        var results = cicObject.getOptionalArray("results")
+                               .map(arr -> arr.toListObject().stream().map(entryMapper::fromCICObject).toList())
+                               .orElseGet(List::of);
 
         return new EnrichmentResult(id, timestamp, results, status, inProgress);
-    }
-
-    private EnrichmentResultEntry mapResultEntry(CICObject obj) {
-        return new EnrichmentResultEntry(obj.getStringOrThrow("objectKey"),
-                mapStringActionResult(obj, "imageDescription"), mapMapActionResult(obj, "imageMetadata"),
-                mapMapActionResult(obj, "textMetadata"), mapStringActionResult(obj, "textSummary"),
-                mapStringActionResult(obj, "textClassification"), mapStringActionResult(obj, "imageClassification"),
-                mapTextEmbeddingsActionResult(obj), mapImageEmbeddingsActionResult(obj),
-                mapStringListMapActionResult(obj, "namedEntityText"),
-                mapStringListMapActionResult(obj, "namedEntityImage"),
-                mapClassificationActionResult(obj, "pretrainedClassification"), mapGeneralProcessingErrors(obj));
-    }
-
-    private List<ProcessingError> mapGeneralProcessingErrors(CICObject parent) {
-        var errors = new ArrayList<ProcessingError>();
-        parent.getOptionalArray("generalProcessingErrors").ifPresent(array -> {
-            for (var error : array.toListObject()) {
-                errors.add(new ProcessingError(error.getStringOrNull("errorType"), error.getStringOrNull("message")));
-            }
-        });
-        return List.copyOf(errors);
-    }
-
-    private ProcessingError mapActionError(CICObject actionObj) {
-        var errorNode = actionObj.getProperties().get("error");
-        if (errorNode != null && !(errorNode instanceof CICPrimitive.CICNull)) {
-            if (errorNode instanceof CICObject errorObj) {
-                return new ProcessingError(errorObj.getStringOrNull("errorType"), errorObj.getStringOrNull("message"));
-            }
-            if (errorNode instanceof CICPrimitive.CICString errorStr) {
-                return new ProcessingError(null, errorStr.value());
-            }
-        }
-        var errorMessageNode = actionObj.getProperties().get("errorMessage");
-        if (errorMessageNode instanceof CICPrimitive.CICString msgStr) {
-            return new ProcessingError(null, msgStr.value());
-        }
-        return null;
-    }
-
-    private ActionResult<String> mapStringActionResult(CICObject parent, String key) {
-        return parent.getOptionalObject(key).map(obj -> {
-            var isSuccess = obj.getBoolean("isSuccess", false);
-            var result = obj.getStringOrNull("result");
-            var error = mapActionError(obj);
-            return new ActionResult<>(isSuccess, result, error);
-        }).orElse(null);
-    }
-
-    @SuppressWarnings("unchecked")
-    private ActionResult<Map<String, Object>> mapMapActionResult(CICObject parent, String key) {
-        return parent.getOptionalObject(key).map(obj -> {
-            var isSuccess = obj.getBoolean("isSuccess", false);
-            var error = mapActionError(obj);
-            Map<String, Object> result = null;
-            var resultNode = obj.getProperties().get("result");
-            if (resultNode instanceof CICObject resultObj) {
-                result = resultObj.toMap();
-            }
-            return new ActionResult<>(isSuccess, result, error);
-        }).orElse(null);
-    }
-
-    private ActionResult<List<List<Double>>> mapTextEmbeddingsActionResult(CICObject parent) {
-        return parent.getOptionalObject("textEmbeddings").map(obj -> {
-            var isSuccess = obj.getBoolean("isSuccess", false);
-            var error = mapActionError(obj);
-            List<List<Double>> result = null;
-            var resultNode = obj.getProperties().get("result");
-            if (resultNode instanceof CICArray resultArr) {
-                if (resultArr.getElements().isEmpty()) {
-                    result = List.of();
-                } else if (resultArr.getElements().get(0) instanceof CICArray) {
-                    var vectors = new ArrayList<List<Double>>();
-                    for (var element : resultArr.getElements()) {
-                        if (!(element instanceof CICArray vector)) {
-                            throw invalidEmbeddingShape("textEmbeddings", "mixed vectors and scalar values");
-                        }
-                        vectors.add(mapVector(vector, "textEmbeddings"));
-                    }
-                    result = List.copyOf(vectors);
-                } else {
-                    result = List.of(mapVector(resultArr, "textEmbeddings"));
-                }
-            } else if (resultNode != null && !(resultNode instanceof CICPrimitive.CICNull)) {
-                throw invalidEmbeddingShape("textEmbeddings", "expected an array");
-            }
-            return new ActionResult<>(isSuccess, result, error);
-        }).orElse(null);
-    }
-
-    private ActionResult<List<Double>> mapImageEmbeddingsActionResult(CICObject parent) {
-        return parent.getOptionalObject("imageEmbeddings").map(obj -> {
-            var isSuccess = obj.getBoolean("isSuccess", false);
-            var error = mapActionError(obj);
-            List<Double> result = null;
-            var resultNode = obj.getProperties().get("result");
-            if (resultNode instanceof CICArray resultArr) {
-                if (resultArr.getElements().size() == 1 && resultArr.getElements().get(0) instanceof CICArray vector) {
-                    result = mapVector(vector, "imageEmbeddings");
-                } else if (resultArr.getElements().stream().anyMatch(CICArray.class::isInstance)) {
-                    throw invalidEmbeddingShape("imageEmbeddings", "expected one vector");
-                } else {
-                    result = mapVector(resultArr, "imageEmbeddings");
-                }
-            } else if (resultNode != null && !(resultNode instanceof CICPrimitive.CICNull)) {
-                throw invalidEmbeddingShape("imageEmbeddings", "expected an array");
-            }
-            return new ActionResult<>(isSuccess, result, error);
-        }).orElse(null);
-    }
-
-    private List<Double> mapVector(CICArray vector, String actionName) {
-        var values = new ArrayList<Double>();
-        for (var element : vector.getElements()) {
-            if (element instanceof CICPrimitive.CICDouble d) {
-                values.add(d.value());
-            } else if (element instanceof CICPrimitive.CICLong l) {
-                values.add((double) l.value());
-            } else if (element instanceof CICPrimitive.CICInt i) {
-                values.add((double) i.value());
-            } else {
-                throw invalidEmbeddingShape(actionName, "vector contains a non-numeric value");
-            }
-        }
-        return List.copyOf(values);
-    }
-
-    private CICSdkException invalidEmbeddingShape(String actionName, String reason) {
-        return new CICSdkException("Invalid " + actionName + " result: " + reason);
-    }
-
-    private ActionResult<Map<String, List<String>>> mapStringListMapActionResult(CICObject parent, String key) {
-        return parent.getOptionalObject(key).map(obj -> {
-            var isSuccess = obj.getBoolean("isSuccess", false);
-            var error = mapActionError(obj);
-            Map<String, List<String>> result = null;
-            var resultNode = obj.getProperties().get("result");
-            if (resultNode instanceof CICObject resultObj) {
-                result = new HashMap<>();
-                for (var entry : resultObj.getProperties().entrySet()) {
-                    if (entry.getValue() instanceof CICArray arr) {
-                        result.put(entry.getKey(), arr.toListString());
-                    }
-                }
-            }
-            return new ActionResult<>(isSuccess, result, error);
-        }).orElse(null);
-    }
-
-    private ActionResult<ClassificationResult> mapClassificationActionResult(CICObject parent, String key) {
-        return parent.getOptionalObject(key).map(obj -> {
-            var isSuccess = obj.getBoolean("isSuccess", false);
-            var error = mapActionError(obj);
-            ClassificationResult result = null;
-            var resultNode = obj.getProperties().get("result");
-            if (resultNode instanceof CICObject resultObj) {
-                var classification = resultObj.getStringOrNull("classification");
-                var confidenceNode = resultObj.getProperties().get("confidence");
-                double confidence = 0.0;
-                if (confidenceNode instanceof CICPrimitive.CICDouble d) {
-                    confidence = d.value();
-                } else if (confidenceNode instanceof CICPrimitive.CICInt i) {
-                    confidence = (double) i.value();
-                } else if (confidenceNode instanceof CICPrimitive.CICLong l) {
-                    confidence = (double) l.value();
-                }
-                result = new ClassificationResult(classification, confidence);
-            }
-            return new ActionResult<>(isSuccess, result, error);
-        }).orElse(null);
     }
 }

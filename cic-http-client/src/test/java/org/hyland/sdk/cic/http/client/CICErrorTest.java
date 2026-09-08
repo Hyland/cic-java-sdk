@@ -20,7 +20,6 @@ package org.hyland.sdk.cic.http.client;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -108,17 +107,12 @@ class CICErrorTest {
         assertEquals("Job not found", error.message());
     }
 
-    @SuppressWarnings("unchecked")
     @Test
-    void parsesErrorObjectWithoutThrowing() {
-        var error = CICError.from(CICObject.from(
-                Map.of("error", Map.of("code", "INSUFFICIENT_PERMISSIONS", "message", "Access denied"))));
+    void objectTypedErrorFieldThrowsDuringParsing() {
+        var cicObject = CICObject.from(
+                Map.of("error", Map.of("code", "INSUFFICIENT_PERMISSIONS", "message", "Access denied")));
 
-        assertNull(error.error());
-        assertNotNull(error.extensions().get("error"));
-        var errorObj = (Map<String, Object>) error.extensions().get("error");
-        assertEquals("INSUFFICIENT_PERMISSIONS", errorObj.get("code"));
-        assertEquals("Access denied", errorObj.get("message"));
+        assertThrows(Exception.class, () -> CICError.from(cicObject));
     }
 
     @Test

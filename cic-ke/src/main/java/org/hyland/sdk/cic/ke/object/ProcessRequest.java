@@ -30,7 +30,7 @@ import java.util.function.Consumer;
  * Context API v2 process request. Actions are structured as a map of action name to per-action configuration, following
  * the v2 format where each action can carry its own classes, instructions, and other parameters.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
 public final class ProcessRequest {
 
@@ -77,10 +77,12 @@ public final class ProcessRequest {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null || getClass() != obj.getClass())
+        }
+        if (obj == null || getClass() != obj.getClass()) {
             return false;
+        }
         ProcessRequest that = (ProcessRequest) obj;
         return saveResultInContentLakeRepository == that.saveResultInContentLakeRepository
                 && Objects.equals(version, that.version) && Objects.equals(objectKeys, that.objectKeys)

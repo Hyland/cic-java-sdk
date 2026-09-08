@@ -26,7 +26,7 @@ package org.hyland.sdk.cic.ke.object;
  * A COMPLETED status does not always mean success — the response payload may contain an error. Use {@link #hasError()}
  * to detect this case. A FAILED status means the pipeline exhausted all retries.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
 public record JobStatus(String jobId, String status, String errorMessage) {
 
@@ -38,17 +38,17 @@ public record JobStatus(String jobId, String status, String errorMessage) {
     }
 
     /**
-     * @return true when the job completed successfully (COMPLETED/Done with no error payload)
+     * @return true when the job completed successfully (COMPLETED/DONE with no error payload)
      */
     public boolean isDone() {
         return isCompleted() && !hasError();
     }
 
     /**
-     * @return true when the status is COMPLETED or Done (does not imply success — check {@link #hasError()})
+     * @return true when the status is COMPLETED or DONE (does not imply success — check {@link #hasError()})
      */
     public boolean isCompleted() {
-        return "Done".equalsIgnoreCase(status) || "COMPLETED".equalsIgnoreCase(status);
+        return "DONE".equalsIgnoreCase(status) || "COMPLETED".equalsIgnoreCase(status);
     }
 
     /**

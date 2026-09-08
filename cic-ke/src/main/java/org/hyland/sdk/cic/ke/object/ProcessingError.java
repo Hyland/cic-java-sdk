@@ -19,19 +19,12 @@
 package org.hyland.sdk.cic.ke.object;
 
 /**
- * Describes a document-level processing error returned by the Context API.
+ * Describes a processing error returned by the Context API, either at the document level (general processing errors) or
+ * at the action level (action result errors).
  *
- * @param errorType the category of the processing error
- * @param message the human-readable error description
- * @since 1.0.0
+ * @param type the error type, or {@link ProcessingErrorType#UNKNOWN} for unrecognized values
+ * @param message the human-readable error description (nullable)
+ * @since 1.1.0
  */
-public record ProcessingError(String errorType, String message) {
-
-    /**
-     * Returns the known {@link ProcessingErrorType} for this error, or {@link ProcessingErrorType#UNKNOWN} if the type
-     * is null or unrecognized.
-     */
-    public ProcessingErrorType knownType() {
-        return ProcessingErrorType.fromValue(errorType);
-    }
+public record ProcessingError(ProcessingErrorType type, String message) {
 }

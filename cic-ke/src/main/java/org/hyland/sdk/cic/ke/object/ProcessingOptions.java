@@ -24,7 +24,7 @@ import java.util.function.Consumer;
 /**
  * Shared processing options used by both Data Curation presign and Configuration API.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
 public final class ProcessingOptions {
 
@@ -100,10 +100,12 @@ public final class ProcessingOptions {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null || getClass() != obj.getClass())
+        }
+        if (obj == null || getClass() != obj.getClass()) {
             return false;
+        }
         ProcessingOptions that = (ProcessingOptions) obj;
         return Objects.equals(normalization, that.normalization) && Objects.equals(chunking, that.chunking)
                 && Objects.equals(chunkingStrategy, that.chunkingStrategy) && Objects.equals(chunkSize, that.chunkSize)

@@ -21,7 +21,7 @@ package org.hyland.sdk.cic.ke.object;
 /**
  * Configuration defaults.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
 public record ConfigDefaults(ProcessingOptions options) {
 }

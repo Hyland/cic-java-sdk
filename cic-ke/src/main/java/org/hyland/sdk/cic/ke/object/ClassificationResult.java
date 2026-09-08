@@ -23,7 +23,7 @@ package org.hyland.sdk.cic.ke.object;
  *
  * @param classification the predicted class label
  * @param confidence the model's confidence score (0.0 to 1.0)
- * @since 1.0.0
+ * @since 1.1.0
  */
 public record ClassificationResult(String classification, double confidence) {
 }

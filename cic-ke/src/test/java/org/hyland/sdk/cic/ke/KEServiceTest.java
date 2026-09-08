@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +56,7 @@ class KEServiceTest {
     void setUp() {
         httpClient = new TestKEHttpClient();
         service = new KEService(httpClient);
-        service.setPollSettings(3, 10);
+        service.setPollSettings(3, Duration.ofMillis(10));
     }
 
     @Test
@@ -241,9 +242,9 @@ class KEServiceTest {
 
     @Test
     void testSetPollSettingsRejectsInvalidValues() {
-        assertThrows(IllegalArgumentException.class, () -> service.setPollSettings(0, 1000));
-        assertThrows(IllegalArgumentException.class, () -> service.setPollSettings(-1, 1000));
-        assertThrows(IllegalArgumentException.class, () -> service.setPollSettings(5, -1));
+        assertThrows(IllegalArgumentException.class, () -> service.setPollSettings(0, Duration.ofSeconds(1)));
+        assertThrows(IllegalArgumentException.class, () -> service.setPollSettings(-1, Duration.ofSeconds(1)));
+        assertThrows(IllegalArgumentException.class, () -> service.setPollSettings(5, Duration.ofMillis(-1)));
     }
 
     @Test

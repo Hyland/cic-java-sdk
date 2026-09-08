@@ -21,7 +21,7 @@ package org.hyland.sdk.cic.ke.object;
 /**
  * Response from {@code POST /content/process} containing the processing identifier.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
 public record ProcessResponse(String processingId) {
 }

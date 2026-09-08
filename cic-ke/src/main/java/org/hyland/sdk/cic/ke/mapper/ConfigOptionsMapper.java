@@ -18,17 +18,15 @@
  */
 package org.hyland.sdk.cic.ke.mapper;
 
-import java.util.ArrayList;
+import java.util.List;
 
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 import org.hyland.sdk.cic.ke.object.ConfigOptions;
-import org.hyland.sdk.cic.ke.object.ConfigRule;
-import org.hyland.sdk.cic.ke.object.ProcessingOptions;
 
 /**
- * @since 1.0.0
+ * @since 1.1.0
  */
 class ConfigOptionsMapper implements CICMapper<ConfigOptions> {
 
@@ -40,19 +38,10 @@ class ConfigOptionsMapper implements CICMapper<ConfigOptions> {
     public ConfigOptions fromCICNode(CICNode cicNode) {
         var cicObject = (CICObject) cicNode;
 
-        ProcessingOptions defaults = null;
-        var defaultsNode = cicObject.getOptionalObject("defaults");
-        if (defaultsNode.isPresent()) {
-            defaults = optionsMapper.fromCICNode(defaultsNode.get());
-        }
-
-        var rules = new ArrayList<ConfigRule>();
-        cicObject.getOptionalArray("rules").ifPresent(arr -> {
-            for (var ruleObj : arr.toListObject()) {
-                rules.add(ruleMapper.fromCICNode(ruleObj));
-            }
-        });
-
+        var defaults = cicObject.getOptionalObject("defaults").map(optionsMapper::fromCICNode).orElse(null);
+        var rules = cicObject.getOptionalArray("rules")
+                             .map(arr -> arr.toListObject().stream().map(ruleMapper::fromCICNode).toList())
+                             .orElseGet(List::of);
         return new ConfigOptions(defaults, rules);
     }
 }

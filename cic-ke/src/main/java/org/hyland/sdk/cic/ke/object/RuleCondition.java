@@ -21,7 +21,7 @@ package org.hyland.sdk.cic.ke.object;
 /**
  * A condition within a configuration rule.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
 public record RuleCondition(String field, String value) {
 }

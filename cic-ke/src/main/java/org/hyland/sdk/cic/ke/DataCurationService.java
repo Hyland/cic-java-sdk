@@ -18,6 +18,7 @@
  */
 package org.hyland.sdk.cic.ke;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -37,7 +38,7 @@ import org.hyland.sdk.cic.ke.object.RuleTestResponse;
 /**
  * High-level service for the Data Curation API providing end-to-end workflows.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
 public class DataCurationService {
 
@@ -45,7 +46,7 @@ public class DataCurationService {
 
     private int pollMaxAttempts = 20;
 
-    private long pollIntervalMs = 5000;
+    private Duration pollInterval = Duration.ofSeconds(5);
 
     public DataCurationService(DataCurationHttpClient httpClient) {
         this.httpClient = httpClient;
@@ -58,18 +59,19 @@ public class DataCurationService {
      * must synchronize externally or configure poll settings before sharing the instance.
      *
      * @param maxAttempts the maximum number of polling attempts (must be at least 1)
-     * @param intervalMs the sleep interval between polls in milliseconds (must be non-negative)
-     * @throws IllegalArgumentException if maxAttempts is less than 1 or intervalMs is negative
+     * @param interval the sleep interval between polls (must be non-negative)
+     * @throws IllegalArgumentException if maxAttempts is less than 1 or interval is negative
      */
-    public void setPollSettings(int maxAttempts, long intervalMs) {
+    public void setPollSettings(int maxAttempts, Duration interval) {
         if (maxAttempts < 1) {
             throw new IllegalArgumentException("maxAttempts must be at least 1, got: " + maxAttempts);
         }
-        if (intervalMs < 0) {
-            throw new IllegalArgumentException("intervalMs must be non-negative, got: " + intervalMs);
+        Objects.requireNonNull(interval, "interval cannot be null");
+        if (interval.isNegative()) {
+            throw new IllegalArgumentException("interval must be non-negative");
         }
         this.pollMaxAttempts = maxAttempts;
-        this.pollIntervalMs = intervalMs;
+        this.pollInterval = interval;
     }
 
     // ---------------
@@ -132,7 +134,7 @@ public class DataCurationService {
         // 3. Poll status until terminal
         for (int attempt = 1; attempt <= pollMaxAttempts; attempt++) {
             if (attempt > 1) {
-                sleep(pollIntervalMs);
+                sleep(pollInterval.toMillis());
             }
 
             var status = httpClient.getJobStatus(presignResponse.jobId());
@@ -324,7 +326,7 @@ public class DataCurationService {
      *
      * @return the detailed health information
      * @throws CICSdkException if the request fails
-     * @since 1.0.0
+     * @since 1.1.0
      */
     public HealthDetails getHealthDetails() {
         return httpClient.getHealthDetails();

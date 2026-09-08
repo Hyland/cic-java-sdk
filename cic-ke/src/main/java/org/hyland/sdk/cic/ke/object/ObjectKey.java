@@ -23,7 +23,7 @@ package org.hyland.sdk.cic.ke.object;
  *
  * @param path the object-storage path, or {@code null} when using a document ID
  * @param documentId the platform document ID, or {@code null} when using a path
- * @since 1.0.0
+ * @since 1.1.0
  */
 public record ObjectKey(String path, String documentId) {
 

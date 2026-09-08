@@ -24,7 +24,7 @@ import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 import org.hyland.sdk.cic.ke.object.PresignedUrl;
 
 /**
- * @since 1.0.0
+ * @since 1.1.0
  */
 class PresignedUrlMapper implements CICMapper<PresignedUrl> {
 

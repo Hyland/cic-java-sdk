@@ -18,13 +18,16 @@
  */
 package org.hyland.sdk.cic.ke.object;
 
-import java.util.Map;
-
 /**
- * Version usage statistics for content processing.
+ * Represents a percentage value (0.0 to 100.0).
  *
- * @param stats a map of version identifiers to their usage counts
+ * @param value the percentage value
  * @since 1.1.0
  */
-public record VersionUsageStats(Map<String, Long> stats) {
+public record Percentage(double value) {
+
+    @Override
+    public String toString() {
+        return value + "%";
+    }
 }

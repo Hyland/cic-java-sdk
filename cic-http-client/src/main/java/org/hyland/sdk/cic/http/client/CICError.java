@@ -26,7 +26,6 @@ import java.util.Set;
 
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
-import org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive;
 
 /**
  * Represents an error response from the CIC API, supporting both legacy OAuth2-style error responses and RFC 9457
@@ -73,42 +72,23 @@ public record CICError(String error, String errorDescription, String type, Strin
      * fields are placed into the {@link #extensions()} map.
      */
     public static CICError from(CICObject cicObject) {
-        String type = safeGetString(cicObject, "type");
-        String title = safeGetString(cicObject, "title");
+        String type = cicObject.getString("type", null);
+        String title = cicObject.getString("title", null);
         Integer status = cicObject.getIntegerOrNull("status");
-        String detail = safeGetString(cicObject, "detail");
-        String instance = safeGetString(cicObject, "instance");
-        String error = safeGetString(cicObject, "error");
-        String errorDescription = safeGetString(cicObject, "error_description");
+        String detail = cicObject.getString("detail", null);
+        String instance = cicObject.getString("instance", null);
+        String error = cicObject.getString("error", null);
+        String errorDescription = cicObject.getString("error_description", null);
 
         Map<String, Object> extensions = new LinkedHashMap<>();
         for (var entry : cicObject.getProperties().entrySet()) {
-            var key = entry.getKey();
-            if (!KNOWN_KEYS.contains(key)) {
-                extensions.put(key, toJavaValue(entry.getValue()));
-            } else if (isNonStringKnownKey(cicObject, key)) {
-                extensions.put(key, toJavaValue(entry.getValue()));
+            if (!KNOWN_KEYS.contains(entry.getKey())) {
+                extensions.put(entry.getKey(), toJavaValue(entry.getValue()));
             }
         }
 
         return new CICError(error, errorDescription, type, title, status, detail, instance,
                 extensions.isEmpty() ? null : extensions);
-    }
-
-    private static String safeGetString(CICObject cicObject, String key) {
-        var node = cicObject.getProperties().get(key);
-        if (node instanceof CICPrimitive.CICString str) {
-            return str.value();
-        }
-        return null;
-    }
-
-    private static boolean isNonStringKnownKey(CICObject cicObject, String key) {
-        if ("status".equals(key)) {
-            return false;
-        }
-        var node = cicObject.getProperties().get(key);
-        return node != null && !(node instanceof CICPrimitive.CICString) && !(node instanceof CICPrimitive.CICNull);
     }
 
     private static Object toJavaValue(CICNode node) {

@@ -19,7 +19,57 @@
 package org.hyland.sdk.cic.ke.object;
 
 /**
- * @since 1.0.0
+ * Represents the outcome of a single enrichment action. Each action in the enrichment response is either a
+ * {@link Success} containing the typed result, or a {@link Failure} containing a {@link ProcessingError}.
+ *
+ * @param <T> the type of the successful result
+ * @since 1.1.0
  */
-public record ActionResult<T>(boolean isSuccess, T result, ProcessingError error) {
+public sealed interface ActionResult<T> permits ActionResult.Success, ActionResult.Failure {
+
+    static <T> ActionResult<T> success(T result) {
+        return new Success<>(result);
+    }
+
+    static <T> ActionResult<T> failure(ProcessingError error) {
+        return new Failure<>(error);
+    }
+
+    boolean isSuccess();
+
+    /**
+     * Returns the result value if this is a {@link Success}, or {@code null} if this is a {@link Failure}.
+     */
+    T result();
+
+    /**
+     * Returns the error if this is a {@link Failure}, or {@code null} if this is a {@link Success}.
+     */
+    ProcessingError error();
+
+    record Success<T>(T result) implements ActionResult<T> {
+
+        @Override
+        public boolean isSuccess() {
+            return true;
+        }
+
+        @Override
+        public ProcessingError error() {
+            return null;
+        }
+    }
+
+    record Failure<T>(ProcessingError error) implements ActionResult<T> {
+
+        @Override
+        public boolean isSuccess() {
+            return false;
+        }
+
+        @Override
+        public T result() {
+            return null;
+        }
+    }
 }

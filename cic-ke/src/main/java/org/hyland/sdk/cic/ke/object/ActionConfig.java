@@ -28,7 +28,7 @@ import java.util.Objects;
  * Per-action configuration for Context API v2 process requests. Each action in the request can carry its own classes,
  * maxWordCount, kSimilarMetadata, and instructions.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
 public final class ActionConfig {
 
@@ -38,7 +38,7 @@ public final class ActionConfig {
 
     private final Integer maxWordCount;
 
-    private final List<Map<String, Object>> kSimilarMetadata;
+    private final List<Map<String, String>> kSimilarMetadata;
 
     private final Map<String, String> instructions;
 
@@ -47,10 +47,10 @@ public final class ActionConfig {
     private final String model;
 
     private ActionConfig(Builder builder) {
-        this.classes = builder.classes == null ? null : List.copyOf(builder.classes);
+        this.classes = builder.classes == null ? List.of() : List.copyOf(builder.classes);
         this.maxWordCount = builder.maxWordCount;
-        this.kSimilarMetadata = builder.kSimilarMetadata == null ? null : List.copyOf(builder.kSimilarMetadata);
-        this.instructions = builder.instructions == null ? null : Map.copyOf(builder.instructions);
+        this.kSimilarMetadata = builder.kSimilarMetadata == null ? List.of() : List.copyOf(builder.kSimilarMetadata);
+        this.instructions = builder.instructions == null ? Map.of() : Map.copyOf(builder.instructions);
         this.category = builder.category;
         this.model = builder.model;
     }
@@ -74,7 +74,7 @@ public final class ActionConfig {
         return maxWordCount;
     }
 
-    public List<Map<String, Object>> kSimilarMetadata() {
+    public List<Map<String, String>> kSimilarMetadata() {
         return kSimilarMetadata;
     }
 
@@ -95,10 +95,12 @@ public final class ActionConfig {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null || getClass() != obj.getClass())
+        }
+        if (obj == null || getClass() != obj.getClass()) {
             return false;
+        }
         ActionConfig that = (ActionConfig) obj;
         return Objects.equals(classes, that.classes) && Objects.equals(maxWordCount, that.maxWordCount)
                 && Objects.equals(kSimilarMetadata, that.kSimilarMetadata)
@@ -117,7 +119,7 @@ public final class ActionConfig {
 
         private Integer maxWordCount;
 
-        private List<Map<String, Object>> kSimilarMetadata;
+        private List<Map<String, String>> kSimilarMetadata;
 
         private Map<String, String> instructions;
 
@@ -131,8 +133,9 @@ public final class ActionConfig {
         }
 
         public Builder addClass(String clazz) {
-            if (this.classes == null)
+            if (this.classes == null) {
                 this.classes = new ArrayList<>();
+            }
             this.classes.add(clazz);
             return this;
         }
@@ -142,14 +145,15 @@ public final class ActionConfig {
             return this;
         }
 
-        public Builder kSimilarMetadata(List<Map<String, Object>> kSimilarMetadata) {
+        public Builder kSimilarMetadata(List<Map<String, String>> kSimilarMetadata) {
             this.kSimilarMetadata = new ArrayList<>(kSimilarMetadata);
             return this;
         }
 
-        public Builder addSimilarMetadata(Map<String, Object> metadata) {
-            if (this.kSimilarMetadata == null)
+        public Builder addSimilarMetadata(Map<String, String> metadata) {
+            if (this.kSimilarMetadata == null) {
                 this.kSimilarMetadata = new ArrayList<>();
+            }
             this.kSimilarMetadata.add(metadata);
             return this;
         }
@@ -160,8 +164,9 @@ public final class ActionConfig {
         }
 
         public Builder instruction(String key, String value) {
-            if (this.instructions == null)
+            if (this.instructions == null) {
                 this.instructions = new LinkedHashMap<>();
+            }
             this.instructions.put(key, value);
             return this;
         }

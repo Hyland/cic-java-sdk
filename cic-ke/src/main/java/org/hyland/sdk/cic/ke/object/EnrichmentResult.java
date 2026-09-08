@@ -21,7 +21,7 @@ package org.hyland.sdk.cic.ke.object;
 import java.util.List;
 
 /**
- * @since 1.0.0
+ * @since 1.1.0
  */
 public record EnrichmentResult(String id, String timestamp, List<EnrichmentResultEntry> results, String status,
         boolean inProgress) {

@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
@@ -48,10 +49,10 @@ import org.hyland.sdk.cic.ke.object.ProcessingOptions;
  * <p>
  * Requires the following environment variables:
  * <ul>
- * <li>{@code CIC_DC_BASE_URL} - Data Curation API base URL</li>
- * <li>{@code CIC_AUTH_URL} - OAuth2 token endpoint base URL</li>
- * <li>{@code CIC_CLIENT_ID} - OAuth2 client ID</li>
- * <li>{@code CIC_CLIENT_SECRET} - OAuth2 client secret</li>
+ * <li>{@code CIC_KE_DC_BASE_URL} - Data Curation API base URL</li>
+ * <li>{@code CIC_KE_AUTH_URL} - OAuth2 token endpoint base URL</li>
+ * <li>{@code CIC_KE_CLIENT_ID} - OAuth2 client ID</li>
+ * <li>{@code CIC_KE_CLIENT_SECRET} - OAuth2 client secret</li>
  * </ul>
  * <p>
  * Sample files are loaded from {@code src/test/resources/e2e/}.
@@ -60,7 +61,7 @@ import org.hyland.sdk.cic.ke.object.ProcessingOptions;
  */
 @Tag("e2e")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class DataCurationHttpClientE2ETest {
+class DataCurationHttpClientIT {
 
     private static final String SAMPLE_DOCUMENT = "/e2e/sample-document.txt";
 
@@ -72,19 +73,19 @@ class DataCurationHttpClientE2ETest {
 
     @BeforeAll
     static void setUp() {
-        assumeTrue(System.getenv("CIC_CLIENT_ID") != null, "Skipping E2E: CIC_CLIENT_ID not set");
-        assumeTrue(System.getenv("CIC_CLIENT_SECRET") != null, "Skipping E2E: CIC_CLIENT_SECRET not set");
-        assumeTrue(System.getenv("CIC_DC_BASE_URL") != null, "Skipping E2E: CIC_DC_BASE_URL not set");
-        assumeTrue(System.getenv("CIC_AUTH_URL") != null, "Skipping E2E: CIC_AUTH_URL not set");
+        assumeTrue(System.getenv("CIC_KE_CLIENT_ID") != null, "Skipping E2E: CIC_KE_CLIENT_ID not set");
+        assumeTrue(System.getenv("CIC_KE_CLIENT_SECRET") != null, "Skipping E2E: CIC_KE_CLIENT_SECRET not set");
+        assumeTrue(System.getenv("CIC_KE_DC_BASE_URL") != null, "Skipping E2E: CIC_KE_DC_BASE_URL not set");
+        assumeTrue(System.getenv("CIC_KE_AUTH_URL") != null, "Skipping E2E: CIC_KE_AUTH_URL not set");
 
-        client = DataCurationHttpClient.from(System.getenv("CIC_DC_BASE_URL"),
-                AuthenticationHttpClient.from(System.getenv("CIC_AUTH_URL"))
-                                        .clientId(System.getenv("CIC_CLIENT_ID"))
-                                        .clientSecret(System.getenv("CIC_CLIENT_SECRET")))
+        client = DataCurationHttpClient.from(System.getenv("CIC_KE_DC_BASE_URL"),
+                AuthenticationHttpClient.from(System.getenv("CIC_KE_AUTH_URL"))
+                                        .clientId(System.getenv("CIC_KE_CLIENT_ID"))
+                                        .clientSecret(System.getenv("CIC_KE_CLIENT_SECRET")))
                                        .build();
 
         service = new DataCurationService(client);
-        service.setPollSettings(30, 5000);
+        service.setPollSettings(30, Duration.ofSeconds(5));
     }
 
     // -------------------------------------------------------
@@ -301,7 +302,7 @@ class DataCurationHttpClientE2ETest {
 
             @Override
             public InputStream getInputStream() {
-                InputStream is = DataCurationHttpClientE2ETest.class.getResourceAsStream(resourcePath);
+                InputStream is = DataCurationHttpClientIT.class.getResourceAsStream(resourcePath);
                 if (is == null) {
                     throw new IllegalStateException("Test resource not found: " + resourcePath);
                 }

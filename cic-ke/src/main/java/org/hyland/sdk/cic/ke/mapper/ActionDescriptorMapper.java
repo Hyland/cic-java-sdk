@@ -18,7 +18,6 @@
  */
 package org.hyland.sdk.cic.ke.mapper;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,7 +28,7 @@ import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 import org.hyland.sdk.cic.ke.object.ActionDescriptor;
 
 /**
- * @since 1.0.0
+ * @since 1.1.0
  */
 class ActionDescriptorMapper implements CICMapper<ActionDescriptor> {
 
@@ -37,19 +36,12 @@ class ActionDescriptorMapper implements CICMapper<ActionDescriptor> {
     public ActionDescriptor fromCICNode(CICNode cicNode) {
         var cicObject = (CICObject) cicNode;
         var name = cicObject.getStringOrThrow("name");
-
-        List<String> availableModels = null;
-        var modelsOpt = cicObject.getOptionalArray("availableModels");
-        if (modelsOpt.isPresent()) {
-            availableModels = new ArrayList<>(modelsOpt.get().toListString());
-        }
-
-        List<String> availableCategories = null;
-        var categoriesOpt = cicObject.getOptionalArray("availableCategories");
-        if (categoriesOpt.isPresent()) {
-            availableCategories = new ArrayList<>(categoriesOpt.get().toListString());
-        }
-
+        var availableModels = cicObject.getOptionalArray("availableModels")
+                                       .map(CICArray::toListString)
+                                       .orElseGet(List::of);
+        var availableCategories = cicObject.getOptionalArray("availableCategories")
+                                           .map(CICArray::toListString)
+                                           .orElseGet(List::of);
         return new ActionDescriptor(name, availableModels, availableCategories);
     }
 
@@ -59,12 +51,7 @@ class ActionDescriptorMapper implements CICMapper<ActionDescriptor> {
 
         @Override
         public ActionDescriptor.ListOf fromCICNode(CICNode cicNode) {
-            CICArray actionsArray;
-            if (cicNode instanceof CICObject cicObject) {
-                actionsArray = cicObject.getArrayOrThrow("actions");
-            } else {
-                actionsArray = (CICArray) cicNode;
-            }
+            var actionsArray = (CICArray) cicNode;
             return actionsArray.toListObject()
                                .stream()
                                .map(innerMapper::fromCICNode)

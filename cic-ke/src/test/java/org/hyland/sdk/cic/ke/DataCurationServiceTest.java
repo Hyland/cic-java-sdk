@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -41,6 +42,7 @@ import org.hyland.sdk.cic.ke.object.ConfigRule;
 import org.hyland.sdk.cic.ke.object.EmbeddingModel;
 import org.hyland.sdk.cic.ke.object.HealthDetails;
 import org.hyland.sdk.cic.ke.object.JobStatus;
+import org.hyland.sdk.cic.ke.object.Percentage;
 import org.hyland.sdk.cic.ke.object.PresignResponse;
 import org.hyland.sdk.cic.ke.object.ProcessingOptions;
 import org.hyland.sdk.cic.ke.object.RuleTestRequest;
@@ -59,7 +61,7 @@ class DataCurationServiceTest {
     void setUp() {
         httpClient = new TestDataCurationHttpClient();
         service = new DataCurationService(httpClient);
-        service.setPollSettings(3, 10);
+        service.setPollSettings(3, Duration.ofMillis(10));
     }
 
     @Test
@@ -375,8 +377,8 @@ class DataCurationServiceTest {
 
     @Test
     void testGetHealthDetails() {
-        httpClient.healthDetails = new HealthDetails("healthy", "2026-08-26T12:54:31Z", "1.193.0-release", 114396.2,
-                0.0, 19.3, 21.0, true);
+        httpClient.healthDetails = new HealthDetails("healthy", "2026-08-26T12:54:31Z", "1.193.0-release",
+                Duration.ofMillis(114396200L), new Percentage(0.0), new Percentage(19.3), new Percentage(21.0), true);
 
         var details = service.getHealthDetails();
 
@@ -395,9 +397,9 @@ class DataCurationServiceTest {
 
     @Test
     void testSetPollSettingsRejectsInvalidValues() {
-        assertThrows(IllegalArgumentException.class, () -> service.setPollSettings(0, 1000));
-        assertThrows(IllegalArgumentException.class, () -> service.setPollSettings(-1, 1000));
-        assertThrows(IllegalArgumentException.class, () -> service.setPollSettings(5, -1));
+        assertThrows(IllegalArgumentException.class, () -> service.setPollSettings(0, Duration.ofSeconds(1)));
+        assertThrows(IllegalArgumentException.class, () -> service.setPollSettings(-1, Duration.ofSeconds(1)));
+        assertThrows(IllegalArgumentException.class, () -> service.setPollSettings(5, Duration.ofMillis(-1)));
     }
 
     @Test

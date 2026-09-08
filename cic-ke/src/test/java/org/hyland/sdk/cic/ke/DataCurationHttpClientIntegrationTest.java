@@ -197,8 +197,8 @@ class DataCurationHttpClientIntegrationTest {
         assertNotNull(details);
         assertEquals("healthy", details.status());
         assertEquals("1.193.0-release", details.applicationVersion());
-        assertEquals(114396.2, details.uptimeSeconds());
-        assertEquals(19.3, details.memoryUsedPercent());
+        assertEquals(114396200L, details.uptime().toMillis());
+        assertEquals(19.3, details.memoryUsedPercent().value());
         assertTrue(details.awsOk());
     }
 

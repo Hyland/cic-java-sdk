@@ -23,7 +23,7 @@ import java.util.List;
 /**
  * Full configuration response from {@code GET /config/options}.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
 public record ConfigOptions(ProcessingOptions defaults, List<ConfigRule> rules) {
 

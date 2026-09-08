@@ -52,7 +52,7 @@ import org.hyland.sdk.cic.ke.object.RuleTestResponse;
 /**
  * HTTP client for interacting with the CIC Data Curation API.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
 public class DataCurationHttpClient extends AbstractAuthenticatedHttpClient {
 
@@ -222,7 +222,7 @@ public class DataCurationHttpClient extends AbstractAuthenticatedHttpClient {
      *
      * @return the detailed health information
      * @throws CICSdkException if the request fails
-     * @since 1.0.0
+     * @since 1.1.0
      */
     public HealthDetails getHealthDetails() {
         var request = this.requestBuilder(GET, HEALTH_DETAILS_PATH).build();

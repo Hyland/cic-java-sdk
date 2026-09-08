@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -50,10 +51,10 @@ import org.hyland.sdk.cic.ke.object.ProcessRequest;
  * <p>
  * Requires the following environment variables:
  * <ul>
- * <li>{@code CIC_BASE_URL} - Context API base URL</li>
- * <li>{@code CIC_AUTH_URL} - OAuth2 token endpoint base URL</li>
- * <li>{@code CIC_CLIENT_ID} - OAuth2 client ID</li>
- * <li>{@code CIC_CLIENT_SECRET} - OAuth2 client secret</li>
+ * <li>{@code CIC_KE_BASE_URL} - Context API base URL</li>
+ * <li>{@code CIC_KE_AUTH_URL} - OAuth2 token endpoint base URL</li>
+ * <li>{@code CIC_KE_CLIENT_ID} - OAuth2 client ID</li>
+ * <li>{@code CIC_KE_CLIENT_SECRET} - OAuth2 client secret</li>
  * </ul>
  * <p>
  * Sample files are loaded from {@code src/test/resources/e2e/}.
@@ -61,7 +62,7 @@ import org.hyland.sdk.cic.ke.object.ProcessRequest;
  * @since 1.0.0
  */
 @Tag("e2e")
-class KEHttpClientE2ETest {
+class KEHttpClientIT {
 
     private static final String SAMPLE_DOCUMENT = "/e2e/sample-document.txt";
 
@@ -83,19 +84,19 @@ class KEHttpClientE2ETest {
 
     @BeforeAll
     static void setUp() {
-        assumeTrue(System.getenv("CIC_CLIENT_ID") != null, "Skipping E2E: CIC_CLIENT_ID not set");
-        assumeTrue(System.getenv("CIC_CLIENT_SECRET") != null, "Skipping E2E: CIC_CLIENT_SECRET not set");
-        assumeTrue(System.getenv("CIC_BASE_URL") != null, "Skipping E2E: CIC_BASE_URL not set");
-        assumeTrue(System.getenv("CIC_AUTH_URL") != null, "Skipping E2E: CIC_AUTH_URL not set");
+        assumeTrue(System.getenv("CIC_KE_CLIENT_ID") != null, "Skipping E2E: CIC_KE_CLIENT_ID not set");
+        assumeTrue(System.getenv("CIC_KE_CLIENT_SECRET") != null, "Skipping E2E: CIC_KE_CLIENT_SECRET not set");
+        assumeTrue(System.getenv("CIC_KE_BASE_URL") != null, "Skipping E2E: CIC_KE_BASE_URL not set");
+        assumeTrue(System.getenv("CIC_KE_AUTH_URL") != null, "Skipping E2E: CIC_KE_AUTH_URL not set");
 
-        client = KEHttpClient.from(System.getenv("CIC_BASE_URL"),
-                AuthenticationHttpClient.from(System.getenv("CIC_AUTH_URL"))
-                                        .clientId(System.getenv("CIC_CLIENT_ID"))
-                                        .clientSecret(System.getenv("CIC_CLIENT_SECRET")))
+        client = KEHttpClient.from(System.getenv("CIC_KE_BASE_URL"),
+                AuthenticationHttpClient.from(System.getenv("CIC_KE_AUTH_URL"))
+                                        .clientId(System.getenv("CIC_KE_CLIENT_ID"))
+                                        .clientSecret(System.getenv("CIC_KE_CLIENT_SECRET")))
                              .build();
 
         service = new KEService(client);
-        service.setPollSettings(30, 5000);
+        service.setPollSettings(30, Duration.ofSeconds(5));
     }
 
     // -------------------------------------------------------
@@ -291,7 +292,7 @@ class KEHttpClientE2ETest {
     }
 
     // -------------------------------------------------------
-    // Pretrained classification (conditional — requires NBME whitelist)
+    // Pretrained classification (conditional — requires whitelist)
     // -------------------------------------------------------
 
     private static ActionDescriptor pretrainedDescriptor;
@@ -314,22 +315,10 @@ class KEHttpClientE2ETest {
                 "Skipping: no categories available for pretrainedClassification");
     }
 
-    private void assumeModelAvailable(String model) {
-        assumePretrainedAvailable();
-        assumeTrue(pretrainedDescriptor.availableModels().contains(model),
-                "Skipping: model '" + model + "' not available. Available: " + pretrainedDescriptor.availableModels());
-    }
-
-    private String categoryForModel(String model) {
-        if (model.contains("media-type")) {
-            return "MediaType";
-        }
-        return "OrganSystem";
-    }
-
     @Test
-    void pretrainedClassificationWithFirstAvailableModel() throws InterruptedException {
+    void pretrainedClassificationWithFirstModel() throws InterruptedException {
         assumePretrainedAvailable();
+        assumeTrue(pretrainedDescriptor.availableModels().size() >= 1, "Skipping: need at least 1 model");
 
         String model = pretrainedDescriptor.availableModels().get(0);
         String category = pretrainedDescriptor.availableCategories().get(0);
@@ -360,33 +349,14 @@ class KEHttpClientE2ETest {
     }
 
     @Test
-    void pretrainedMediaTypeClassificationOnXray() throws InterruptedException {
-        assumeModelAvailable("nbme-media-type");
+    void pretrainedClassificationWithSecondModel() throws InterruptedException {
+        assumePretrainedAvailable();
+        assumeTrue(pretrainedDescriptor.availableModels().size() >= 2, "Skipping: need at least 2 models");
 
-        var blob = loadResourceBlob(MEDICAL_XRAY, "image/jpeg");
-        var presigned = client.getPresignedUrl("image/jpeg");
-        client.upload(presigned.presignedUrl(), blob);
-
-        var processRequest = ProcessRequest.builder()
-                                           .objectPath(presigned.objectKey())
-                                           .action(Action.PRETRAINED_CLASSIFICATION,
-                                                   cfg -> cfg.category("MediaType").model("nbme-media-type"))
-                                           .build();
-
-        var result = pollForResult(client.process(processRequest), 30, 5000);
-
-        assertNotNull(result, "Media type classification did not complete within timeout");
-        var classification = result.results().get(0).pretrainedClassification();
-        assertNotNull(classification);
-        assertTrue(classification.isSuccess());
-        assertNotNull(classification.result().classification());
-        assertTrue(classification.result().confidence() > 0.0,
-                "Expected positive confidence, got: " + classification.result().confidence());
-    }
-
-    @Test
-    void pretrainedOrganSystemClassificationOnXray() throws InterruptedException {
-        assumeModelAvailable("nbme-organ-system-1");
+        String model = pretrainedDescriptor.availableModels().get(1);
+        String category = pretrainedDescriptor.availableCategories().size() >= 2
+                ? pretrainedDescriptor.availableCategories().get(1)
+                : pretrainedDescriptor.availableCategories().get(0);
 
         var blob = loadResourceBlob(MEDICAL_XRAY_SPINE, "image/png");
         var presigned = client.getPresignedUrl("image/png");
@@ -395,12 +365,12 @@ class KEHttpClientE2ETest {
         var processRequest = ProcessRequest.builder()
                                            .objectPath(presigned.objectKey())
                                            .action(Action.PRETRAINED_CLASSIFICATION,
-                                                   cfg -> cfg.category("OrganSystem").model("nbme-organ-system-1"))
+                                                   cfg -> cfg.category(category).model(model))
                                            .build();
 
         var result = pollForResult(client.process(processRequest), 30, 5000);
 
-        assertNotNull(result, "Organ system classification did not complete within timeout");
+        assertNotNull(result, "Classification with second model did not complete within timeout");
         var classification = result.results().get(0).pretrainedClassification();
         assertNotNull(classification);
         assertTrue(classification.isSuccess());
@@ -413,7 +383,7 @@ class KEHttpClientE2ETest {
         assumePretrainedAvailable();
 
         String model = pretrainedDescriptor.availableModels().get(0);
-        String category = categoryForModel(model);
+        String category = pretrainedDescriptor.availableCategories().get(0);
 
         var xrayBlob = loadResourceBlob(MEDICAL_XRAY, "image/jpeg");
         var spineBlob = loadResourceBlob(MEDICAL_XRAY_SPINE, "image/png");
@@ -449,7 +419,7 @@ class KEHttpClientE2ETest {
         assumePretrainedAvailable();
 
         String model = pretrainedDescriptor.availableModels().get(0);
-        String category = categoryForModel(model);
+        String category = pretrainedDescriptor.availableCategories().get(0);
 
         var blob = loadResourceBlob(MEDICAL_XRAY, "image/jpeg");
         var presigned = client.getPresignedUrl("image/jpeg");
@@ -482,7 +452,7 @@ class KEHttpClientE2ETest {
         var blob = loadResourceBlob(MEDICAL_XRAY, "image/jpeg");
 
         for (var model : pretrainedDescriptor.availableModels()) {
-            String category = categoryForModel(model);
+            String category = pretrainedDescriptor.availableCategories().get(0);
 
             var presigned = client.getPresignedUrl("image/jpeg");
             client.upload(presigned.presignedUrl(), blob);
@@ -517,7 +487,7 @@ class KEHttpClientE2ETest {
         var processRequest = ProcessRequest.builder()
                                            .objectPath(presigned.objectKey())
                                            .action(Action.PRETRAINED_CLASSIFICATION,
-                                                   cfg -> cfg.category("MediaType").model("nbme-organ-system-1"))
+                                                   cfg -> cfg.category("MediaType").model("nonexistent-model"))
                                            .build();
 
         var exception = assertThrows(CICServiceException.class, () -> client.process(processRequest));
@@ -579,7 +549,7 @@ class KEHttpClientE2ETest {
 
             @Override
             public InputStream getInputStream() {
-                InputStream is = KEHttpClientE2ETest.class.getResourceAsStream(resourcePath);
+                InputStream is = KEHttpClientIT.class.getResourceAsStream(resourcePath);
                 if (is == null) {
                     throw new IllegalStateException("Test resource not found: " + resourcePath);
                 }

@@ -42,6 +42,7 @@ import org.hyland.sdk.cic.http.client.auth.AuthenticationHttpClient;
 import org.hyland.sdk.cic.http.client.retry.RetryPolicy;
 import org.hyland.sdk.cic.ke.object.Action;
 import org.hyland.sdk.cic.ke.object.ProcessRequest;
+import org.hyland.sdk.cic.ke.object.ProcessingErrorType;
 
 /**
  * Integration tests for {@link KEHttpClient} exercising the full auth + API chain.
@@ -163,7 +164,7 @@ class KEHttpClientIntegrationTest {
         assertTrue(result.isSuccess());
         assertEquals(1, result.results().size());
         assertEquals("A summary", result.results().get(0).textSummary().result());
-        assertEquals("PartialProcessingFailure", result.results().get(0).generalProcessingErrors().get(0).errorType());
+        assertEquals(ProcessingErrorType.UNKNOWN, result.results().get(0).generalProcessingErrors().get(0).type());
         assertEquals("Some pages could not be read",
                 result.results().get(0).generalProcessingErrors().get(0).message());
     }
@@ -235,8 +236,7 @@ class KEHttpClientIntegrationTest {
             TestHttpServers.assertBearerToken(exchange);
             TestHttpServers.respondJson(exchange, 200,
                     """
-                            {
-                              "actions": [
+                            [
                                 {"name": "imageClassification"},
                                 {"name": "imageDescription"},
                                 {"name": "imageEmbeddings"},
@@ -248,8 +248,7 @@ class KEHttpClientIntegrationTest {
                                 {"name": "textClassification"},
                                 {"name": "textEmbeddings"},
                                 {"name": "textMetadataGeneration"}
-                              ]
-                            }
+                            ]
                             """);
         });
         apiServer.start();

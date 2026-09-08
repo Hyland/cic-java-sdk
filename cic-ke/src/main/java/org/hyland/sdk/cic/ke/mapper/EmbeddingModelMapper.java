@@ -30,7 +30,7 @@ import org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive;
 import org.hyland.sdk.cic.ke.object.EmbeddingModel;
 
 /**
- * @since 1.0.0
+ * @since 1.1.0
  */
 class EmbeddingModelMapper implements CICMapper<EmbeddingModel> {
 

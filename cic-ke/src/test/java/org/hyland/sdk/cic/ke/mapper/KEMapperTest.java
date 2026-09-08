@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -46,6 +47,7 @@ import org.hyland.sdk.cic.ke.object.PresignResponse;
 import org.hyland.sdk.cic.ke.object.PresignedUrl;
 import org.hyland.sdk.cic.ke.object.ProcessRequest;
 import org.hyland.sdk.cic.ke.object.ProcessResponse;
+import org.hyland.sdk.cic.ke.object.ProcessingErrorType;
 import org.hyland.sdk.cic.ke.object.ProcessingOptions;
 import org.hyland.sdk.cic.ke.object.RuleTestRequest;
 import org.hyland.sdk.cic.ke.object.RuleTestResponse;
@@ -67,7 +69,7 @@ class KEMapperTest {
                                             cfg -> cfg.classes(List.of("invoice", "receipt"))
                                                       .instructions(Map.of("context", "legal documents")))
                                     .action(Action.PRETRAINED_CLASSIFICATION,
-                                            cfg -> cfg.category("MediaType").model("nbme-media-type"))
+                                            cfg -> cfg.category("MediaType").model("pretrained-model-a"))
                                     .action(Action.TEXT_EMBEDDINGS)
                                     .build();
 
@@ -84,7 +86,7 @@ class KEMapperTest {
                     },
                     "pretrainedClassification": {
                       "category": "MediaType",
-                      "model": "nbme-media-type"
+                      "model": "pretrained-model-a"
                     },
                     "textEmbeddings": {}
                   }
@@ -470,9 +472,9 @@ class KEMapperTest {
 
         var errors = result.results().get(0).generalProcessingErrors();
         assertEquals(2, errors.size());
-        assertEquals("ValidationError", errors.get(0).errorType());
+        assertEquals(ProcessingErrorType.VALIDATION_ERROR, errors.get(0).type());
         assertEquals("Unsupported format", errors.get(0).message());
-        assertEquals("ProcessingError", errors.get(1).errorType());
+        assertEquals(ProcessingErrorType.UNKNOWN, errors.get(1).type());
         assertEquals("Some pages could not be read", errors.get(1).message());
         assertTrue(result.results().get(1).generalProcessingErrors().isEmpty());
         assertTrue(result.results().get(2).generalProcessingErrors().isEmpty());
@@ -980,13 +982,11 @@ class KEMapperTest {
     @Test
     void testActionDescriptorListDeserialization() {
         var json = """
-                {
-                  "actions": [
-                    {"name": "textSummarization"},
-                    {"name": "pretrainedClassification", "availableModels": ["model-a", "model-b"], "availableCategories": ["category-x", "category-y"]},
-                    {"name": "imageDescription", "availableModels": ["vision-v1"]}
-                  ]
-                }
+                [
+                  {"name": "textSummarization"},
+                  {"name": "pretrainedClassification", "availableModels": ["model-a", "model-b"], "availableCategories": ["category-x", "category-y"]},
+                  {"name": "imageDescription", "availableModels": ["vision-v1"]}
+                ]
                 """;
 
         var descriptors = MapperService.read(json, ActionDescriptor.ListOf.class);
@@ -994,8 +994,8 @@ class KEMapperTest {
         assertEquals(3, descriptors.size());
 
         assertEquals("textSummarization", descriptors.get(0).name());
-        assertNull(descriptors.get(0).availableModels());
-        assertNull(descriptors.get(0).availableCategories());
+        assertTrue(descriptors.get(0).availableModels().isEmpty());
+        assertTrue(descriptors.get(0).availableCategories().isEmpty());
 
         assertEquals("pretrainedClassification", descriptors.get(1).name());
         assertEquals(List.of("model-a", "model-b"), descriptors.get(1).availableModels());
@@ -1003,7 +1003,7 @@ class KEMapperTest {
 
         assertEquals("imageDescription", descriptors.get(2).name());
         assertEquals(List.of("vision-v1"), descriptors.get(2).availableModels());
-        assertNull(descriptors.get(2).availableCategories());
+        assertTrue(descriptors.get(2).availableCategories().isEmpty());
     }
 
     @Test
@@ -1080,10 +1080,10 @@ class KEMapperTest {
         assertEquals("healthy", details.status());
         assertEquals("2026-08-26T12:54:31.936042+00:00", details.timestamp());
         assertEquals("1.193.0-release", details.applicationVersion());
-        assertEquals(114396.2, details.uptimeSeconds());
-        assertEquals(0.0, details.cpuPercent());
-        assertEquals(19.3, details.memoryUsedPercent());
-        assertEquals(21.0, details.diskUsedPercent());
+        assertEquals(Duration.ofMillis(114396200L), details.uptime());
+        assertEquals(0.0, details.cpuPercent().value());
+        assertEquals(19.3, details.memoryUsedPercent().value());
+        assertEquals(21.0, details.diskUsedPercent().value());
         assertTrue(details.awsOk());
     }
 
@@ -1098,10 +1098,10 @@ class KEMapperTest {
         assertEquals("degraded", details.status());
         assertNull(details.timestamp());
         assertNull(details.applicationVersion());
-        assertEquals(0.0, details.uptimeSeconds());
-        assertEquals(0.0, details.cpuPercent());
-        assertEquals(0.0, details.memoryUsedPercent());
-        assertEquals(0.0, details.diskUsedPercent());
+        assertEquals(Duration.ZERO, details.uptime());
+        assertEquals(0.0, details.cpuPercent().value());
+        assertEquals(0.0, details.memoryUsedPercent().value());
+        assertEquals(0.0, details.diskUsedPercent().value());
         assertFalse(details.awsOk());
     }
 
@@ -1132,11 +1132,11 @@ class KEMapperTest {
         var errors = result.results().get(0).generalProcessingErrors();
 
         assertEquals(3, errors.size());
-        assertNull(errors.get(0).errorType());
+        assertEquals(ProcessingErrorType.UNKNOWN, errors.get(0).type());
         assertEquals("Something went wrong", errors.get(0).message());
-        assertEquals("ValidationError", errors.get(1).errorType());
+        assertEquals(ProcessingErrorType.VALIDATION_ERROR, errors.get(1).type());
         assertNull(errors.get(1).message());
-        assertNull(errors.get(2).errorType());
+        assertEquals(ProcessingErrorType.UNKNOWN, errors.get(2).type());
         assertNull(errors.get(2).message());
     }
 
@@ -1238,10 +1238,10 @@ class KEMapperTest {
         assertEquals("healthy", health.status());
         assertEquals("2026-08-26T12:54:31.936042+00:00", health.timestamp());
         assertEquals("1.193.0-release", health.applicationVersion());
-        assertEquals(114396.2, health.uptimeSeconds(), 0.1);
-        assertEquals(0.0, health.cpuPercent(), 0.01);
-        assertEquals(19.3, health.memoryUsedPercent(), 0.01);
-        assertEquals(21.0, health.diskUsedPercent(), 0.01);
+        assertEquals(114396200L, health.uptime().toMillis(), 100);
+        assertEquals(0.0, health.cpuPercent().value(), 0.01);
+        assertEquals(19.3, health.memoryUsedPercent().value(), 0.01);
+        assertEquals(21.0, health.diskUsedPercent().value(), 0.01);
         assertTrue(health.awsOk());
     }
 

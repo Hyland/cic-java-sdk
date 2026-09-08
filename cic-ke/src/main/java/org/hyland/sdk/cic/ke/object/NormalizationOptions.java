@@ -21,7 +21,7 @@ package org.hyland.sdk.cic.ke.object;
 /**
  * Normalization processing options.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
 public record NormalizationOptions(Boolean quotations, Boolean dashes) {
 

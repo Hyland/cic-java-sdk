@@ -27,6 +27,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -145,7 +146,7 @@ class KEWorkflowIntegrationTest {
                 // no-op for fast tests
             }
         };
-        keService.setPollSettings(5, 100);
+        keService.setPollSettings(5, Duration.ofMillis(100));
 
         CICBlob blob = createTestBlob("application/pdf", "PDF content bytes");
 
@@ -245,7 +246,7 @@ class KEWorkflowIntegrationTest {
                 // no-op
             }
         };
-        keService.setPollSettings(3, 10);
+        keService.setPollSettings(3, Duration.ofMillis(10));
 
         assertThrows(CICSdkException.class, () -> keService.pollResults("timeout-proc"));
     }
@@ -319,7 +320,7 @@ class KEWorkflowIntegrationTest {
                 // no-op for fast tests
             }
         };
-        dcService.setPollSettings(5, 100);
+        dcService.setPollSettings(5, Duration.ofMillis(100));
 
         CICBlob blob = createTestBlob("application/pdf", "Some PDF content");
 
@@ -426,7 +427,7 @@ class KEWorkflowIntegrationTest {
                 // no-op
             }
         };
-        dcService.setPollSettings(2, 10);
+        dcService.setPollSettings(2, Duration.ofMillis(10));
 
         CICBlob blob = createTestBlob("application/pdf", "content");
 

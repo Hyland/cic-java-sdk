@@ -21,7 +21,7 @@ package org.hyland.sdk.cic.ke.object;
 /**
  * Response from {@code POST /config/options/rules/test}.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
 public record RuleTestResponse(ConfigRule matchedRule, ProcessingOptions effectiveConfig) {
 }

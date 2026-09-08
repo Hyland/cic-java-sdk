@@ -25,7 +25,7 @@ import org.hyland.sdk.cic.ke.object.PresignResponse;
 import org.hyland.sdk.cic.ke.object.ProcessingOptions;
 
 /**
- * @since 1.0.0
+ * @since 1.1.0
  */
 class PresignResponseMapper implements CICMapper<PresignResponse> {
 

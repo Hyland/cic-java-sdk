@@ -49,7 +49,7 @@ import org.hyland.sdk.cic.ke.object.VersionUsageStats;
 /**
  * HTTP client for interacting with the CIC Context (Knowledge Enrichment) API.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
 public class KEHttpClient extends AbstractAuthenticatedHttpClient {
 
@@ -195,7 +195,7 @@ public class KEHttpClient extends AbstractAuthenticatedHttpClient {
      *
      * @return the list of action descriptors
      * @throws CICSdkException if the request fails
-     * @since 1.0.0
+     * @since 1.1.0
      */
     public List<ActionDescriptor> getActionDescriptors() {
         var request = this.requestBuilder(GET, ACTIONS_PATH)
@@ -209,7 +209,7 @@ public class KEHttpClient extends AbstractAuthenticatedHttpClient {
      *
      * @return a map of version identifiers to their usage counts
      * @throws CICSdkException if the request fails
-     * @since 1.0.0
+     * @since 1.1.0
      */
     public Map<String, Long> getVersionUsageStats() {
         var request = this.requestBuilder(GET, VERSION_USAGE_STATS_PATH).build();

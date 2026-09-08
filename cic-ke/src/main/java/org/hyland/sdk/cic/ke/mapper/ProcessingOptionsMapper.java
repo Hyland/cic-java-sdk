@@ -32,7 +32,7 @@ import org.hyland.sdk.cic.ke.object.ProcessingOptions;
  * Reads both the nested format returned by config endpoints and the flat legacy format used on presign submit. Writes
  * using the nested format when strategy/size/model/precision details are present.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
 class ProcessingOptionsMapper implements CICMapper<ProcessingOptions> {
 

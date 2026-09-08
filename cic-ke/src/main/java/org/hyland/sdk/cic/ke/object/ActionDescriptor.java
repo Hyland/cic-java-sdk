@@ -26,19 +26,19 @@ import java.util.List;
  * models and categories for actions that support them.
  *
  * @param name the action name (e.g. "pretrainedClassification", "textSummarization")
- * @param availableModels models available for this action (nullable if not applicable)
- * @param availableCategories categories available for this action (nullable if not applicable)
- * @since 1.0.0
+ * @param availableModels models available for this action (empty if not applicable)
+ * @param availableCategories categories available for this action (empty if not applicable)
+ * @since 1.1.0
  */
 public record ActionDescriptor(String name, List<String> availableModels, List<String> availableCategories) {
 
     public ActionDescriptor {
-        availableModels = availableModels == null ? null : List.copyOf(availableModels);
-        availableCategories = availableCategories == null ? null : List.copyOf(availableCategories);
+        availableModels = availableModels == null ? List.of() : List.copyOf(availableModels);
+        availableCategories = availableCategories == null ? List.of() : List.copyOf(availableCategories);
     }
 
     /**
-     * @since 1.0.0
+     * @since 1.1.0
      */
     public static class ListOf extends ArrayList<ActionDescriptor> {
     }

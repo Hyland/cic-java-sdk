@@ -18,6 +18,7 @@
  */
 package org.hyland.sdk.cic.ke;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -35,7 +36,7 @@ import org.hyland.sdk.cic.ke.object.ProcessRequest;
 /**
  * High-level service for the Context (Knowledge Enrichment) API providing end-to-end workflows.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
 public class KEService {
 
@@ -43,7 +44,7 @@ public class KEService {
 
     private int pollMaxAttempts = 20;
 
-    private long pollIntervalMs = 5000;
+    private Duration pollInterval = Duration.ofSeconds(5);
 
     public KEService(KEHttpClient httpClient) {
         this.httpClient = httpClient;
@@ -56,18 +57,19 @@ public class KEService {
      * must synchronize externally or configure poll settings before sharing the instance.
      *
      * @param maxAttempts the maximum number of polling attempts (must be at least 1)
-     * @param intervalMs the sleep interval between polls in milliseconds (must be non-negative)
-     * @throws IllegalArgumentException if maxAttempts is less than 1 or intervalMs is negative
+     * @param interval the sleep interval between polls (must be non-negative)
+     * @throws IllegalArgumentException if maxAttempts is less than 1 or interval is negative
      */
-    public void setPollSettings(int maxAttempts, long intervalMs) {
+    public void setPollSettings(int maxAttempts, Duration interval) {
         if (maxAttempts < 1) {
             throw new IllegalArgumentException("maxAttempts must be at least 1, got: " + maxAttempts);
         }
-        if (intervalMs < 0) {
-            throw new IllegalArgumentException("intervalMs must be non-negative, got: " + intervalMs);
+        Objects.requireNonNull(interval, "interval cannot be null");
+        if (interval.isNegative()) {
+            throw new IllegalArgumentException("interval must be non-negative");
         }
         this.pollMaxAttempts = maxAttempts;
-        this.pollIntervalMs = intervalMs;
+        this.pollInterval = interval;
     }
 
     /**
@@ -170,7 +172,7 @@ public class KEService {
 
         for (int attempt = 1; attempt <= pollMaxAttempts; attempt++) {
             if (attempt > 1) {
-                sleep(pollIntervalMs);
+                sleep(pollInterval.toMillis());
             }
 
             var result = httpClient.getResultsIfReady(processingId);
@@ -220,7 +222,7 @@ public class KEService {
      *
      * @return the list of action descriptors
      * @throws CICSdkException if the request fails
-     * @since 1.0.0
+     * @since 1.1.0
      */
     public List<ActionDescriptor> getActionDescriptors() {
         return httpClient.getActionDescriptors();
@@ -231,7 +233,7 @@ public class KEService {
      *
      * @return a map of version identifiers to their usage counts
      * @throws CICSdkException if the request fails
-     * @since 1.0.0
+     * @since 1.1.0
      */
     public Map<String, Long> getVersionUsageStats() {
         return httpClient.getVersionUsageStats();

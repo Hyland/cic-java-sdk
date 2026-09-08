@@ -25,7 +25,7 @@ import java.util.Objects;
 /**
  * Test payload for {@code POST /config/options/rules/test}.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
 public final class RuleTestRequest {
 
@@ -45,10 +45,12 @@ public final class RuleTestRequest {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null || getClass() != obj.getClass())
+        }
+        if (obj == null || getClass() != obj.getClass()) {
             return false;
+        }
         return Objects.equals(properties, ((RuleTestRequest) obj).properties);
     }
 

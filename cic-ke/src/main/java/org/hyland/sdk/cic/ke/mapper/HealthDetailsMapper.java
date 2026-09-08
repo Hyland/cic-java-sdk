@@ -18,10 +18,13 @@
  */
 package org.hyland.sdk.cic.ke.mapper;
 
+import java.time.Duration;
+
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 import org.hyland.sdk.cic.ke.object.HealthDetails;
+import org.hyland.sdk.cic.ke.object.Percentage;
 
 class HealthDetailsMapper implements CICMapper<HealthDetails> {
 
@@ -41,8 +44,8 @@ class HealthDetailsMapper implements CICMapper<HealthDetails> {
                        .map(a -> a.getBoolean("ok", false))
                        .orElse(false);
 
-        return new HealthDetails(status, timestamp, appVersion, uptimeSeconds, cpuPercent, memoryUsedPercent,
-                diskUsedPercent, awsOk);
+        return new HealthDetails(status, timestamp, appVersion, Duration.ofMillis((long) (uptimeSeconds * 1000)),
+                new Percentage(cpuPercent), new Percentage(memoryUsedPercent), new Percentage(diskUsedPercent), awsOk);
     }
 
     private String extractNestedString(CICObject obj, String parent, String key) {

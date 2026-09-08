@@ -24,7 +24,7 @@ import java.util.List;
 /**
  * Embedding model information from {@code GET /models} endpoint.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
 public record EmbeddingModel(String name, int maxChunkSize, List<String> supportedPrecisions,
         List<Integer> supportedOutputDimensions, List<String> supportedInputType) {
@@ -37,7 +37,7 @@ public record EmbeddingModel(String name, int maxChunkSize, List<String> support
     }
 
     /**
-     * @since 1.0.0
+     * @since 1.1.0
      */
     public static class ListOf extends ArrayList<EmbeddingModel> {
     }

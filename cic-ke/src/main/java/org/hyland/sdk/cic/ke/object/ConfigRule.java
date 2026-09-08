@@ -25,7 +25,7 @@ import java.util.Objects;
 /**
  * A configuration rule with conditions and processing config.
  *
- * @since 1.0.0
+ * @since 1.1.0
  */
 public final class ConfigRule {
 
@@ -66,10 +66,12 @@ public final class ConfigRule {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null || getClass() != obj.getClass())
+        }
+        if (obj == null || getClass() != obj.getClass()) {
             return false;
+        }
         ConfigRule that = (ConfigRule) obj;
         return Objects.equals(id, that.id) && Objects.equals(name, that.name)
                 && Objects.equals(conditions, that.conditions) && Objects.equals(config, that.config);
@@ -81,7 +83,7 @@ public final class ConfigRule {
     }
 
     /**
-     * @since 1.0.0
+     * @since 1.1.0
      */
     public static class ListOf extends ArrayList<ConfigRule> {
     }
@@ -112,8 +114,9 @@ public final class ConfigRule {
         }
 
         public Builder addCondition(String field, String value) {
-            if (this.conditions == null)
+            if (this.conditions == null) {
                 this.conditions = new ArrayList<>();
+            }
             this.conditions.add(new RuleCondition(field, value));
             return this;
         }

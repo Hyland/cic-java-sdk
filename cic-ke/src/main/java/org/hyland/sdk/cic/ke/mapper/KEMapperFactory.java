@@ -18,6 +18,10 @@
  */
 package org.hyland.sdk.cic.ke.mapper;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
 import org.hyland.sdk.cic.http.client.mapper.CICMapper;
 import org.hyland.sdk.cic.http.client.mapper.MapperService;
 import org.hyland.sdk.cic.ke.object.ActionDescriptor;
@@ -37,54 +41,41 @@ import org.hyland.sdk.cic.ke.object.RuleTestResponse;
 import org.hyland.sdk.cic.ke.object.VersionUsageStats;
 
 /**
- * @since 1.0.0
+ * @since 1.1.0
  */
 public class KEMapperFactory implements MapperService.MapperFactory {
+
+    private static final List<Entry<Class<?>, CICMapper<?>>> MAPPERS = List.of(
+            // Data Curation mappers
+            Map.entry(PresignResponse.class, new PresignResponseMapper()),
+            Map.entry(JobStatus.class, new JobStatusMapper()),
+            Map.entry(EmbeddingModel.ListOf.class, new EmbeddingModelMapper.ListMapper()),
+            Map.entry(EmbeddingModel.class, new EmbeddingModelMapper()),
+            Map.entry(ProcessingOptions.class, new ProcessingOptionsMapper()),
+            // Context API mappers
+            Map.entry(ActionDescriptor.ListOf.class, new ActionDescriptorMapper.ListMapper()),
+            Map.entry(ActionDescriptor.class, new ActionDescriptorMapper()),
+            Map.entry(PresignedUrl.class, new PresignedUrlMapper()),
+            Map.entry(ProcessRequest.class, new ProcessRequestMapper()),
+            Map.entry(ProcessResponse.class, new ProcessResponseMapper()),
+            Map.entry(EnrichmentResult.class, new EnrichmentResultMapper()),
+            // Configuration API mappers
+            Map.entry(ConfigOptions.class, new ConfigOptionsMapper()),
+            Map.entry(ConfigRule.ListOf.class, new ConfigRuleMapper.ListMapper()),
+            Map.entry(ConfigRule.class, new ConfigRuleMapper()),
+            Map.entry(RuleTestRequest.class, new RuleTestRequestMapper()),
+            Map.entry(RuleTestResponse.class, new RuleTestResponseMapper()),
+            Map.entry(VersionUsageStats.class, new VersionUsageStatsMapper()),
+            // Health
+            Map.entry(HealthDetails.class, new HealthDetailsMapper()));
 
     @Override
     @SuppressWarnings("unchecked")
     public <T> CICMapper<T> getMapper(Class<T> type) {
-        // Data Curation mappers
-        if (PresignResponse.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new PresignResponseMapper();
-        } else if (JobStatus.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new JobStatusMapper();
-        } else if (EmbeddingModel.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new EmbeddingModelMapper();
-        } else if (EmbeddingModel.ListOf.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new EmbeddingModelMapper.ListMapper();
-        } else if (ProcessingOptions.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new ProcessingOptionsMapper();
-        }
-        // Context API mappers
-        else if (ActionDescriptor.ListOf.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new ActionDescriptorMapper.ListMapper();
-        } else if (ActionDescriptor.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new ActionDescriptorMapper();
-        } else if (PresignedUrl.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new PresignedUrlMapper();
-        } else if (ProcessRequest.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new ProcessRequestMapper();
-        } else if (ProcessResponse.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new ProcessResponseMapper();
-        } else if (EnrichmentResult.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new EnrichmentResultMapper();
-        }
-        // Configuration API mappers
-        else if (ConfigOptions.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new ConfigOptionsMapper();
-        } else if (ConfigRule.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new ConfigRuleMapper();
-        } else if (ConfigRule.ListOf.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new ConfigRuleMapper.ListMapper();
-        } else if (RuleTestRequest.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new RuleTestRequestMapper();
-        } else if (RuleTestResponse.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new RuleTestResponseMapper();
-        } else if (VersionUsageStats.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new VersionUsageStatsMapper();
-        } else if (HealthDetails.class.isAssignableFrom(type)) {
-            return (CICMapper<T>) new HealthDetailsMapper();
+        for (var entry : MAPPERS) {
+            if (entry.getKey().isAssignableFrom(type)) {
+                return (CICMapper<T>) entry.getValue();
+            }
         }
         return null;
     }

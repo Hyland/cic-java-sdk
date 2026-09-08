@@ -109,11 +109,11 @@ jobs:
 
       - name: Run E2E Tests against Staging (pre-release gate)
         env:
-          CIC_CLIENT_ID: ${{ secrets.CIC_CLIENT_ID }}
-          CIC_CLIENT_SECRET: ${{ secrets.CIC_CLIENT_SECRET }}
-          CIC_BASE_URL: ${{ secrets.CIC_BASE_URL }}
-          CIC_AUTH_URL: ${{ secrets.CIC_AUTH_URL }}
-          CIC_DC_BASE_URL: ${{ secrets.CIC_DC_BASE_URL }}
+          CIC_KE_CLIENT_ID: ${{ secrets.CIC_CLIENT_ID }}
+          CIC_KE_CLIENT_SECRET: ${{ secrets.CIC_CLIENT_SECRET }}
+          CIC_KE_BASE_URL: ${{ secrets.CIC_BASE_URL }}
+          CIC_KE_AUTH_URL: ${{ secrets.CIC_AUTH_URL }}
+          CIC_KE_DC_BASE_URL: ${{ secrets.CIC_DC_BASE_URL }}
         run: |
           set -euo pipefail
           mvn --batch-mode -nsu verify -Pe2e -pl cic-ke -am

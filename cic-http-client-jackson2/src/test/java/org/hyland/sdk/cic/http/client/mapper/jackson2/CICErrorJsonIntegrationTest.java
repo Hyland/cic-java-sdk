@@ -54,7 +54,7 @@ class CICErrorJsonIntegrationTest {
         assertEquals("invalid_request", error.error());
         assertEquals("Bad request body", error.errorDescription());
         assertEquals("Bad request body", error.message());
-        assertEquals("HTTP error - Bad request body", exception.getMessage());
+        assertEquals("HTTP error", exception.getMessage());
     }
 
     @Test
@@ -73,8 +73,8 @@ class CICErrorJsonIntegrationTest {
                   "type": "https://tools.ietf.org/html/rfc9110#section-15.5.4",
                   "title": "Request Processing Error",
                   "status": 403,
-                  "detail": "Requested model 'nbme-organ-system-1' is not available for this caller.",
-                  "model": "nbme-organ-system-1",
+                  "detail": "Requested model 'pretrained-model-b' is not available for this caller.",
+                  "model": "pretrained-model-b",
                   "category": "OrganSystem"
                 }
                 """;
@@ -87,12 +87,12 @@ class CICErrorJsonIntegrationTest {
         assertEquals("https://tools.ietf.org/html/rfc9110#section-15.5.4", error.type());
         assertEquals("Request Processing Error", error.title());
         assertEquals(403, error.status());
-        assertEquals("Requested model 'nbme-organ-system-1' is not available for this caller.", error.detail());
+        assertEquals("Requested model 'pretrained-model-b' is not available for this caller.", error.detail());
         assertNull(error.error());
         assertNull(error.errorDescription());
-        assertEquals("nbme-organ-system-1", error.extensions().get("model"));
+        assertEquals("pretrained-model-b", error.extensions().get("model"));
         assertEquals("OrganSystem", error.extensions().get("category"));
-        assertTrue(exception.getMessage().contains(error.detail()));
+        assertEquals("HTTP error", exception.getMessage());
     }
 
     @Test
@@ -105,7 +105,7 @@ class CICErrorJsonIntegrationTest {
                   "status": 400,
                   "errors": {
                     "Actions.pretrainedClassification.model": [
-                      "Model 'nbme-organ-system-1' is not valid for category 'MediaType'."
+                      "Model 'pretrained-model-b' is not valid for category 'MediaType'."
                     ]
                   }
                 }
@@ -119,7 +119,7 @@ class CICErrorJsonIntegrationTest {
         var errors = (Map<String, Object>) error.extensions().get("errors");
         var modelErrors = (List<Object>) errors.get("Actions.pretrainedClassification.model");
         assertEquals(1, modelErrors.size());
-        assertTrue(modelErrors.get(0).toString().contains("nbme-organ-system-1"));
+        assertTrue(modelErrors.get(0).toString().contains("pretrained-model-b"));
         assertEquals("One or more validation errors occurred.", error.message());
     }
 
@@ -184,7 +184,7 @@ class CICErrorJsonIntegrationTest {
 
         assertTrue(exception.remoteCause().isPresent());
         assertEquals("Job not found", exception.remoteCause().get().message());
-        assertTrue(exception.getMessage().contains("Job not found"));
+        assertEquals("HTTP error", exception.getMessage());
     }
 
     private static CICHttpResponse<String> responseOf(int statusCode, String body) {

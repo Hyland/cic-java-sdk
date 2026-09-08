@@ -18,19 +18,21 @@
  */
 package org.hyland.sdk.cic.ke.object;
 
+import java.time.Duration;
+
 /**
  * Detailed health information from the Data Curation service.
  *
  * @param status overall service status (e.g. "healthy", "degraded")
  * @param timestamp the health check timestamp
  * @param applicationVersion the application version
- * @param uptimeSeconds the application uptime in seconds
- * @param cpuPercent system CPU usage percentage
- * @param memoryUsedPercent system memory usage percentage
- * @param diskUsedPercent system disk usage percentage
+ * @param uptime the application uptime
+ * @param cpuPercent system CPU usage
+ * @param memoryUsedPercent system memory usage
+ * @param diskUsedPercent system disk usage
  * @param awsOk whether the AWS dependency check passed
- * @since 1.0.0
+ * @since 1.1.0
  */
-public record HealthDetails(String status, String timestamp, String applicationVersion, double uptimeSeconds,
-        double cpuPercent, double memoryUsedPercent, double diskUsedPercent, boolean awsOk) {
+public record HealthDetails(String status, String timestamp, String applicationVersion, Duration uptime,
+        Percentage cpuPercent, Percentage memoryUsedPercent, Percentage diskUsedPercent, boolean awsOk) {
 }

@@ -16,21 +16,17 @@
  * Contributors:
  *     Abhishek Gupta
  */
-package org.hyland.sdk.cic.ke.object;
+package org.hyland.sdk.cic.ke.mapper;
 
-import java.util.List;
-import java.util.Map;
+import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
+import org.hyland.sdk.cic.ke.object.RuleCondition;
 
 /**
- * Structured representation of a Data Curation result, parsed from the downloaded JSON output.
- *
- * @since 1.0.0
+ * @since 1.1.0
  */
-public record CurationResult(String markdownOutput, List<Map<String, Object>> chunksWithEmbeddings,
-        List<Map<String, Object>> piiMatches, Map<String, Object> rawResult) {
+class RuleConditionMapper {
 
-    public CurationResult {
-        chunksWithEmbeddings = chunksWithEmbeddings == null ? List.of() : List.copyOf(chunksWithEmbeddings);
-        piiMatches = piiMatches == null ? List.of() : List.copyOf(piiMatches);
+    RuleCondition fromCICObject(CICObject cicObject) {
+        return new RuleCondition(cicObject.getStringOrThrow("field"), cicObject.getStringOrThrow("value"));
     }
 }

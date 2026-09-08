@@ -70,10 +70,10 @@ class KEObjectTest {
     @Test
     void testActionConfigEmpty() {
         var config = ActionConfig.empty();
-        assertNull(config.classes());
+        assertTrue(config.classes().isEmpty());
         assertNull(config.maxWordCount());
-        assertNull(config.kSimilarMetadata());
-        assertNull(config.instructions());
+        assertTrue(config.kSimilarMetadata().isEmpty());
+        assertTrue(config.instructions().isEmpty());
     }
 
     @Test
@@ -84,7 +84,7 @@ class KEObjectTest {
                                  .addSimilarMetadata(Map.of("title", "Sample"))
                                  .instructions(Map.of("context", "legal documents"))
                                  .category("MediaType")
-                                 .model("nbme-media-type")
+                                 .model("pretrained-model-a")
                                  .build();
 
         assertEquals(List.of("invoice", "contract"), config.classes());
@@ -92,7 +92,7 @@ class KEObjectTest {
         assertEquals(1, config.kSimilarMetadata().size());
         assertEquals("legal documents", config.instructions().get("context"));
         assertEquals("MediaType", config.category());
-        assertEquals("nbme-media-type", config.model());
+        assertEquals("pretrained-model-a", config.model());
     }
 
     @Test
@@ -162,7 +162,7 @@ class KEObjectTest {
         assertEquals(ProcessRequest.VERSION_V2, request.version());
         var config = request.actions().get("textEmbeddings");
         assertNotNull(config);
-        assertNull(config.classes());
+        assertTrue(config.classes().isEmpty());
         assertNull(config.maxWordCount());
     }
 
@@ -467,12 +467,12 @@ class KEObjectTest {
 
     @Test
     void testActionResult() {
-        var success = new ActionResult<>(true, "result-value", null);
+        var success = new ActionResult.Success<>("result-value");
         assertTrue(success.isSuccess());
         assertEquals("result-value", success.result());
         assertNull(success.error());
 
-        var failure = new ActionResult<>(false, null, new ProcessingError(null, "error-msg"));
+        var failure = new ActionResult.Failure<>(new ProcessingError(ProcessingErrorType.UNKNOWN, "error-msg"));
         assertFalse(failure.isSuccess());
         assertEquals("error-msg", failure.error().message());
     }
@@ -546,15 +546,6 @@ class KEObjectTest {
     }
 
     @Test
-    void testCurationResult() {
-        var result = new CurationResult("# Markdown", List.of(Map.of("chunk", "data")), List.of(), Map.of("key", "v"));
-        assertEquals("# Markdown", result.markdownOutput());
-        assertEquals(1, result.chunksWithEmbeddings().size());
-        assertTrue(result.piiMatches().isEmpty());
-        assertEquals("v", result.rawResult().get("key"));
-    }
-
-    @Test
     void testEmbeddingModel() {
         var model = new EmbeddingModel("cohere.embed-multilingual-v3", 512, List.of("float32", "int8"), List.of(1024),
                 List.of("search_document"));
@@ -567,7 +558,7 @@ class KEObjectTest {
 
     @Test
     void testEnrichmentResultEntry() {
-        var textSummary = new ActionResult<>(true, "Summary", null);
+        var textSummary = new ActionResult.Success<>("Summary");
         var entry = new EnrichmentResultEntry("key", null, null, null, textSummary, null, null, null, null, null, null,
                 null, null);
         assertEquals("key", entry.objectKey());
@@ -580,22 +571,23 @@ class KEObjectTest {
 
     @Test
     void testEnrichmentResultEntryDefensivelyCopiesProcessingErrors() {
-        var errors = new ArrayList<>(List.of(new ProcessingError("ValidationError", "Unsupported format")));
+        var errors = new ArrayList<>(
+                List.of(new ProcessingError(ProcessingErrorType.VALIDATION_ERROR, "Unsupported format")));
         var entry = new EnrichmentResultEntry("key", null, null, null, null, null, null, null, null, null, null, null,
                 errors);
 
         errors.clear();
 
-        assertEquals(List.of(new ProcessingError("ValidationError", "Unsupported format")),
+        assertEquals(List.of(new ProcessingError(ProcessingErrorType.VALIDATION_ERROR, "Unsupported format")),
                 entry.generalProcessingErrors());
         assertThrows(UnsupportedOperationException.class,
-                () -> entry.generalProcessingErrors().add(new ProcessingError("Other", "Failure")));
+                () -> entry.generalProcessingErrors().add(new ProcessingError(ProcessingErrorType.UNKNOWN, "Failure")));
     }
 
     @Test
     void testEnrichmentResultEntryWithPretrainedClassification() {
         var classification = new ClassificationResult("invoice", 0.95);
-        var actionResult = new ActionResult<>(true, classification, null);
+        var actionResult = new ActionResult.Success<>(classification);
         var entry = new EnrichmentResultEntry("key", null, null, null, null, null, null, null, null, null, null,
                 actionResult, null);
         assertNotNull(entry.pretrainedClassification());
@@ -628,8 +620,8 @@ class KEObjectTest {
     void testActionDescriptorNullableFields() {
         var descriptor = new ActionDescriptor("textSummarization", null, null);
         assertEquals("textSummarization", descriptor.name());
-        assertNull(descriptor.availableModels());
-        assertNull(descriptor.availableCategories());
+        assertTrue(descriptor.availableModels().isEmpty());
+        assertTrue(descriptor.availableCategories().isEmpty());
     }
 
     @Test
@@ -667,23 +659,17 @@ class KEObjectTest {
     }
 
     @Test
-    void testProcessingErrorKnownType() {
-        var error = new ProcessingError("ValidationError", "Unsupported format");
-        assertEquals(ProcessingErrorType.VALIDATION_ERROR, error.knownType());
+    void testProcessingErrorType() {
+        var error = new ProcessingError(ProcessingErrorType.VALIDATION_ERROR, "Unsupported format");
+        assertEquals(ProcessingErrorType.VALIDATION_ERROR, error.type());
+        assertEquals("Unsupported format", error.message());
 
-        var unknownError = new ProcessingError("FutureError", "Something new");
-        assertEquals(ProcessingErrorType.UNKNOWN, unknownError.knownType());
+        var unknown = new ProcessingError(ProcessingErrorType.UNKNOWN, "Something new");
+        assertEquals(ProcessingErrorType.UNKNOWN, unknown.type());
 
-        var nullError = new ProcessingError(null, "No type");
-        assertEquals(ProcessingErrorType.UNKNOWN, nullError.knownType());
-    }
-
-    @Test
-    void testProcessingErrorNullableFields() {
-        var error = new ProcessingError(null, null);
-        assertNull(error.errorType());
-        assertNull(error.message());
-        assertEquals(ProcessingErrorType.UNKNOWN, error.knownType());
+        var nullMessage = new ProcessingError(ProcessingErrorType.TIMEOUT, null);
+        assertEquals(ProcessingErrorType.TIMEOUT, nullMessage.type());
+        assertNull(nullMessage.message());
     }
 
     // --- ProcessRequest saveResultInContentLakeRepository ---

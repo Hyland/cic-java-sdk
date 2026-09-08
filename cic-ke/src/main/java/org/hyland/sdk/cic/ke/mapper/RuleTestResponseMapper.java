@@ -26,7 +26,7 @@ import org.hyland.sdk.cic.ke.object.ProcessingOptions;
 import org.hyland.sdk.cic.ke.object.RuleTestResponse;
 
 /**
- * @since 1.0.0
+ * @since 1.1.0
  */
 class RuleTestResponseMapper implements CICMapper<RuleTestResponse> {
 
