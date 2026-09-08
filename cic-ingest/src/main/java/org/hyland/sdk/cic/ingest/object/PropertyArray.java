@@ -32,7 +32,9 @@ import java.util.stream.LongStream;
  * runtime failures during serialization.
  *
  * @since 1.0.0
+ * @deprecated since 1.1.0, in favor of the typed {@link IngestEventProperty} model, see {@link IngestEventProperties}.
  */
+@Deprecated(since = "1.1.0", forRemoval = true)
 public final class PropertyArray {
 
     private static final PropertyArray EMPTY = new PropertyArray(List.of());

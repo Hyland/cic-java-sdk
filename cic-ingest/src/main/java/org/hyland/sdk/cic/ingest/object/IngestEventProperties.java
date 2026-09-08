@@ -32,7 +32,13 @@ import java.util.function.Consumer;
  * {@link IngestEventProperties}.
  *
  * @since 1.0.0
+ * @deprecated since 1.1.0, in favor of the typed {@link IngestEventProperty} model ({@link IngestEventPropertyValue} /
+ *             {@link IngestEventPropertyFile}), used by {@link IngestEvent#typedProperties()}. This class is kept for
+ *             backward compatibility and is converted to/from the typed model on a best-effort basis; conversion throws
+ *             {@link UnsupportedOperationException} when a typed property cannot be represented in this legacy model
+ *             (e.g. {@link IngestEventPropertyFile}).
  */
+@Deprecated(since = "1.1.0", forRemoval = true)
 public final class IngestEventProperties {
 
     private final Map<String, Object> properties;

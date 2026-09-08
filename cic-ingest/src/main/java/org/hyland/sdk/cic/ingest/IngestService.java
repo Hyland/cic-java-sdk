@@ -21,9 +21,11 @@ package org.hyland.sdk.cic.ingest;
 import java.util.Deque;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.stream.Collectors;
 
 import org.hyland.sdk.cic.http.client.mapper.object.CICBlob;
 import org.hyland.sdk.cic.ingest.object.IngestEvent;
+import org.hyland.sdk.cic.ingest.object.IngestEventPropertyFile;
 import org.hyland.sdk.cic.ingest.object.PreSignedUrl;
 
 /**
@@ -76,7 +78,37 @@ public class IngestService {
     }
 
     public void ingest(IngestEvent event) {
-        httpClient.ingest(event);
+        ingest(IngestEvent.Batch.of(event));
+    }
+
+    /**
+     * Ingests a batch of events, automatically uploading any blob referenced by an {@link IngestEventPropertyFile}
+     * property beforehand.
+     *
+     * @since 1.1.0
+     */
+    public void ingest(IngestEvent.Batch batch) {
+        httpClient.ingest(
+                batch.stream().map(this::uploadBlobsIfNeeded).collect(Collectors.toCollection(IngestEvent.Batch::new)));
+    }
+
+    /**
+     * Walks the given event's properties, uploading any blob referenced by an {@link IngestEventPropertyFile},
+     * replacing it with an {@code id}-bearing property ready to be sent to the wire.
+     *
+     * @since 1.1.0
+     */
+    protected IngestEvent uploadBlobsIfNeeded(IngestEvent event) {
+        return event.toBuilder().replaceProperties((key, property) -> {
+            if (property instanceof IngestEventPropertyFile propertyFile && propertyFile.blob().isPresent()) {
+                var propertyFileBuilder = propertyFile.toBuilder();
+                uploadBlobIfNeeded(event, propertyFile.blob().get()).map(PreSignedUrl::id)
+                                                                    .ifPresent(propertyFileBuilder::id);
+                return propertyFileBuilder.build();
+            } else {
+                return property;
+            }
+        }).build();
     }
 
     protected PreSignedUrl getPreSignedUrl() {

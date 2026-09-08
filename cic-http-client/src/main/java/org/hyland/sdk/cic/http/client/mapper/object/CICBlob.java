@@ -29,7 +29,7 @@ import java.util.function.Supplier;
 /**
  * @since 1.0.0
  */
-public interface CICBlob {
+public interface CICBlob extends CICMarker {
 
     /**
      * Returns a new {@link InputStream} to read the blob's content.

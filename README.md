@@ -165,6 +165,10 @@ See the `cic-http-client-jackson2` module for a full implementation.
 - Keep mappers and serializers stateless and thread-safe.
 - Use SPI for easy extension and modularity.
 
+**`CICMarker`:**
+- **Package:** `org.hyland.sdk.cic.http.client.mapper.object`
+- An empty marker interface identifying business objects that are CIC node-like structures. `CICBlob` and `CICNode` both extend it, allowing APIs to accept either uniformly where a plain marker type is sufficient.
+
 **`CICBlob`:**
 - **Package:** `org.hyland.sdk.cic.http.client.mapper.object`
 - Represents a binary payload (content, digest, and optional content type/name/size) exchanged with CIC, e.g. when uploading a document via `IngestService`.
@@ -233,8 +237,12 @@ CICBlob streamedFileBlob = new FileCICBlob(Paths.get("invoice.pdf"), "applicatio
 ### 4. CIC Ingest Integration
 - **Package:** `org.hyland.sdk.cic.ingest`
 - Provides APIs for interacting with the CIC Ingest service:
-  - `IngestService`: High-level API for ingest operations (e.g., uploading blobs, managing pre-signed URLs).
+  - `IngestService`: High-level API for ingest operations (e.g., uploading blobs, managing pre-signed URLs, sending single or batched `IngestEvent`s).
   - `IngestHttpClient`: Lower-level HTTP client, extends `AbstractAuthenticatedHttpClient` for direct HTTP interactions.
+- **Design notes:**
+  - `IngestEvent` properties are now modeled with the typed `IngestEventProperty` hierarchy (`IngestEventPropertyValue` for scalars/arrays/objects, `IngestEventPropertyFile` for blob-backed properties). Use `IngestEvent.Builder.putProperty(...)`/`typedProperties(...)` to build events.
+  - `IngestService.ingest(IngestEvent)` and `ingest(IngestEvent.Batch)` automatically upload any `IngestEventPropertyFile` blobs (via `uploadBlobsIfNeeded`) before sending the event(s), so callers don't need to manage pre-signed URLs manually for property-attached blobs.
+  - The legacy `IngestEventProperties`/`PropertyArray` model (untyped, `Map`-like) is deprecated since 1.1.0 but still supported for backward compatibility; `IngestEvent` transparently converts between the legacy and typed models.
 
 **Example Usage:**
 ```java
@@ -248,6 +256,16 @@ IngestHttpClient client = IngestHttpClient.from("https://ingestion.insight.dev.e
     .build();
 IngestService service = new IngestService(client);
 service.uploadBlobIfNeeded(documentId, blob);
+
+// Build and send an event with typed properties, including a blob-backed file property
+IngestEvent event = IngestEvent.builder(IngestEvent.Type.CREATE, documentId)
+    .putProperty("title", "Invoice #123")
+    .putProperty("file:content", IngestEventPropertyFile.builder(blob).build())
+    .build();
+service.ingest(event); // uploads "file:content"'s blob automatically before sending
+
+// Send several events in a single batch
+service.ingest(IngestEvent.Batch.of(event1, event2));
 ```
 
 ---
