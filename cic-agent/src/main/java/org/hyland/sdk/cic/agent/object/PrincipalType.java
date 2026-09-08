@@ -27,7 +27,8 @@ import java.util.stream.Collectors;
  */
 public enum PrincipalType {
 
-    USER("User"), GROUP("Group");
+    USER("User"),
+    GROUP("Group");
 
     private static final Map<String, PrincipalType> BY_VALUE = Arrays.stream(
             values()).collect(Collectors.toUnmodifiableMap(PrincipalType::value, t -> t));

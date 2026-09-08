@@ -25,7 +25,8 @@ import java.util.Objects;
  */
 public enum MembershipType {
 
-    DIRECT("Direct"), INDIRECT("Indirect");
+    DIRECT("Direct"),
+    INDIRECT("Indirect");
 
     private final String value;
 
