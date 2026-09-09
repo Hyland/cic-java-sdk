@@ -19,11 +19,10 @@
 package org.hyland.sdk.cic.ke.object;
 
 /**
- * Structured result payload from a pretrained classification action.
+ * Represents the classification label assigned by the Context API {@code imageClassification} action.
  *
- * @param classification the predicted class label
- * @param confidence the model's confidence score (0.0 to 1.0)
+ * @param value the assigned classification label
  * @since 1.1.0
  */
-public record ClassificationResult(String classification, double confidence) implements EnrichmentData {
+public record ImageClassificationResult(String value) implements EnrichmentData {
 }

@@ -19,20 +19,19 @@
 package org.hyland.sdk.cic.ke.object;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * Per-object enrichment result entry from the Context API.
  *
  * @since 1.1.0
  */
-public record EnrichmentResultEntry(String objectKey, ActionResult<String> imageDescription,
-        ActionResult<Map<String, Object>> imageMetadata, ActionResult<Map<String, Object>> textMetadata,
-        ActionResult<String> textSummary, ActionResult<String> textClassification,
-        ActionResult<String> imageClassification, ActionResult<List<List<Double>>> textEmbeddings,
-        ActionResult<List<Double>> imageEmbeddings, ActionResult<Map<String, List<String>>> namedEntityText,
-        ActionResult<Map<String, List<String>>> namedEntityImage,
-        ActionResult<ClassificationResult> pretrainedClassification, List<ProcessingError> generalProcessingErrors) {
+public record EnrichmentResultEntry(String objectKey, ActionResult<ImageDescription> imageDescription,
+        ActionResult<ImageMetadata> imageMetadata, ActionResult<TextMetadata> textMetadata,
+        ActionResult<TextSummary> textSummary, ActionResult<TextClassificationResult> textClassification,
+        ActionResult<ImageClassificationResult> imageClassification, ActionResult<TextEmbedding> textEmbeddings,
+        ActionResult<ImageEmbedding> imageEmbeddings, ActionResult<NamedEntities> namedEntityText,
+        ActionResult<NamedEntities> namedEntityImage, ActionResult<ClassificationResult> pretrainedClassification,
+        List<ProcessingError> generalProcessingErrors) {
 
     public EnrichmentResultEntry {
         generalProcessingErrors = generalProcessingErrors == null ? List.of() : List.copyOf(generalProcessingErrors);

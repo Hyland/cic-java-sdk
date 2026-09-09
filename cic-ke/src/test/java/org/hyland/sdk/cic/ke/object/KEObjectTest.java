@@ -467,12 +467,13 @@ class KEObjectTest {
 
     @Test
     void testActionResult() {
-        var success = new ActionResult.Success<>("result-value");
+        var success = new ActionResult.Success<>(new TextSummary("result-value"));
         assertTrue(success.isSuccess());
-        assertEquals("result-value", success.result());
+        assertEquals("result-value", success.result().value());
         assertNull(success.error());
 
-        var failure = new ActionResult.Failure<>(new ProcessingError(ProcessingErrorType.UNKNOWN, "error-msg"));
+        var failure = new ActionResult.Failure<TextSummary>(
+                new ProcessingError(ProcessingErrorType.UNKNOWN, "error-msg"));
         assertFalse(failure.isSuccess());
         assertEquals("error-msg", failure.error().message());
     }
@@ -558,12 +559,12 @@ class KEObjectTest {
 
     @Test
     void testEnrichmentResultEntry() {
-        var textSummary = new ActionResult.Success<>("Summary");
+        var textSummary = new ActionResult.Success<>(new TextSummary("Summary"));
         var entry = new EnrichmentResultEntry("key", null, null, null, textSummary, null, null, null, null, null, null,
                 null, null);
         assertEquals("key", entry.objectKey());
         assertNotNull(entry.textSummary());
-        assertEquals("Summary", entry.textSummary().result());
+        assertEquals("Summary", entry.textSummary().result().value());
         assertNull(entry.imageDescription());
         assertNull(entry.pretrainedClassification());
         assertTrue(entry.generalProcessingErrors().isEmpty());

@@ -25,14 +25,29 @@ import java.time.Duration;
  *
  * @param status overall service status (e.g. "healthy", "degraded")
  * @param timestamp the health check timestamp
- * @param applicationVersion the application version
- * @param uptime the application uptime
- * @param cpuPercent system CPU usage
- * @param memoryUsedPercent system memory usage
- * @param diskUsedPercent system disk usage
+ * @param application application-level details (version, uptime)
+ * @param system system-level resource usage (CPU, memory, disk)
  * @param awsOk whether the AWS dependency check passed
  * @since 1.1.0
  */
-public record HealthDetails(String status, String timestamp, String applicationVersion, Duration uptime,
-        Percentage cpuPercent, Percentage memoryUsedPercent, Percentage diskUsedPercent, boolean awsOk) {
+public record HealthDetails(String status, String timestamp, Application application, System system, boolean awsOk) {
+
+    /**
+     * Application-level health details.
+     *
+     * @param version the application version
+     * @param uptime the application uptime
+     */
+    public record Application(String version, Duration uptime) {
+    }
+
+    /**
+     * System-level resource usage.
+     *
+     * @param cpuPercent CPU usage percentage
+     * @param memoryUsedPercent memory usage percentage
+     * @param diskUsedPercent disk usage percentage
+     */
+    public record System(Percentage cpuPercent, Percentage memoryUsedPercent, Percentage diskUsedPercent) {
+    }
 }

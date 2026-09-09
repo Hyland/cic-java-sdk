@@ -21,7 +21,7 @@ package org.hyland.sdk.cic.ke.object;
 /**
  * Response from {@code POST /presign} endpoint.
  *
- * @param options resolved processing options (nullable, present when the API returns them)
+ * @param options resolved processing options for this job
  * @since 1.1.0
  */
 public record PresignResponse(String jobId, String putUrl, String getUrl, ProcessingOptions options) {

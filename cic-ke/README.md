@@ -440,55 +440,58 @@ System.out.println("Context API healthy: " + healthy); // true
 
 ### Reading Enrichment Results
 
-Each result entry contains an `ActionResult<T>` for every requested action. Each `ActionResult` has `isSuccess()`, `result()`, and `error()`.
+Each result entry contains an `ActionResult<T extends EnrichmentData>` for every requested action. Each `ActionResult` has `isSuccess()`, `result()`, and `error()`. All result types implement the `EnrichmentData` marker interface for compile-time safety.
 
 ```java
 for (var entry : result.results()) {
     System.out.println("Object: " + entry.objectKey());
 
-    // Text Summary (String result)
+    // Text Summary (TextSummary result)
     if (entry.textSummary() != null && entry.textSummary().isSuccess()) {
-        System.out.println("Summary: " + entry.textSummary().result());
+        System.out.println("Summary: " + entry.textSummary().result().value());
     }
 
-    // Named Entities (Map<String, List<String>> result)
+    // Named Entities (NamedEntities result)
     if (entry.namedEntityText() != null && entry.namedEntityText().isSuccess()) {
-        Map<String, List<String>> entities = entry.namedEntityText().result();
-        entities.forEach((type, values) ->
+        NamedEntities entities = entry.namedEntityText().result();
+        entities.entities().forEach((type, values) ->
             System.out.println(type + ": " + values));
         // e.g. PERSON: [John Doe, Jane Smith]
         //      ORG: [Hyland Software]
+        // Convenience: entities.get("PERSON") returns the list or empty if absent
     }
 
-    // Text Classification (String result)
+    // Text Classification (TextClassificationResult result)
     if (entry.textClassification() != null && entry.textClassification().isSuccess()) {
-        System.out.println("Class: " + entry.textClassification().result());
+        System.out.println("Class: " + entry.textClassification().result().value());
     }
 
-    // Image Description (String result)
+    // Image Description (ImageDescription result)
     if (entry.imageDescription() != null && entry.imageDescription().isSuccess()) {
-        System.out.println("Description: " + entry.imageDescription().result());
+        System.out.println("Description: " + entry.imageDescription().result().value());
     }
 
-    // Text Embeddings (one vector per text chunk)
+    // Text Embeddings (TextEmbedding result — one vector per text chunk)
     if (entry.textEmbeddings() != null && entry.textEmbeddings().isSuccess()) {
-        List<List<Double>> vectors = entry.textEmbeddings().result();
-        for (int chunk = 0; chunk < vectors.size(); chunk++) {
-            System.out.println("Chunk " + chunk + " embedding dimension: " + vectors.get(chunk).size());
+        TextEmbedding embedding = entry.textEmbeddings().result();
+        System.out.println("Chunks: " + embedding.size() + ", dimensions: " + embedding.dimensions());
+        for (int chunk = 0; chunk < embedding.vectors().size(); chunk++) {
+            System.out.println("Chunk " + chunk + " vector size: " + embedding.vectors().get(chunk).size());
         }
     }
 
-    // Image Embeddings (one vector for the image)
+    // Image Embeddings (ImageEmbedding result — one vector for the image)
     if (entry.imageEmbeddings() != null && entry.imageEmbeddings().isSuccess()) {
-        List<Double> vector = entry.imageEmbeddings().result();
-        System.out.println("Image embedding dimension: " + vector.size());
+        ImageEmbedding embedding = entry.imageEmbeddings().result();
+        System.out.println("Image embedding dimensions: " + embedding.dimensions());
     }
 
-    // Text Metadata (Map<String, Object> result)
+    // Text Metadata (TextMetadata result — dynamic key-value pairs)
     if (entry.textMetadata() != null && entry.textMetadata().isSuccess()) {
-        Map<String, Object> metadata = entry.textMetadata().result();
-        metadata.forEach((key, value) ->
+        TextMetadata metadata = entry.textMetadata().result();
+        metadata.properties().forEach((key, value) ->
             System.out.println(key + " = " + value));
+        // Convenience: metadata.get("author") returns the value or null
     }
 
     // Pretrained Classification (ClassificationResult with classification + confidence)

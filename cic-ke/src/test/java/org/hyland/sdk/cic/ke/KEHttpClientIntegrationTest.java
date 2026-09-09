@@ -163,7 +163,7 @@ class KEHttpClientIntegrationTest {
         assertEquals("proc-1", result.id());
         assertTrue(result.isSuccess());
         assertEquals(1, result.results().size());
-        assertEquals("A summary", result.results().get(0).textSummary().result());
+        assertEquals("A summary", result.results().get(0).textSummary().result().value());
         assertEquals(ProcessingErrorType.UNKNOWN, result.results().get(0).generalProcessingErrors().get(0).type());
         assertEquals("Some pages could not be read",
                 result.results().get(0).generalProcessingErrors().get(0).message());

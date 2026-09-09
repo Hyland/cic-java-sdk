@@ -33,26 +33,29 @@ class HealthDetailsMapper implements CICMapper<HealthDetails> {
         var obj = (CICObject) cicNode;
         var status = obj.getStringOrNull("status");
         var timestamp = obj.getStringOrNull("timestamp");
-
-        var appVersion = extractNestedString(obj, "application", "version");
-        var uptimeSeconds = extractNestedDouble(obj, "application", "uptime_seconds");
-        var cpuPercent = extractNestedDouble(obj, "system", "cpu_percent");
-        var memoryUsedPercent = extractNestedDouble(obj, "system", "memory_used_percent");
-        var diskUsedPercent = extractNestedDouble(obj, "system", "disk_used_percent");
+        var application = mapApplication(obj);
+        var system = mapSystem(obj);
         var awsOk = obj.getOptionalObject("checks")
                        .flatMap(c -> c.getOptionalObject("aws"))
                        .map(a -> a.getBoolean("ok", false))
                        .orElse(false);
 
-        return new HealthDetails(status, timestamp, appVersion, Duration.ofMillis((long) (uptimeSeconds * 1000)),
-                new Percentage(cpuPercent), new Percentage(memoryUsedPercent), new Percentage(diskUsedPercent), awsOk);
+        return new HealthDetails(status, timestamp, application, system, awsOk);
     }
 
-    private String extractNestedString(CICObject obj, String parent, String key) {
-        return obj.getOptionalObject(parent).map(p -> p.getStringOrNull(key)).orElse(null);
+    private HealthDetails.Application mapApplication(CICObject obj) {
+        return obj.getOptionalObject("application").map(app -> {
+            var version = app.getStringOrNull("version");
+            var uptimeSeconds = (long) app.getDouble("uptime_seconds", 0.0);
+            return new HealthDetails.Application(version, Duration.ofSeconds(uptimeSeconds));
+        }).orElse(null);
     }
 
-    private double extractNestedDouble(CICObject obj, String parent, String key) {
-        return obj.getOptionalObject(parent).map(p -> p.getDouble(key, 0.0)).orElse(0.0);
+    private HealthDetails.System mapSystem(CICObject obj) {
+        return obj.getOptionalObject("system")
+                  .map(sys -> new HealthDetails.System(new Percentage(sys.getDouble("cpu_percent", 0.0)),
+                          new Percentage(sys.getDouble("memory_used_percent", 0.0)),
+                          new Percentage(sys.getDouble("disk_used_percent", 0.0))))
+                  .orElse(null);
     }
 }

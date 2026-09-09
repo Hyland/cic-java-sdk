@@ -377,14 +377,15 @@ class DataCurationServiceTest {
 
     @Test
     void testGetHealthDetails() {
-        httpClient.healthDetails = new HealthDetails("healthy", "2026-08-26T12:54:31Z", "1.193.0-release",
-                Duration.ofMillis(114396200L), new Percentage(0.0), new Percentage(19.3), new Percentage(21.0), true);
+        httpClient.healthDetails = new HealthDetails("healthy", "2026-08-26T12:54:31Z",
+                new HealthDetails.Application("1.193.0-release", Duration.ofSeconds(114396L)),
+                new HealthDetails.System(new Percentage(0.0), new Percentage(19.3), new Percentage(21.0)), true);
 
         var details = service.getHealthDetails();
 
         assertNotNull(details);
         assertEquals("healthy", details.status());
-        assertEquals("1.193.0-release", details.applicationVersion());
+        assertEquals("1.193.0-release", details.application().version());
         assertEquals(1, httpClient.getHealthDetailsCalls);
     }
 

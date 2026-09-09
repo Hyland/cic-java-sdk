@@ -156,7 +156,7 @@ class KEWorkflowIntegrationTest {
         assertTrue(result.isSuccess());
         assertEquals("wf-proc-001", result.id());
         assertEquals(1, result.results().size());
-        assertEquals("This is a summary.", result.results().get(0).textSummary().result());
+        assertEquals("This is a summary.", result.results().get(0).textSummary().result().value());
         assertEquals(1, uploadReceived.get());
         assertEquals(2, pollCount.get());
     }
@@ -262,7 +262,7 @@ class KEWorkflowIntegrationTest {
         apiServer.createContext("/presign", exchange -> {
             TestHttpServers.assertBearerToken(exchange);
             TestHttpServers.respondJson(exchange, 200, """
-                    {"job_id":"dc-job-001","put_url":"%s/dc-upload","get_url":"%s/dc-download"}
+                    {"job_id":"dc-job-001","put_url":"%s/dc-upload","get_url":"%s/dc-download","options":{"pii":false}}
                     """.formatted(apiBase, apiBase));
         });
 
@@ -341,9 +341,11 @@ class KEWorkflowIntegrationTest {
         apiServer.createContext("/presign", exchange -> {
             TestHttpServers.assertBearerToken(exchange);
             capturedPresignBody.set(TestHttpServers.readRequestBody(exchange));
-            TestHttpServers.respondJson(exchange, 200, """
-                    {"job_id":"dc-job-002","put_url":"%s/dc-upload","get_url":"%s/dc-download"}
-                    """.formatted(apiBase, apiBase));
+            TestHttpServers.respondJson(exchange, 200,
+                    """
+                            {"job_id":"dc-job-002","put_url":"%s/dc-upload","get_url":"%s/dc-download","options":{"chunking":true}}
+                            """.formatted(
+                            apiBase, apiBase));
         });
 
         apiServer.createContext("/dc-upload", exchange -> {
@@ -398,7 +400,7 @@ class KEWorkflowIntegrationTest {
         apiServer.createContext("/presign", exchange -> {
             TestHttpServers.assertBearerToken(exchange);
             TestHttpServers.respondJson(exchange, 200, """
-                    {"job_id":"dc-timeout","put_url":"%s/dc-upload","get_url":"%s/dc-download"}
+                    {"job_id":"dc-timeout","put_url":"%s/dc-upload","get_url":"%s/dc-download","options":{"pii":false}}
                     """.formatted(apiBase, apiBase));
         });
 

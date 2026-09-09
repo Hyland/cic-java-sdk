@@ -24,7 +24,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
-import org.hyland.sdk.cic.http.client.mapper.object.CICNode;
 import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 
 /**
@@ -83,16 +82,12 @@ public record CICError(String error, String errorDescription, String type, Strin
         Map<String, Object> extensions = new LinkedHashMap<>();
         for (var entry : cicObject.getProperties().entrySet()) {
             if (!KNOWN_KEYS.contains(entry.getKey())) {
-                extensions.put(entry.getKey(), toJavaValue(entry.getValue()));
+                extensions.put(entry.getKey(), entry.getValue().toJavaValue());
             }
         }
 
         return new CICError(error, errorDescription, type, title, status, detail, instance,
                 extensions.isEmpty() ? null : extensions);
-    }
-
-    private static Object toJavaValue(CICNode node) {
-        return node.toJavaValue();
     }
 
     /**

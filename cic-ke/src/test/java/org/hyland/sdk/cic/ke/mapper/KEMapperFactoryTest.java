@@ -80,7 +80,8 @@ class KEMapperFactoryTest {
                 {
                   "job_id": "abc-123",
                   "put_url": "https://s3.example.com/put",
-                  "get_url": "https://s3.example.com/get"
+                  "get_url": "https://s3.example.com/get",
+                  "options": {"pii": false}
                 }
                 """;
 
@@ -88,6 +89,7 @@ class KEMapperFactoryTest {
         assertEquals("abc-123", result.jobId());
         assertEquals("https://s3.example.com/put", result.putUrl());
         assertEquals("https://s3.example.com/get", result.getUrl());
+        assertNotNull(result.options());
     }
 
     @Test
@@ -229,7 +231,7 @@ class KEMapperFactoryTest {
         assertEquals("contents/file.pdf", entry.objectKey());
         assertNotNull(entry.textSummary());
         assertEquals(true, entry.textSummary().isSuccess());
-        assertEquals("This is a summary.", entry.textSummary().result());
+        assertEquals("This is a summary.", entry.textSummary().result().value());
         assertNotNull(entry.imageDescription());
         assertEquals(false, entry.imageDescription().isSuccess());
         assertEquals("Not an image", entry.imageDescription().error().message());

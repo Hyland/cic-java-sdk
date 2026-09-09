@@ -32,19 +32,19 @@ import org.hyland.sdk.cic.ke.object.ProcessingErrorType;
 class ProcessingErrorMapper {
 
     ProcessingError mapActionError(CICObject actionObj) {
+        // "error" is polymorphic: can be an object {errorType, message} or a plain string
         var errorNode = actionObj.getProperties().get("error");
-        if (errorNode != null && !(errorNode instanceof CICPrimitive.CICNull)) {
-            if (errorNode instanceof CICObject errorObj) {
-                return new ProcessingError(ProcessingErrorType.fromValue(errorObj.getStringOrNull("errorType")),
-                        errorObj.getStringOrNull("message"));
-            }
-            if (errorNode instanceof CICPrimitive.CICString errorStr) {
-                return new ProcessingError(ProcessingErrorType.UNKNOWN, errorStr.value());
-            }
+        if (errorNode instanceof CICObject errorObj) {
+            return new ProcessingError(ProcessingErrorType.fromValue(errorObj.getStringOrNull("errorType")),
+                    errorObj.getStringOrNull("message"));
         }
-        var errorMessageNode = actionObj.getProperties().get("errorMessage");
-        if (errorMessageNode instanceof CICPrimitive.CICString msgStr) {
-            return new ProcessingError(ProcessingErrorType.UNKNOWN, msgStr.value());
+        if (errorNode instanceof CICPrimitive.CICString errorStr) {
+            return new ProcessingError(ProcessingErrorType.UNKNOWN, errorStr.value());
+        }
+        // Fallback: some actions use "errorMessage" instead of "error"
+        var errorMessage = actionObj.getOptionalString("errorMessage");
+        if (errorMessage.isPresent()) {
+            return new ProcessingError(ProcessingErrorType.UNKNOWN, errorMessage.get());
         }
         return null;
     }

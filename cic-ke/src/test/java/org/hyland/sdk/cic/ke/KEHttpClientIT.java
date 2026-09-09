@@ -192,8 +192,8 @@ class KEHttpClientIT {
         assertNotNull(entry.textEmbeddings());
         assertTrue(entry.textEmbeddings().isSuccess());
         assertNotNull(entry.textEmbeddings().result());
-        assertFalse(entry.textEmbeddings().result().isEmpty());
-        assertFalse(entry.textEmbeddings().result().get(0).isEmpty());
+        assertFalse(entry.textEmbeddings().result().vectors().isEmpty());
+        assertFalse(entry.textEmbeddings().result().vectors().get(0).isEmpty());
     }
 
     @Test
@@ -223,7 +223,7 @@ class KEHttpClientIT {
         assertNotNull(entry.textClassification());
         assertTrue(entry.textClassification().isSuccess());
         assertNotNull(entry.textClassification().result());
-        assertFalse(entry.textClassification().result().isBlank());
+        assertFalse(entry.textClassification().result().value().isBlank());
     }
 
     @Test
@@ -253,7 +253,7 @@ class KEHttpClientIT {
         assertNotNull(entry.textMetadata());
         assertTrue(entry.textMetadata().isSuccess());
         assertNotNull(entry.textMetadata().result());
-        assertFalse(entry.textMetadata().result().isEmpty());
+        assertFalse(entry.textMetadata().result().properties().isEmpty());
     }
 
     // -------------------------------------------------------
@@ -288,7 +288,7 @@ class KEHttpClientIT {
         assertNotNull(entry.namedEntityText(), "Expected namedEntityText in multi-action result");
         assertTrue(entry.namedEntityText().isSuccess());
         assertNotNull(entry.namedEntityText().result());
-        assertFalse(entry.namedEntityText().result().isEmpty());
+        assertFalse(entry.namedEntityText().result().entities().isEmpty());
     }
 
     // -------------------------------------------------------
@@ -525,7 +525,7 @@ class KEHttpClientIT {
         assertNotNull(entry.textSummary());
         assertTrue(entry.textSummary().isSuccess());
         assertNotNull(entry.textSummary().result());
-        assertFalse(entry.textSummary().result().isBlank());
+        assertFalse(entry.textSummary().result().value().isBlank());
     }
 
     // -------------------------------------------------------

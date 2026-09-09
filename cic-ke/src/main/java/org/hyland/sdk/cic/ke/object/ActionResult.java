@@ -21,17 +21,20 @@ package org.hyland.sdk.cic.ke.object;
 /**
  * Represents the outcome of a single enrichment action. Each action in the enrichment response is either a
  * {@link Success} containing the typed result, or a {@link Failure} containing a {@link ProcessingError}.
+ * <p>
+ * The type parameter {@code T} is bounded by {@link EnrichmentData} to ensure that only well-defined enrichment result
+ * types can be used.
  *
- * @param <T> the type of the successful result
+ * @param <T> the type of the successful result, must implement {@link EnrichmentData}
  * @since 1.1.0
  */
-public sealed interface ActionResult<T> permits ActionResult.Success, ActionResult.Failure {
+public sealed interface ActionResult<T extends EnrichmentData> permits ActionResult.Success, ActionResult.Failure {
 
-    static <T> ActionResult<T> success(T result) {
+    static <T extends EnrichmentData> ActionResult<T> success(T result) {
         return new Success<>(result);
     }
 
-    static <T> ActionResult<T> failure(ProcessingError error) {
+    static <T extends EnrichmentData> ActionResult<T> failure(ProcessingError error) {
         return new Failure<>(error);
     }
 
@@ -47,7 +50,7 @@ public sealed interface ActionResult<T> permits ActionResult.Success, ActionResu
      */
     ProcessingError error();
 
-    record Success<T>(T result) implements ActionResult<T> {
+    record Success<T extends EnrichmentData>(T result) implements ActionResult<T> {
 
         @Override
         public boolean isSuccess() {
@@ -60,7 +63,7 @@ public sealed interface ActionResult<T> permits ActionResult.Success, ActionResu
         }
     }
 
-    record Failure<T>(ProcessingError error) implements ActionResult<T> {
+    record Failure<T extends EnrichmentData>(ProcessingError error) implements ActionResult<T> {
 
         @Override
         public boolean isSuccess() {

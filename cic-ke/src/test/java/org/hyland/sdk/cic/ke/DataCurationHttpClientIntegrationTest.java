@@ -88,9 +88,10 @@ class DataCurationHttpClientIntegrationTest {
         var capturedAuth = new AtomicReference<String>();
         apiServer.createContext("/presign", exchange -> {
             capturedAuth.set(exchange.getRequestHeaders().getFirst("Authorization"));
-            TestHttpServers.respondJson(exchange, 200, """
-                    {"job_id":"job-1","put_url":"https://s3.example.com/put","get_url":"https://s3.example.com/get"}
-                    """);
+            TestHttpServers.respondJson(exchange, 200,
+                    """
+                            {"job_id":"job-1","put_url":"https://s3.example.com/put","get_url":"https://s3.example.com/get","options":{"pii":false}}
+                            """);
         });
         apiServer.start();
         client = buildClient();
@@ -110,9 +111,10 @@ class DataCurationHttpClientIntegrationTest {
         apiServer.createContext("/presign", exchange -> {
             TestHttpServers.assertBearerToken(exchange);
             capturedBody.set(TestHttpServers.readRequestBody(exchange));
-            TestHttpServers.respondJson(exchange, 200, """
-                    {"job_id":"job-2","put_url":"https://put","get_url":"https://get"}
-                    """);
+            TestHttpServers.respondJson(exchange, 200,
+                    """
+                            {"job_id":"job-2","put_url":"https://put","get_url":"https://get","options":{"chunking":true,"chunk_size":2000}}
+                            """);
         });
         apiServer.start();
         client = buildClient();
@@ -196,9 +198,11 @@ class DataCurationHttpClientIntegrationTest {
 
         assertNotNull(details);
         assertEquals("healthy", details.status());
-        assertEquals("1.193.0-release", details.applicationVersion());
-        assertEquals(114396200L, details.uptime().toMillis());
-        assertEquals(19.3, details.memoryUsedPercent().value());
+        assertNotNull(details.application());
+        assertEquals("1.193.0-release", details.application().version());
+        assertEquals(114396L, details.application().uptime().toSeconds());
+        assertNotNull(details.system());
+        assertEquals(19.3, details.system().memoryUsedPercent().value());
         assertTrue(details.awsOk());
     }
 

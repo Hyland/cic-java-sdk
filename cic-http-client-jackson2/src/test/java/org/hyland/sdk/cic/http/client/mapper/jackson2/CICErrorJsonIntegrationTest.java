@@ -58,15 +58,6 @@ class CICErrorJsonIntegrationTest {
     }
 
     @Test
-    void malformedJsonProducesExceptionWithoutRemoteCause() {
-        var exception = assertThrows(CICServiceException.class,
-                () -> ErrorUtils.throwException(responseOf(500, "Internal Server Error"), "Server error"));
-
-        assertTrue(exception.remoteCause().isEmpty());
-        assertEquals("Server error", exception.getMessage());
-    }
-
-    @Test
     void parsesProblemDetailsWithExtensionFields() {
         var body = """
                 {

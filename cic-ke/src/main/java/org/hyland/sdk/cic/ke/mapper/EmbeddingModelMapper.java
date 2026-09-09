@@ -38,7 +38,7 @@ class EmbeddingModelMapper implements CICMapper<EmbeddingModel> {
     public EmbeddingModel fromCICNode(CICNode cicNode) {
         var cicObject = (CICObject) cicNode;
         var name = cicObject.getStringOrThrow("name");
-        var maxChunkSize = cicObject.getIntegerOrNull("max_chunk_size");
+        var maxChunkSize = cicObject.getInt("max_chunk_size", 0);
 
         List<String> supportedPrecisions = new ArrayList<>();
         cicObject.getOptionalArray("supported_precisions").ifPresent(arr -> {
@@ -65,8 +65,8 @@ class EmbeddingModelMapper implements CICMapper<EmbeddingModel> {
             }
         });
 
-        return new EmbeddingModel(name, maxChunkSize != null ? maxChunkSize : 0, supportedPrecisions,
-                supportedOutputDimensions, supportedInputType);
+        return new EmbeddingModel(name, maxChunkSize, supportedPrecisions, supportedOutputDimensions,
+                supportedInputType);
     }
 
     static class ListMapper implements CICMapper<EmbeddingModel.ListOf> {

@@ -418,16 +418,16 @@ class KEMapperTest {
         assertEquals("contents/doc.pdf", entry.objectKey());
 
         assertTrue(entry.textSummary().isSuccess());
-        assertEquals("Summary text", entry.textSummary().result());
+        assertEquals("Summary text", entry.textSummary().result().value());
 
         assertTrue(entry.imageDescription().isSuccess());
-        assertEquals("A cat on a mat", entry.imageDescription().result());
+        assertEquals("A cat on a mat", entry.imageDescription().result().value());
 
         assertTrue(entry.textClassification().isSuccess());
-        assertEquals("invoice", entry.textClassification().result());
+        assertEquals("invoice", entry.textClassification().result().value());
 
-        assertEquals(List.of(List.of(0.1, 0.2, 0.3)), entry.textEmbeddings().result());
-        assertEquals(List.of(0.4, 0.5), entry.imageEmbeddings().result());
+        assertEquals(List.of(List.of(0.1, 0.2, 0.3)), entry.textEmbeddings().result().vectors());
+        assertEquals(List.of(0.4, 0.5), entry.imageEmbeddings().result().vector());
 
         assertTrue(entry.namedEntityText().isSuccess());
         assertEquals(List.of("Alice", "Bob"), entry.namedEntityText().result().get("PERSON"));
@@ -499,8 +499,8 @@ class KEMapperTest {
         var result = MapperService.read(json, EnrichmentResult.class);
         var entry = result.results().get(0);
 
-        assertEquals(List.of(List.of(0.0, 1.0, 0.5, 2.0, -1.0)), entry.textEmbeddings().result());
-        assertEquals(List.of(1.0, 0.0, -3.0, 0.75), entry.imageEmbeddings().result());
+        assertEquals(List.of(List.of(0.0, 1.0, 0.5, 2.0, -1.0)), entry.textEmbeddings().result().vectors());
+        assertEquals(List.of(1.0, 0.0, -3.0, 0.75), entry.imageEmbeddings().result().vector());
     }
 
     @Test
@@ -529,10 +529,12 @@ class KEMapperTest {
 
         var entry = MapperService.read(json, EnrichmentResult.class).results().get(0);
 
-        assertEquals(List.of(List.of(0.1, 0.2), List.of(0.3, 0.4)), entry.textEmbeddings().result());
-        assertEquals(List.of(0.5, 0.6), entry.imageEmbeddings().result());
-        assertThrows(UnsupportedOperationException.class, () -> entry.textEmbeddings().result().add(List.of(0.7, 0.8)));
-        assertThrows(UnsupportedOperationException.class, () -> entry.textEmbeddings().result().get(0).add(0.9));
+        assertEquals(List.of(List.of(0.1, 0.2), List.of(0.3, 0.4)), entry.textEmbeddings().result().vectors());
+        assertEquals(List.of(0.5, 0.6), entry.imageEmbeddings().result().vector());
+        assertThrows(UnsupportedOperationException.class,
+                () -> entry.textEmbeddings().result().vectors().add(List.of(0.7, 0.8)));
+        assertThrows(UnsupportedOperationException.class,
+                () -> entry.textEmbeddings().result().vectors().get(0).add(0.9));
     }
 
     @Test
@@ -629,7 +631,8 @@ class KEMapperTest {
                 {
                   "job_id": "job-abc",
                   "put_url": "https://s3.example.com/put",
-                  "get_url": "https://s3.example.com/get"
+                  "get_url": "https://s3.example.com/get",
+                  "options": {"normalization": {"quotations": false, "dashes": false}, "pii": false}
                 }
                 """;
 
@@ -638,6 +641,7 @@ class KEMapperTest {
         assertEquals("job-abc", response.jobId());
         assertEquals("https://s3.example.com/put", response.putUrl());
         assertEquals("https://s3.example.com/get", response.getUrl());
+        assertNotNull(response.options());
     }
 
     // --- PresignedUrlMapper ---
@@ -1079,11 +1083,13 @@ class KEMapperTest {
 
         assertEquals("healthy", details.status());
         assertEquals("2026-08-26T12:54:31.936042+00:00", details.timestamp());
-        assertEquals("1.193.0-release", details.applicationVersion());
-        assertEquals(Duration.ofMillis(114396200L), details.uptime());
-        assertEquals(0.0, details.cpuPercent().value());
-        assertEquals(19.3, details.memoryUsedPercent().value());
-        assertEquals(21.0, details.diskUsedPercent().value());
+        assertNotNull(details.application());
+        assertEquals("1.193.0-release", details.application().version());
+        assertEquals(Duration.ofSeconds(114396L), details.application().uptime());
+        assertNotNull(details.system());
+        assertEquals(0.0, details.system().cpuPercent().value());
+        assertEquals(19.3, details.system().memoryUsedPercent().value());
+        assertEquals(21.0, details.system().diskUsedPercent().value());
         assertTrue(details.awsOk());
     }
 
@@ -1097,11 +1103,8 @@ class KEMapperTest {
 
         assertEquals("degraded", details.status());
         assertNull(details.timestamp());
-        assertNull(details.applicationVersion());
-        assertEquals(Duration.ZERO, details.uptime());
-        assertEquals(0.0, details.cpuPercent().value());
-        assertEquals(0.0, details.memoryUsedPercent().value());
-        assertEquals(0.0, details.diskUsedPercent().value());
+        assertNull(details.application());
+        assertNull(details.system());
         assertFalse(details.awsOk());
     }
 
@@ -1237,11 +1240,13 @@ class KEMapperTest {
 
         assertEquals("healthy", health.status());
         assertEquals("2026-08-26T12:54:31.936042+00:00", health.timestamp());
-        assertEquals("1.193.0-release", health.applicationVersion());
-        assertEquals(114396200L, health.uptime().toMillis(), 100);
-        assertEquals(0.0, health.cpuPercent().value(), 0.01);
-        assertEquals(19.3, health.memoryUsedPercent().value(), 0.01);
-        assertEquals(21.0, health.diskUsedPercent().value(), 0.01);
+        assertNotNull(health.application());
+        assertEquals("1.193.0-release", health.application().version());
+        assertEquals(114396L, health.application().uptime().toSeconds());
+        assertNotNull(health.system());
+        assertEquals(0.0, health.system().cpuPercent().value(), 0.01);
+        assertEquals(19.3, health.system().memoryUsedPercent().value(), 0.01);
+        assertEquals(21.0, health.system().diskUsedPercent().value(), 0.01);
         assertTrue(health.awsOk());
     }
 

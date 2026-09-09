@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import org.hyland.sdk.cic.http.client.CICSdkException;
 import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
@@ -29,7 +30,17 @@ import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
 import org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive;
 import org.hyland.sdk.cic.ke.object.ActionResult;
 import org.hyland.sdk.cic.ke.object.ClassificationResult;
+import org.hyland.sdk.cic.ke.object.EnrichmentData;
 import org.hyland.sdk.cic.ke.object.EnrichmentResultEntry;
+import org.hyland.sdk.cic.ke.object.ImageClassificationResult;
+import org.hyland.sdk.cic.ke.object.ImageDescription;
+import org.hyland.sdk.cic.ke.object.ImageEmbedding;
+import org.hyland.sdk.cic.ke.object.ImageMetadata;
+import org.hyland.sdk.cic.ke.object.NamedEntities;
+import org.hyland.sdk.cic.ke.object.TextClassificationResult;
+import org.hyland.sdk.cic.ke.object.TextEmbedding;
+import org.hyland.sdk.cic.ke.object.TextMetadata;
+import org.hyland.sdk.cic.ke.object.TextSummary;
 
 /**
  * @since 1.1.0
@@ -42,97 +53,97 @@ class EnrichmentResultEntryMapper {
 
     EnrichmentResultEntry fromCICObject(CICObject obj) {
         return new EnrichmentResultEntry(obj.getStringOrNull("objectKey"),
-                mapStringActionResult(obj, "imageDescription"), mapMapActionResult(obj, "imageMetadata"),
-                mapMapActionResult(obj, "textMetadata"), mapStringActionResult(obj, "textSummary"),
-                mapStringActionResult(obj, "textClassification"), mapStringActionResult(obj, "imageClassification"),
+                mapWrappedStringActionResult(obj, "imageDescription", ImageDescription::new),
+                mapMetadataActionResult(obj, "imageMetadata", ImageMetadata::new),
+                mapMetadataActionResult(obj, "textMetadata", TextMetadata::new),
+                mapWrappedStringActionResult(obj, "textSummary", TextSummary::new),
+                mapWrappedStringActionResult(obj, "textClassification", TextClassificationResult::new),
+                mapWrappedStringActionResult(obj, "imageClassification", ImageClassificationResult::new),
                 mapTextEmbeddingsActionResult(obj), mapImageEmbeddingsActionResult(obj),
-                mapStringListMapActionResult(obj, "namedEntityText"),
-                mapStringListMapActionResult(obj, "namedEntityImage"),
+                mapNamedEntitiesActionResult(obj, "namedEntityText"),
+                mapNamedEntitiesActionResult(obj, "namedEntityImage"),
                 mapClassificationActionResult(obj, "pretrainedClassification"),
                 errorMapper.mapGeneralProcessingErrors(obj));
     }
 
-    private ActionResult<String> mapStringActionResult(CICObject parent, String key) {
+    private <T extends EnrichmentData> ActionResult<T> mapWrappedStringActionResult(CICObject parent, String key,
+            Function<String, T> wrapper) {
         return parent.getOptionalObject(key).map(obj -> {
             var isSuccess = obj.getBoolean("isSuccess", false);
             var result = obj.getStringOrNull("result");
             var error = errorMapper.mapActionError(obj);
             if (isSuccess) {
-                return ActionResult.<String> success(result);
+                return ActionResult.<T> success(result != null ? wrapper.apply(result) : null);
             }
-            return ActionResult.<String> failure(error);
+            return ActionResult.<T> failure(error);
         }).orElse(null);
     }
 
-    @SuppressWarnings("unchecked")
-    private ActionResult<Map<String, Object>> mapMapActionResult(CICObject parent, String key) {
+    private <T extends EnrichmentData> ActionResult<T> mapMetadataActionResult(CICObject parent, String key,
+            Function<Map<String, Object>, T> wrapper) {
         return parent.getOptionalObject(key).map(obj -> {
             var isSuccess = obj.getBoolean("isSuccess", false);
             var error = errorMapper.mapActionError(obj);
-            Map<String, Object> result = null;
-            var resultNode = obj.getProperties().get("result");
-            if (resultNode instanceof CICObject resultObj) {
-                result = resultObj.toMap();
-            }
+            T result = obj.getOptionalObject("result").map(r -> wrapper.apply(r.toMap())).orElse(null);
             if (isSuccess) {
-                return ActionResult.<Map<String, Object>> success(result);
+                return ActionResult.<T> success(result);
             }
-            return ActionResult.<Map<String, Object>> failure(error);
+            return ActionResult.<T> failure(error);
         }).orElse(null);
     }
 
-    private ActionResult<List<List<Double>>> mapTextEmbeddingsActionResult(CICObject parent) {
+    private ActionResult<TextEmbedding> mapTextEmbeddingsActionResult(CICObject parent) {
         return parent.getOptionalObject("textEmbeddings").map(obj -> {
             var isSuccess = obj.getBoolean("isSuccess", false);
             var error = errorMapper.mapActionError(obj);
-            List<List<Double>> result = null;
-            var resultNode = obj.getProperties().get("result");
-            if (resultNode instanceof CICArray resultArr) {
+            TextEmbedding result = null;
+            var resultArr = obj.getOptionalArray("result").orElse(null);
+            if (resultArr != null) {
+                List<List<Double>> vectors;
                 if (resultArr.getElements().isEmpty()) {
-                    result = List.of();
+                    vectors = List.of();
                 } else if (resultArr.getElements().get(0) instanceof CICArray) {
-                    var vectors = new ArrayList<List<Double>>();
+                    var parsed = new ArrayList<List<Double>>();
                     for (var element : resultArr.getElements()) {
                         if (!(element instanceof CICArray vector)) {
                             throw invalidEmbeddingShape("textEmbeddings", "mixed vectors and scalar values");
                         }
-                        vectors.add(mapVector(vector, "textEmbeddings"));
+                        parsed.add(mapVector(vector, "textEmbeddings"));
                     }
-                    result = List.copyOf(vectors);
+                    vectors = List.copyOf(parsed);
                 } else {
-                    result = List.of(mapVector(resultArr, "textEmbeddings"));
+                    vectors = List.of(mapVector(resultArr, "textEmbeddings"));
                 }
-            } else if (resultNode != null && !(resultNode instanceof CICPrimitive.CICNull)) {
-                throw invalidEmbeddingShape("textEmbeddings", "expected an array");
+                result = new TextEmbedding(vectors);
             }
             if (isSuccess) {
-                return ActionResult.<List<List<Double>>> success(result);
+                return ActionResult.<TextEmbedding> success(result);
             }
-            return ActionResult.<List<List<Double>>> failure(error);
+            return ActionResult.<TextEmbedding> failure(error);
         }).orElse(null);
     }
 
-    private ActionResult<List<Double>> mapImageEmbeddingsActionResult(CICObject parent) {
+    private ActionResult<ImageEmbedding> mapImageEmbeddingsActionResult(CICObject parent) {
         return parent.getOptionalObject("imageEmbeddings").map(obj -> {
             var isSuccess = obj.getBoolean("isSuccess", false);
             var error = errorMapper.mapActionError(obj);
-            List<Double> result = null;
-            var resultNode = obj.getProperties().get("result");
-            if (resultNode instanceof CICArray resultArr) {
-                if (resultArr.getElements().size() == 1 && resultArr.getElements().get(0) instanceof CICArray vector) {
-                    result = mapVector(vector, "imageEmbeddings");
+            ImageEmbedding result = null;
+            var resultArr = obj.getOptionalArray("result").orElse(null);
+            if (resultArr != null) {
+                List<Double> vector;
+                if (resultArr.getElements().size() == 1 && resultArr.getElements().get(0) instanceof CICArray inner) {
+                    vector = mapVector(inner, "imageEmbeddings");
                 } else if (resultArr.getElements().stream().anyMatch(CICArray.class::isInstance)) {
                     throw invalidEmbeddingShape("imageEmbeddings", "expected one vector");
                 } else {
-                    result = mapVector(resultArr, "imageEmbeddings");
+                    vector = mapVector(resultArr, "imageEmbeddings");
                 }
-            } else if (resultNode != null && !(resultNode instanceof CICPrimitive.CICNull)) {
-                throw invalidEmbeddingShape("imageEmbeddings", "expected an array");
+                result = new ImageEmbedding(vector);
             }
             if (isSuccess) {
-                return ActionResult.<List<Double>> success(result);
+                return ActionResult.<ImageEmbedding> success(result);
             }
-            return ActionResult.<List<Double>> failure(error);
+            return ActionResult.<ImageEmbedding> failure(error);
         }).orElse(null);
     }
 
@@ -156,24 +167,23 @@ class EnrichmentResultEntryMapper {
         return new CICSdkException("Invalid " + actionName + " result: " + reason);
     }
 
-    private ActionResult<Map<String, List<String>>> mapStringListMapActionResult(CICObject parent, String key) {
+    private ActionResult<NamedEntities> mapNamedEntitiesActionResult(CICObject parent, String key) {
         return parent.getOptionalObject(key).map(obj -> {
             var isSuccess = obj.getBoolean("isSuccess", false);
             var error = errorMapper.mapActionError(obj);
-            Map<String, List<String>> result = null;
-            var resultNode = obj.getProperties().get("result");
-            if (resultNode instanceof CICObject resultObj) {
-                result = new HashMap<>();
+            NamedEntities result = obj.getOptionalObject("result").map(resultObj -> {
+                var entities = new HashMap<String, List<String>>();
                 for (var entry : resultObj.getProperties().entrySet()) {
                     if (entry.getValue() instanceof CICArray arr) {
-                        result.put(entry.getKey(), arr.toListString());
+                        entities.put(entry.getKey(), arr.toListString());
                     }
                 }
-            }
+                return new NamedEntities(entities);
+            }).orElse(null);
             if (isSuccess) {
-                return ActionResult.<Map<String, List<String>>> success(result);
+                return ActionResult.<NamedEntities> success(result);
             }
-            return ActionResult.<Map<String, List<String>>> failure(error);
+            return ActionResult.<NamedEntities> failure(error);
         }).orElse(null);
     }
 
@@ -181,11 +191,9 @@ class EnrichmentResultEntryMapper {
         return parent.getOptionalObject(key).map(obj -> {
             var isSuccess = obj.getBoolean("isSuccess", false);
             var error = errorMapper.mapActionError(obj);
-            ClassificationResult result = null;
-            var resultNode = obj.getProperties().get("result");
-            if (resultNode instanceof CICObject resultObj) {
-                result = classificationMapper.fromCICObject(resultObj);
-            }
+            ClassificationResult result = obj.getOptionalObject("result")
+                                             .map(classificationMapper::fromCICObject)
+                                             .orElse(null);
             if (isSuccess) {
                 return ActionResult.<ClassificationResult> success(result);
             }

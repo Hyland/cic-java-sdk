@@ -37,7 +37,7 @@ class PresignResponseMapper implements CICMapper<PresignResponse> {
         var jobId = cicObject.getStringOrThrow("job_id");
         var putUrl = cicObject.getStringOrThrow("put_url");
         var getUrl = cicObject.getStringOrThrow("get_url");
-        ProcessingOptions options = cicObject.getOptionalObject("options").map(optionsMapper::fromCICNode).orElse(null);
+        ProcessingOptions options = optionsMapper.fromCICNode(cicObject.getObjectOrThrow("options"));
         return new PresignResponse(jobId, putUrl, getUrl, options);
     }
 }

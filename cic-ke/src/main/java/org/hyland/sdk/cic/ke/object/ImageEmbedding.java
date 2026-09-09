@@ -18,12 +18,24 @@
  */
 package org.hyland.sdk.cic.ke.object;
 
+import java.util.List;
+
 /**
- * Structured result payload from a pretrained classification action.
+ * Represents an image embedding vector returned by the Context API {@code imageEmbeddings} action.
  *
- * @param classification the predicted class label
- * @param confidence the model's confidence score (0.0 to 1.0)
+ * @param vector the floating-point embedding vector
  * @since 1.1.0
  */
-public record ClassificationResult(String classification, double confidence) implements EnrichmentData {
+public record ImageEmbedding(List<Double> vector) implements EnrichmentData {
+
+    public ImageEmbedding {
+        vector = vector == null ? List.of() : List.copyOf(vector);
+    }
+
+    /**
+     * Returns the dimensionality of the embedding vector.
+     */
+    public int dimensions() {
+        return vector.size();
+    }
 }
