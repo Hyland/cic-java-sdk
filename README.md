@@ -173,6 +173,7 @@ See the `cic-http-client-jackson2` module for a full implementation.
   - `CICBlob.builder(String content)` — content encoded as UTF-8.
   - `CICBlob.builder(byte[] content)` — content is already available in memory.
   - `CICBlob.builder(Supplier<InputStream> inputStreamSupplier)` — for larger/streamed content (e.g. a `File`). The supplier is invoked each time `getInputStream()` is called, so it must produce a fresh stream every time rather than reusing an already-consumed one.
+  - `CICBlob.builder(Path path)` — for a file-backed blob: content is streamed from disk on every `getInputStream()` call, and `name`/`size` are pre-filled from the file when available (still overridable).
 - **Performance note:** the `Builder` is primarily meant for convenience (e.g. tests, small/one-off blobs). Integrations dealing with large files should implement `CICBlob` directly instead, so the content is only ever streamed from its source (e.g. disk) and never fully loaded into memory.
 
 **Example: Building a CICBlob**
@@ -185,6 +186,8 @@ CICBlob fileBlob = CICBlob.builder(content)
     .name("invoice.pdf")
     .digest("sha256:abc123")
     .build();
+
+CICBlob streamedBlob = CICBlob.builder(Paths.get("invoice.pdf")).contentType("application/pdf").build();
 ```
 
 **Example: Implementing CICBlob to stream a file without loading it into memory**

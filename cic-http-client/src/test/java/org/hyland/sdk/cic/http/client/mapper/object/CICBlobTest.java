@@ -26,11 +26,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Optional;
 import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * @since 1.1.0
@@ -68,6 +72,11 @@ public class CICBlobTest {
     @Test
     public void builderFromSupplierRequiresNonNullInputStreamSupplier() {
         assertThrows(NullPointerException.class, () -> CICBlob.builder((Supplier<InputStream>) null));
+    }
+
+    @Test
+    public void builderFromPathRequiresNonNullPath() {
+        assertThrows(NullPointerException.class, () -> CICBlob.builder((Path) null));
     }
 
     @Test
@@ -169,6 +178,66 @@ public class CICBlobTest {
     public void builderFromSupplierInputStreamSupplierIsCalledOnEachGetInputStream() throws IOException {
         var content = "test content".getBytes(StandardCharsets.UTF_8);
         var blob = CICBlob.builder(() -> new ByteArrayInputStream(content)).build();
+
+        InputStream first = blob.getInputStream();
+        InputStream second = blob.getInputStream();
+        assertNotSame(first, second, "Each call to getInputStream() should return a new InputStream");
+        try (first; second) {
+            assertEquals("test content", new String(first.readAllBytes(), StandardCharsets.UTF_8));
+            assertEquals("test content", new String(second.readAllBytes(), StandardCharsets.UTF_8));
+        }
+    }
+
+    @Test
+    public void builderFromPathBuildsBlobWithNameAndSizePreFilled(@TempDir Path tempDir) throws IOException {
+        var file = tempDir.resolve("invoice.pdf");
+        Files.writeString(file, "test content", StandardCharsets.UTF_8);
+
+        var blob = CICBlob.builder(file).contentType("application/pdf").digest("sha256:abc123").build();
+
+        assertEquals("application/pdf", blob.getContentType().orElseThrow());
+        assertEquals("invoice.pdf", blob.getName().orElseThrow());
+        assertEquals(Files.size(file), blob.getSize().orElseThrow());
+        assertEquals("sha256:abc123", blob.getDigest().orElseThrow());
+        try (var is = blob.getInputStream()) {
+            assertEquals("test content", new String(is.readAllBytes(), StandardCharsets.UTF_8));
+        }
+    }
+
+    @Test
+    public void builderFromPathAllowsOverridingNameAndSize(@TempDir Path tempDir) throws IOException {
+        var file = tempDir.resolve("invoice.pdf");
+        Files.writeString(file, "test content", StandardCharsets.UTF_8);
+
+        var blob = CICBlob.builder(file).name("other.pdf").size(1L).build();
+
+        assertEquals("other.pdf", blob.getName().orElseThrow());
+        assertEquals(1L, blob.getSize().orElseThrow());
+    }
+
+    @Test
+    public void builderFromPathLeavesSizeUnsetWhenFileDoesNotExist(@TempDir Path tempDir) {
+        var missingFile = tempDir.resolve("missing.pdf");
+
+        var blob = CICBlob.builder(missingFile).build();
+
+        assertEquals("missing.pdf", blob.getName().orElseThrow());
+        assertTrue(blob.getSize().isEmpty());
+    }
+
+    @Test
+    public void builderFromPathThrowsUncheckedIOExceptionWhenFileDoesNotExist(@TempDir Path tempDir) {
+        var missingFile = tempDir.resolve("missing.pdf");
+        var blob = CICBlob.builder(missingFile).build();
+
+        assertThrows(UncheckedIOException.class, blob::getInputStream);
+    }
+
+    @Test
+    public void builderFromPathReturnsNewInputStreamOnEachCall(@TempDir Path tempDir) throws IOException {
+        var file = tempDir.resolve("file.txt");
+        Files.writeString(file, "test content", StandardCharsets.UTF_8);
+        var blob = CICBlob.builder(file).build();
 
         InputStream first = blob.getInputStream();
         InputStream second = blob.getInputStream();
