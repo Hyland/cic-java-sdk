@@ -19,8 +19,12 @@
 package org.hyland.sdk.cic.http.client.mapper.object;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
@@ -92,6 +96,37 @@ public interface CICBlob {
      */
     static Builder builder(Supplier<InputStream> inputStreamSupplier) {
         return new Builder(inputStreamSupplier);
+    }
+
+    /**
+     * Creates a {@link Builder} for a {@link CICBlob} whose content is the file at the given {@code path}, streamed
+     * from disk without ever loading it fully into memory.
+     * <p>
+     * The {@linkplain #getName() name} and {@linkplain #getSize() size} are pre-filled from the given {@code path} when
+     * available, and can still be overridden on the returned {@link Builder}.
+     *
+     * @since 1.1.0
+     */
+    static Builder builder(Path path) {
+        Objects.requireNonNull(path, "path cannot be null");
+        Supplier<InputStream> inputStreamSupplier = () -> {
+            try {
+                return Files.newInputStream(path);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        };
+        var builder = builder(inputStreamSupplier);
+        var fileName = path.getFileName();
+        if (fileName != null) {
+            builder.name(fileName.toString());
+        }
+        try {
+            builder.size(Files.size(path));
+        } catch (IOException e) {
+            // size is unknown, e.g. the file does not exist yet; leave it unset
+        }
+        return builder;
     }
 
     /**
