@@ -1,0 +1,25 @@
+Patient Record - Confidential
+
+Name: John Michael Smith
+Date of Birth: March 15, 1978
+Social Security Number: 123-45-6789
+Medical Record Number: MRN-2026-00458
+Phone: (555) 867-5309
+Email: john.smith@example.com
+Address: 742 Evergreen Terrace, Springfield, IL 62704
+
+Insurance: BlueCross BlueShield, Policy #BC-9876543210
+Primary Care Physician: Dr. Sarah Johnson, MD
+
+Visit Date: August 20, 2026
+Chief Complaint: Persistent headaches and dizziness for the past two weeks.
+
+Assessment: Patient reports frequent migraines occurring 3-4 times per week, accompanied by
+photosensitivity and occasional nausea. Blood pressure reading today: 158/95 mmHg (elevated).
+Family history of hypertension noted. Patient currently taking Lisinopril 10mg daily.
+
+Plan: Increase Lisinopril to 20mg daily. Schedule follow-up in 2 weeks. Order MRI brain scan
+to rule out structural causes. Refer to neurology if symptoms persist after BP normalization.
+
+Signed: Dr. Sarah Johnson, MD
+License #: IL-MD-2015-78432

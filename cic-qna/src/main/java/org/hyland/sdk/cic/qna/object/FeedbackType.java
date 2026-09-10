@@ -23,7 +23,9 @@ package org.hyland.sdk.cic.qna.object;
  */
 public enum FeedbackType {
 
-    GOOD("Good"), BAD("Bad"), RETRY("Retry");
+    GOOD("Good"),
+    BAD("Bad"),
+    RETRY("Retry");
 
     private final String value;
 

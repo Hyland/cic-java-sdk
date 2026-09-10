@@ -29,6 +29,7 @@
     <module>cic-agent</module>
     <module>cic-qna</module>
     <module>cic-nucleus</module>
+    <module>cic-ke</module>
   </modules>
 
   <scm>
@@ -53,6 +54,7 @@
   <properties>
     <dependencies.junit-bom.version>6.0.3</dependencies.junit-bom.version>
     <maven.compiler.release>17</maven.compiler.release>
+    <maven-plugin.failsafe.version>3.6.0</maven-plugin.failsafe.version>
     <maven-plugin.spotless.version>3.2.1</maven-plugin.spotless.version>
     <dependencies.jsonassert.version>1.5.3</dependencies.jsonassert.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -89,6 +91,11 @@
       <dependency>
         <groupId>org.hyland.sdk</groupId>
         <artifactId>cic-nucleus</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.hyland.sdk</groupId>
+        <artifactId>cic-ke</artifactId>
         <version>${project.version}</version>
       </dependency>
       <!-- External dependencies - POM imports -->
@@ -183,7 +190,34 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+      </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <profile>
+      <id>e2e</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven-plugin.failsafe.version}</version>
+            <executions>
+              <execution>
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 
 </project>

@@ -25,8 +25,14 @@ import java.util.Objects;
  */
 public enum SystemIntegrationType {
 
-    ON_BASE("OnBase"), ALFRESCO("Alfresco"), PERCEPTIVE("Perceptive"), NUXEO("Nuxeo"), CONFLUENCE(
-            "Confluence"), SHARE_POINT("SharePoint"), LEGACY_HXP_R("LegacyHxPR"), LOCAL("Local");
+    ON_BASE("OnBase"),
+    ALFRESCO("Alfresco"),
+    PERCEPTIVE("Perceptive"),
+    NUXEO("Nuxeo"),
+    CONFLUENCE("Confluence"),
+    SHARE_POINT("SharePoint"),
+    LEGACY_HXP_R("LegacyHxPR"),
+    LOCAL("Local");
 
     private final String value;
 

@@ -23,7 +23,10 @@ package org.hyland.sdk.cic.qna.object;
  */
 public enum ResponseCompleteness {
 
-    SUBMITTED("Submitted"), COMPLETE("Complete"), ERROR("Error"), BLOCKED("Blocked");
+    SUBMITTED("Submitted"),
+    COMPLETE("Complete"),
+    ERROR("Error"),
+    BLOCKED("Blocked");
 
     private final String value;
 
