@@ -297,6 +297,8 @@ class KEHttpClientIT {
 
     private static ActionDescriptor pretrainedDescriptor;
 
+    private static final Map<String, String> modelCategoryCache = new java.util.concurrent.ConcurrentHashMap<>();
+
     private void assumePretrainedAvailable() {
         if (pretrainedDescriptor == null) {
             var descriptors = client.getActionDescriptors();
@@ -315,13 +317,22 @@ class KEHttpClientIT {
                 "Skipping: no categories available for pretrainedClassification");
     }
 
+    /**
+     * Returns a compatible category for the model, skipping the test if none is found. Results are cached to avoid
+     * repeated API calls across tests.
+     */
+    private String resolveCategory(String model) {
+        return modelCategoryCache.computeIfAbsent(model, this::findCompatibleCategory);
+    }
+
     @Test
     void pretrainedClassificationWithFirstModel() throws InterruptedException {
         assumePretrainedAvailable();
         assumeTrue(pretrainedDescriptor.availableModels().size() >= 1, "Skipping: need at least 1 model");
 
         String model = pretrainedDescriptor.availableModels().get(0);
-        String category = pretrainedDescriptor.availableCategories().get(0);
+        String category = resolveCategory(model);
+        assumeTrue(category != null, "Skipping: no compatible category found for model: " + model);
 
         var blob = loadResourceBlob(MEDICAL_XRAY, "image/jpeg");
         var presigned = client.getPresignedUrl("image/jpeg");
@@ -354,9 +365,8 @@ class KEHttpClientIT {
         assumeTrue(pretrainedDescriptor.availableModels().size() >= 2, "Skipping: need at least 2 models");
 
         String model = pretrainedDescriptor.availableModels().get(1);
-        String category = pretrainedDescriptor.availableCategories().size() >= 2
-                ? pretrainedDescriptor.availableCategories().get(1)
-                : pretrainedDescriptor.availableCategories().get(0);
+        String category = resolveCategory(model);
+        assumeTrue(category != null, "Skipping: no compatible category found for model: " + model);
 
         var blob = loadResourceBlob(MEDICAL_XRAY_SPINE, "image/png");
         var presigned = client.getPresignedUrl("image/png");
@@ -381,9 +391,11 @@ class KEHttpClientIT {
     @Test
     void pretrainedClassificationBatchMultipleImages() throws InterruptedException {
         assumePretrainedAvailable();
+        assumeTrue(pretrainedDescriptor.availableModels().size() >= 1, "Skipping: need at least 1 model");
 
         String model = pretrainedDescriptor.availableModels().get(0);
-        String category = pretrainedDescriptor.availableCategories().get(0);
+        String category = resolveCategory(model);
+        assumeTrue(category != null, "Skipping: no compatible category found for model: " + model);
 
         var xrayBlob = loadResourceBlob(MEDICAL_XRAY, "image/jpeg");
         var spineBlob = loadResourceBlob(MEDICAL_XRAY_SPINE, "image/png");
@@ -417,9 +429,11 @@ class KEHttpClientIT {
     @Test
     void pretrainedClassificationCombinedWithImageDescription() throws InterruptedException {
         assumePretrainedAvailable();
+        assumeTrue(pretrainedDescriptor.availableModels().size() >= 1, "Skipping: need at least 1 model");
 
         String model = pretrainedDescriptor.availableModels().get(0);
-        String category = pretrainedDescriptor.availableCategories().get(0);
+        String category = resolveCategory(model);
+        assumeTrue(category != null, "Skipping: no compatible category found for model: " + model);
 
         var blob = loadResourceBlob(MEDICAL_XRAY, "image/jpeg");
         var presigned = client.getPresignedUrl("image/jpeg");
@@ -450,9 +464,14 @@ class KEHttpClientIT {
         assumePretrainedAvailable();
 
         var blob = loadResourceBlob(MEDICAL_XRAY, "image/jpeg");
+        int testedCount = 0;
 
         for (var model : pretrainedDescriptor.availableModels()) {
-            String category = pretrainedDescriptor.availableCategories().get(0);
+            String category = resolveCategory(model);
+            if (category == null) {
+                continue;
+            }
+            testedCount++;
 
             var presigned = client.getPresignedUrl("image/jpeg");
             client.upload(presigned.presignedUrl(), blob);
@@ -474,6 +493,8 @@ class KEHttpClientIT {
             assertNotNull(classification.result(), "Null result for model: " + model);
             assertNotNull(classification.result().classification(), "Null classification label for model: " + model);
         }
+
+        assertTrue(testedCount > 0, "No models had a compatible category — nothing was tested");
     }
 
     @Test
@@ -531,6 +552,34 @@ class KEHttpClientIT {
     // -------------------------------------------------------
     // Helpers
     // -------------------------------------------------------
+
+    /**
+     * Finds a compatible category for the given model by trying each available category. The discovery endpoint does
+     * not expose model-to-category mappings, so we attempt a process request with each category and return the first
+     * one the API accepts (does not return 400). Returns {@code null} if no compatible category is found.
+     */
+    private String findCompatibleCategory(String model) {
+        var blob = loadResourceBlob(MEDICAL_XRAY, "image/jpeg");
+        for (var category : pretrainedDescriptor.availableCategories()) {
+            try {
+                var presigned = client.getPresignedUrl("image/jpeg");
+                client.upload(presigned.presignedUrl(), blob);
+                var request = ProcessRequest.builder()
+                                            .objectPath(presigned.objectKey())
+                                            .action(Action.PRETRAINED_CLASSIFICATION,
+                                                    cfg -> cfg.category(category).model(model))
+                                            .build();
+                client.process(request);
+                return category;
+            } catch (CICServiceException e) {
+                if (e.statusCode() == 400 || e.statusCode() == 403) {
+                    continue;
+                }
+                throw e;
+            }
+        }
+        return null;
+    }
 
     private EnrichmentResult pollForResult(String processingId, int maxAttempts, long intervalMs)
             throws InterruptedException {
