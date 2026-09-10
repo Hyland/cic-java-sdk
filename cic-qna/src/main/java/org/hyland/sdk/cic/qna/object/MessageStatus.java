@@ -23,7 +23,11 @@ package org.hyland.sdk.cic.qna.object;
  */
 public enum MessageStatus {
 
-    UNSPECIFIED("Unspecified"), SUBMITTED("Submitted"), ANSWERED("Answered"), ERROR("Error"), BLOCKED("Blocked");
+    UNSPECIFIED("Unspecified"),
+    SUBMITTED("Submitted"),
+    ANSWERED("Answered"),
+    ERROR("Error"),
+    BLOCKED("Blocked");
 
     private final String value;
 

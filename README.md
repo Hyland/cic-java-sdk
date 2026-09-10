@@ -1,6 +1,7 @@
 # cic-java-sdk
 
-A Java SDK for interacting with Hyland CIC services, providing modular HTTP clients, extensible serialization/mapping, and high-level APIs for ingest operations.
+A Java SDK for interacting with Hyland CIC services, providing modular HTTP clients, extensible serialization/mapping, and high-level APIs for Ingest, Agent, QnA, Nucleus, Knowledge Enrichment and Data Curation operations.
+
 
 ---
 
@@ -43,6 +44,20 @@ flowchart TD
         B3 --- D1
         B3 --- D2
     end
+    subgraph cic-ke
+        E1(KEHttpClient)
+        E2(KEService)
+        E3(DataCurationHttpClient)
+        E4(DataCurationService)
+        E5(KEMapperFactory)
+        A3 ---> E1
+        A3 ---> E3
+        A4 -..-> E1
+        A4 -..-> E3
+        E1 --> E2
+        E3 --> E4
+        B3 --- E5
+    end
 ```
 
 ---
@@ -81,7 +96,7 @@ public class KnowledgeDiscoveryHttpClient extends AbstractAuthenticatedHttpClien
 
 ### 2. Retry Policy
 - **Package:** `org.hyland.sdk.cic.http.client.retry`
-- Pluggable retry mechanism built into `AbstractHttpClient`. All HTTP client modules (cic-ingest, cic-agent, future modules) inherit retry support automatically.
+- Pluggable retry mechanism built into `AbstractHttpClient`. All HTTP client modules (cic-ingest, cic-agent, cic-ke, future modules) inherit retry support automatically.
 - **Key classes:**
   - `RetryPolicy`: Configures retry behavior — max attempts, backoff strategy, and retry condition. Created via builder or static factories.
   - `BackoffStrategy`: Functional interface for computing delay between retries. Built-in: `fixedDelay(Duration)` and `exponentialDelay(Duration baseDelay, Duration maxDelay)` (full jitter).
@@ -344,13 +359,53 @@ for (InteractiveUser user : users.listUsersPaginator()) {
 
 ---
 
+### 8. CIC Knowledge Enrichment Integration
+- **Artifact:** `org.hyland.sdk:cic-ke`
+- **Package:** `org.hyland.sdk.cic.ke`
+- Provides authenticated clients and high-level services for three related API areas:
+  - **Context API v2:** `KEHttpClient` exposes low-level upload, process, result, action-discovery, and health operations. `KEService` adds end-to-end upload/enrichment workflows and result polling.
+  - **Data Curation API:** `DataCurationHttpClient` exposes presign, upload, job-status, result-download, and embedding-model operations. `DataCurationService` coordinates curation workflows and terminal job handling.
+  - **Configuration API:** The Data Curation client and service manage processing defaults, conditional configuration rules, and rule dry runs.
+- **Content references:** Process requests can identify content by an uploaded object path or an existing platform document ID.
+- **Mapping:** `KEMapperFactory` registers Context, Data Curation, and Configuration request/response mappers through the common SDK mapper SPI.
+
+**Maven Dependency:**
+```xml
+<dependency>
+    <groupId>org.hyland.sdk</groupId>
+    <artifactId>cic-ke</artifactId>
+    <version>${cic-java-sdk.version}</version>
+</dependency>
+```
+
+The SDK also requires a runtime serializer such as `cic-http-client-jackson2`.
+
+**Example Usage:**
+```java
+KEHttpClient client = KEHttpClient.from("https://ke.api.example.hyland.com", authBuilder)
+    .hxpEnvironment("my-hxp-environment")
+    .build();
+KEService service = new KEService(client);
+
+// blob is a CICBlob containing the document to upload and enrich.
+EnrichmentResult result = service.enrich(blob, request -> request
+    .action(Action.TEXT_SUMMARIZATION)
+    .action(Action.NAMED_ENTITY_RECOGNITION_TEXT));
+```
+
+For authentication setup, `CICBlob` examples, supported actions, document-ID processing, Data Curation,
+Configuration API operations, polling, response models, and error handling, see the
+**[cic-ke module documentation](cic-ke/README.md)**.
+
+---
+
 ## Extending the SDK
 - **New Modules:**
   - Extend `AbstractAuthenticatedHttpClient` and its builder for new CIC service modules.
 - **Custom Serialization/Mapping:**
   - Implement and register `SerializerFactory` and `MapperFactory` for new formats or business objects.
 - **Reference Classes:**
-  - See `cic-http-client`, `cic-http-client-jackson2`, and `cic-ingest` modules for examples.
+  - See `cic-http-client`, `cic-http-client-jackson2`, `cic-ingest`, and `cic-ke` modules for examples.
 
 **Best Practices:**
 - Use builders for configuration and instantiation.

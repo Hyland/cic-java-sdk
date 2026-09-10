@@ -23,7 +23,8 @@ package org.hyland.sdk.cic.qna.object;
  */
 public enum IntegrationType {
 
-    HX("Hx"), ALFRESCO("Alfresco");
+    HX("Hx"),
+    ALFRESCO("Alfresco");
 
     private final String value;
 
