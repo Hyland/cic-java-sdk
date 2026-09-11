@@ -251,8 +251,12 @@ CICBlob streamedFileBlob = new FileCICBlob(Paths.get("invoice.pdf"), "applicatio
 ### 4. CIC Ingest Integration
 - **Package:** `org.hyland.sdk.cic.ingest`
 - Provides APIs for interacting with the CIC Ingest service:
-  - `IngestService`: High-level API for ingest operations (e.g., uploading blobs, managing pre-signed URLs).
+  - `IngestService`: High-level API for ingest operations (e.g., uploading blobs, managing pre-signed URLs, sending single or batched `IngestEvent`s).
   - `IngestHttpClient`: Lower-level HTTP client, extends `AbstractAuthenticatedHttpClient` for direct HTTP interactions.
+- **Design notes:**
+  - `IngestEvent` properties are held by `IngestEventProperties`, an immutable, typed container keyed by property name, whose values are modeled with the `IngestEventProperty` hierarchy (`IngestEventPropertyValue` for scalars/arrays/objects, `IngestEventPropertyFile` for blob-backed properties). Use `IngestEvent.Builder.putProperty(...)` for individual properties, or `properties(IngestEventProperties)` to set them all at once.
+  - `IngestService.ingest(IngestEvent)` and `ingest(IngestEvent.Batch)` automatically upload any `IngestEventPropertyFile` blobs (via `uploadBlobsIfNeeded`) before sending the event(s), so callers don't need to manage pre-signed URLs manually for property-attached blobs.
+  - `PropertyArray` is deprecated since 1.1.0, in favor of the typed `IngestEventPropertyValue`/`IngestEvent.Builder#putProperty(String, T[])` overloads; it is still accepted by `IngestEventProperties.Builder.put(String, PropertyArray)`/`IngestEvent.Builder.putProperty(String, PropertyArray)` for backward compatibility.
 
 **Example Usage:**
 ```java
@@ -265,7 +269,30 @@ IngestHttpClient client = IngestHttpClient.from("https://ingestion.insight.dev.e
     .hxpEnvironment("my-hxp-environment")
     .build();
 IngestService service = new IngestService(client);
-service.uploadBlobIfNeeded(documentId, blob);
+
+// Build and send an event with typed properties, including a blob-backed file property
+IngestEvent event = IngestEvent.builder(IngestEvent.Type.CREATE, documentId)
+    .putProperty("title", "Invoice #123")
+    .putProperty("file:content", IngestEventPropertyFile.builder(blob).build())
+    .build();
+service.ingest(event); // uploads "file:content"'s blob automatically before sending
+
+// Send several events in a single batch
+IngestEvent event2 = IngestEvent.builder(IngestEvent.Type.CREATE, "other-document-id")
+    .putProperty("title", "Invoice #124")
+    .build();
+service.ingest(IngestEvent.Batch.of(event, event2));
+```
+
+**Example: Annotating a property**
+
+`IngestEventPropertyValue.Builder#annotation(Serializable)` (a shortcut for `extra("annotation", value)`) attaches metadata to a
+property, e.g. to tell the CIC Ingest service how to interpret its value:
+```java
+IngestEvent event = IngestEvent.builder(IngestEvent.Type.CREATE, documentId)
+    .putProperty("allAncestorIds",
+            IngestEventPropertyValue.builder(new String[] { "id1", "id2" }).annotation("ancestorIds").build())
+    .build();
 ```
 
 ---

@@ -25,6 +25,9 @@ import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
+import org.hyland.sdk.cic.http.client.mapper.object.CICArray;
+import org.hyland.sdk.cic.http.client.mapper.object.CICPrimitive;
+
 /**
  * An immutable, typed array of property values for use in {@link IngestEventProperties}.
  * <p>
@@ -32,7 +35,9 @@ import java.util.stream.LongStream;
  * runtime failures during serialization.
  *
  * @since 1.0.0
+ * @deprecated since 1.1.0, in favor of the typed {@link IngestEventProperty} model, see {@link IngestEventProperties}.
  */
+@Deprecated(since = "1.1.0", forRemoval = true)
 public final class PropertyArray {
 
     private static final PropertyArray EMPTY = new PropertyArray(List.of());
@@ -107,6 +112,43 @@ public final class PropertyArray {
             list.add(Objects.requireNonNull(v, "array element cannot be null"));
         }
         return new PropertyArray(List.copyOf(list));
+    }
+
+    /**
+     * Best-effort reconstruction of a {@link PropertyArray} from the raw {@link CICArray} produced when one was passed
+     * through the deprecated {@code put(String, PropertyArray)} overload (which converts it to a plain
+     * {@link IngestEventPropertyValue} at insertion time, losing its {@link PropertyArray} identity).
+     *
+     * @return the reconstructed {@link PropertyArray}, or {@code null} if the array's elements don't match a single
+     *         supported primitive type (e.g. mixed types, or nested objects), in which case there is no legacy
+     *         equivalent to fall back to
+     * @implNote used by {@link IngestEventProperties#toMap()} for backward compatibility.
+     */
+    static PropertyArray tryFromCICArray(CICArray array) {
+        var elements = array.getElements();
+        if (elements.isEmpty()) {
+            return EMPTY;
+        }
+        if (elements.stream().allMatch(CICPrimitive.CICString.class::isInstance)) {
+            return of(elements.stream().map(e -> ((CICPrimitive.CICString) e).value()).toArray(String[]::new));
+        }
+        if (elements.stream().allMatch(CICPrimitive.CICInt.class::isInstance)) {
+            return of(elements.stream().mapToInt(e -> ((CICPrimitive.CICInt) e).value()).toArray());
+        }
+        if (elements.stream().allMatch(CICPrimitive.CICLong.class::isInstance)) {
+            return of(elements.stream().mapToLong(e -> ((CICPrimitive.CICLong) e).value()).toArray());
+        }
+        if (elements.stream().allMatch(CICPrimitive.CICDouble.class::isInstance)) {
+            return of(elements.stream().mapToDouble(e -> ((CICPrimitive.CICDouble) e).value()).toArray());
+        }
+        if (elements.stream().allMatch(CICPrimitive.CICBoolean.class::isInstance)) {
+            var values = new boolean[elements.size()];
+            for (var i = 0; i < elements.size(); i++) {
+                values[i] = ((CICPrimitive.CICBoolean) elements.get(i)).value();
+            }
+            return of(values);
+        }
+        return null;
     }
 
     @Override
