@@ -76,7 +76,8 @@ public final class IngestEventPropertyFile implements IngestEventProperty {
     }
 
     /**
-     * @implNote the returned builder will not hold the blob if any
+     * The returned builder does not carry over the blob, if any: the current blob (if any) was already consumed (e.g.
+     * uploaded) when this property was built, so it wouldn't be safe to reuse.
      */
     public Builder toBuilder() {
         return builder().id(id).contentType(contentType).name(name).size(size).digest(digest);

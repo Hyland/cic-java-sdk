@@ -233,7 +233,8 @@ public final class IngestEventProperties {
         }
 
         /**
-         * @implNote the resulting property always uses {@link IngestEventPropertyValue.Type#UNKNOWN}.
+         * The resulting property always uses {@link IngestEventPropertyValue.Type#UNKNOWN}.
+         *
          * @deprecated since 1.1.0, in favor of the other {@code put} methods
          */
         @Deprecated(since = "1.1.0", forRemoval = true)
@@ -299,10 +300,10 @@ public final class IngestEventProperties {
         }
 
         /**
-         * @implNote this deprecated nesting idiom never had a notion of typed values (no {@code type}/{@code extras}
-         *           were ever serialized for nested properties), so every nested {@link IngestEventPropertyValue} is
-         *           always flattened to its raw value here, regardless of its {@link IngestEventPropertyValue.Type} or
-         *           {@link IngestEventPropertyValue#extras()}.
+         * This deprecated nesting idiom never had a notion of typed values (no {@code type}/{@code extras} were ever
+         * serialized for nested properties), so every nested {@link IngestEventPropertyValue} is always flattened to
+         * its raw value here, regardless of its {@link IngestEventPropertyValue.Type} or
+         * {@link IngestEventPropertyValue#extras()}.
          */
         private static void putProperty(CICObject target, String key, IngestEventProperty property) {
             if (property instanceof IngestEventPropertyValue propertyValue) {
