@@ -20,6 +20,7 @@ package org.hyland.sdk.cic.http.client.mapper.object;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -276,5 +277,84 @@ public class CICObjectTest {
 
         var map = outer.toMap();
         assertEquals(List.of(Map.of("leaf", "value")), map.get("items"));
+    }
+
+    @Test
+    public void testFromMapWithPrimitiveArray() {
+        var cicObject = CICObject.from(Map.of("ids", new int[] { 1, 2 }));
+        assertEquals(List.of(1, 2), cicObject.toMap().get("ids"));
+    }
+
+    @Test
+    public void testFromMapWithNestedPrimitiveArray() {
+        var cicObject = CICObject.from(Map.of("meta", Map.of("ids", new int[] { 1, 2 })));
+        @SuppressWarnings("unchecked")
+        var nested = (Map<String, Object>) cicObject.toMap().get("meta");
+        assertEquals(List.of(1, 2), nested.get("ids"));
+    }
+
+    @Test
+    public void testFromMapWithUnsupportedArrayComponentTypeThrows() {
+        assertThrows(CICSdkException.class, () -> CICObject.from(Map.of("bad", new char[] { 'a' })));
+    }
+
+    @Test
+    public void testEqualsAndHashCodeAreStructural() {
+        var object1 = CICObject.from(Map.of("key", "value"));
+        var object2 = CICObject.from(Map.of("key", "value"));
+        var object3 = CICObject.from(Map.of("key", "other"));
+
+        assertEquals(object1, object2);
+        assertEquals(object1.hashCode(), object2.hashCode());
+        assertNotEquals(object1, object3);
+    }
+
+    @Test
+    public void testUnmodifiableThrowsOnMutation() {
+        var object = CICObject.unmodifiable(CICObject.from(Map.of("key", "value")));
+
+        assertThrows(UnsupportedOperationException.class, () -> object.putString("other", "value"));
+        assertThrows(UnsupportedOperationException.class, () -> object.putBoolean("other", true));
+        assertThrows(UnsupportedOperationException.class, () -> object.putInt("other", 1));
+        assertThrows(UnsupportedOperationException.class, () -> object.putLong("other", 1L));
+        assertThrows(UnsupportedOperationException.class, () -> object.putDouble("other", 1.0));
+        assertThrows(UnsupportedOperationException.class, () -> object.putLocalDate("other", LocalDate.now()));
+        assertThrows(UnsupportedOperationException.class, () -> object.putArray("other", CICArray.create()));
+        assertThrows(UnsupportedOperationException.class, () -> object.putObject("other", CICObject.create()));
+        assertThrows(UnsupportedOperationException.class, () -> object.putNode("other", CICNode.from("value")));
+        assertThrows(UnsupportedOperationException.class, () -> object.putNull("other"));
+    }
+
+    @Test
+    public void testUnmodifiableStillReadableAndEqual() {
+        var origin = CICObject.from(Map.of("key", "value"));
+        var object = CICObject.unmodifiable(origin);
+
+        assertEquals("value", object.getStringOrThrow("key"));
+        assertEquals(origin, object);
+        assertEquals(origin.hashCode(), object.hashCode());
+    }
+
+    @Test
+    public void testUnmodifiableNestedArrayAndObjectAreAlsoUnmodifiable() {
+        var nestedArray = CICArray.create();
+        nestedArray.addString("a");
+        var nestedObject = CICObject.create();
+        nestedObject.putString("key", "value");
+
+        var origin = CICObject.create();
+        origin.putArray("array", nestedArray);
+        origin.putObject("object", nestedObject);
+
+        var object = CICObject.unmodifiable(origin);
+
+        var wrappedArray = object.getArrayOrThrow("array");
+        assertThrows(UnsupportedOperationException.class, () -> wrappedArray.addString("b"));
+
+        var wrappedObject = object.getObjectOrThrow("object");
+        assertThrows(UnsupportedOperationException.class, () -> wrappedObject.putString("other", "value"));
+
+        var properties = object.getProperties();
+        assertThrows(UnsupportedOperationException.class, () -> ((CICArray) properties.get("array")).addString("b"));
     }
 }

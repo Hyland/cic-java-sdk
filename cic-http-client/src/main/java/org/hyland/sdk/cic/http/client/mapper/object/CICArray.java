@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.hyland.sdk.cic.http.client.CICSdkException;
 
@@ -77,8 +78,19 @@ public interface CICArray extends CICNode {
                 array.addLong(l);
             } else if (value instanceof String s) {
                 array.addString(s);
+            } else if (value instanceof Object[] objects) {
+                array.addArray(from(objects));
+            } else if (value instanceof boolean[] booleans) {
+                array.addArray(from(booleans));
+            } else if (value instanceof int[] ints) {
+                array.addArray(from(ints));
+            } else if (value instanceof long[] longs) {
+                array.addArray(from(longs));
+            } else if (value instanceof double[] doubles) {
+                array.addArray(from(doubles));
             } else if (value != null && value.getClass().isArray()) {
-                array.addArray(from((Object[]) value));
+                throw new CICSdkException(
+                        "Unsupported array component type: %s".formatted(value.getClass().getComponentType()));
             } else if (value instanceof Collection<?> collection) {
                 array.addArray(from(collection));
             } else if (value instanceof CICObject obj) {
@@ -97,6 +109,154 @@ public interface CICArray extends CICNode {
 
     static CICArray from(Collection<?> collection) {
         return from(collection.toArray());
+    }
+
+    static CICArray from(boolean[] values) {
+        var array = create();
+        for (var value : values) {
+            array.addBoolean(value);
+        }
+        return array;
+    }
+
+    static CICArray from(int[] values) {
+        var array = create();
+        for (var value : values) {
+            array.addInt(value);
+        }
+        return array;
+    }
+
+    static CICArray from(long[] values) {
+        var array = create();
+        for (var value : values) {
+            array.addLong(value);
+        }
+        return array;
+    }
+
+    static CICArray from(double[] values) {
+        var array = create();
+        for (var value : values) {
+            array.addDouble(value);
+        }
+        return array;
+    }
+
+    /**
+     * Returns a read-only view of the given array: mutating methods ({@code addXxx}) throw
+     * {@link UnsupportedOperationException}, and nested arrays/objects are themselves returned as read-only views.
+     *
+     * @since 1.1.0
+     */
+    static CICArray unmodifiable(CICArray array) {
+        return new CICArray() {
+
+            @Override
+            public CICArray getArray(int index) {
+                return CICArray.unmodifiable(array.getArray(index));
+            }
+
+            @Override
+            public boolean getBoolean(int index) {
+                return array.getBoolean(index);
+            }
+
+            @Override
+            public int getInt(int index) {
+                return array.getInt(index);
+            }
+
+            @Override
+            public long getLong(int index) {
+                return array.getLong(index);
+            }
+
+            @Override
+            public CICObject getObject(int index) {
+                return CICObject.unmodifiable(array.getObject(index));
+            }
+
+            @Override
+            public String getString(int index) {
+                return array.getString(index);
+            }
+
+            @Override
+            public double getDouble(int index) {
+                return array.getDouble(index);
+            }
+
+            @Override
+            public void addArray(CICArray value) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void addBoolean(boolean value) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void addInt(int value) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void addLong(long value) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void addObject(CICObject value) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void addString(String value) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void addDouble(double value) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public List<CICObject> toListObject() {
+                return array.toListObject().stream().map(CICObject::unmodifiable).toList();
+            }
+
+            @Override
+            public List<String> toListString() {
+                return array.toListString();
+            }
+
+            @Override
+            public List<CICNode> getElements() {
+                return array.getElements().stream().map(CICNode::unmodifiable).toList();
+            }
+
+            @Override
+            public Object toJavaValue() {
+                return array.toJavaValue();
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                return array.equals(o);
+            }
+
+            @Override
+            public int hashCode() {
+                return array.hashCode();
+            }
+
+            @Override
+            public String toString() {
+                return array.toString();
+            }
+        };
     }
 
     static CICArray create() {
@@ -192,6 +352,24 @@ public interface CICArray extends CICNode {
             @Override
             public Object toJavaValue() {
                 return array.stream().map(CICNode::toJavaValue).toList();
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (!(o instanceof CICArray other)) {
+                    return false;
+                }
+                return Objects.equals(array, other.getElements());
+            }
+
+            @Override
+            public int hashCode() {
+                return array.hashCode();
+            }
+
+            @Override
+            public String toString() {
+                return array.toString();
             }
         };
     }

@@ -18,12 +18,15 @@
  */
 package org.hyland.sdk.cic.ingest;
 
+import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.stream.Collectors;
 
 import org.hyland.sdk.cic.http.client.mapper.object.CICBlob;
 import org.hyland.sdk.cic.ingest.object.IngestEvent;
+import org.hyland.sdk.cic.ingest.object.IngestEventPropertyFile;
 import org.hyland.sdk.cic.ingest.object.PreSignedUrl;
 
 /**
@@ -76,17 +79,65 @@ public class IngestService {
     }
 
     public void ingest(IngestEvent event) {
-        httpClient.ingest(event);
+        ingest(IngestEvent.Batch.of(event));
+    }
+
+    /**
+     * Ingests a batch of events, automatically uploading any blob referenced by an {@link IngestEventPropertyFile}
+     * property beforehand.
+     *
+     * @since 1.1.0
+     */
+    public void ingest(IngestEvent.Batch batch) {
+        httpClient.ingest(
+                batch.stream().map(this::uploadBlobsIfNeeded).collect(Collectors.toCollection(IngestEvent.Batch::new)));
+    }
+
+    /**
+     * Walks the given event's properties, uploading any blob referenced by an {@link IngestEventPropertyFile},
+     * replacing it with an {@code id}-bearing property ready to be sent to the wire.
+     * <p>
+     * If the property already carries an {@code id} (eg: a retried event whose property already references a previously
+     * uploaded blob), it's trusted as-is and no upload/digest-check occurs, even if a blob is still attached.
+     * <p>
+     * Otherwise, when the blob's digest already exists remotely for the target object, no upload occurs. In that case,
+     * since the property has no {@code id} to reference its content with, it is dropped entirely rather than being sent
+     * with no way to reference its content: the object already has this content, so there's nothing to update.
+     *
+     * @since 1.1.0
+     */
+    protected IngestEvent uploadBlobsIfNeeded(IngestEvent event) {
+        return event.toBuilder().replaceProperties((key, property) -> {
+            if (property instanceof IngestEventPropertyFile propertyFile) {
+                if (propertyFile.id().isPresent()) {
+                    // already resolved (eg: retried event): nothing to upload, just strip any leftover blob
+                    return propertyFile.blob().isPresent() ? propertyFile.toBuilder().build() : property;
+                }
+                if (propertyFile.blob().isPresent()) {
+                    var uploadedId = uploadBlobIfNeeded(event, propertyFile.blob().get()).map(PreSignedUrl::id);
+                    if (uploadedId.isEmpty()) {
+                        // digest already exists remotely and we have no id to reference: nothing changed, drop it
+                        return null;
+                    }
+                    return propertyFile.toBuilder().id(uploadedId.get()).build();
+                }
+                return property;
+            } else {
+                return property;
+            }
+        }).build();
     }
 
     protected PreSignedUrl getPreSignedUrl() {
         PreSignedUrl preSignedUrl = preSignedUrls.pollFirst();
         if (preSignedUrl == null) {
             synchronized (this) {
-                if (preSignedUrls.isEmpty()) {
-                    preSignedUrls.addAll(httpClient.retrievePreSignedUrls());
-                }
                 preSignedUrl = preSignedUrls.pollFirst();
+                if (preSignedUrl == null) {
+                    var newUrls = new ArrayDeque<>(httpClient.retrievePreSignedUrls());
+                    preSignedUrl = newUrls.pollFirst();
+                    preSignedUrls.addAll(newUrls);
+                }
             }
         }
         return preSignedUrl;

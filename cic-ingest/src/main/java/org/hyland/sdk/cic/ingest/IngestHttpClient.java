@@ -28,6 +28,7 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.hyland.sdk.cic.http.client.CICSdkException;
 import org.hyland.sdk.cic.http.client.auth.AbstractAuthenticatedHttpClient;
@@ -126,10 +127,25 @@ public class IngestHttpClient extends AbstractAuthenticatedHttpClient {
      * @throws CICSdkException if the request fails or returns a non-202 status code
      */
     public void ingest(IngestEvent event) {
+        ingest(IngestEvent.Batch.of(event));
+    }
+
+    /**
+     * Sends a batch of ingest events to the CIC Ingest service in a single call.
+     *
+     * @param batch the ingest events to send
+     * @throws CICSdkException if the request fails or returns a non-202 status code
+     * @since 1.1.0
+     */
+    public void ingest(IngestEvent.Batch batch) {
         var request = this.requestBuilder(POST, INGESTION_EVENTS_PATH)
                           .header("Content-Type", "application/json")
-                          .entity(new CICEntity(IngestEvent.Batch.of(
-                                  event.toBuilder().sourceId(event.sourceId().orElse(this.sourceId)).build())))
+                          .entity(new CICEntity(
+                                  batch.stream()
+                                       .map(event -> event.toBuilder()
+                                                          .sourceId(event.sourceId().orElse(this.sourceId))
+                                                          .build())
+                                       .collect(Collectors.toCollection(IngestEvent.Batch::new))))
                           .build();
 
         var response = sendThenReadAsString(request);

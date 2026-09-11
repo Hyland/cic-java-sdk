@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.hyland.sdk.cic.http.client.CICSdkException;
@@ -119,8 +120,19 @@ public interface CICObject extends CICNode {
                 cicObject.putObject(k, nestedObject);
             } else if (v == null) {
                 cicObject.putNull(k);
+            } else if (v instanceof Object[] objects) {
+                cicObject.putArray(k, CICArray.from(objects));
+            } else if (v instanceof boolean[] booleans) {
+                cicObject.putArray(k, CICArray.from(booleans));
+            } else if (v instanceof int[] ints) {
+                cicObject.putArray(k, CICArray.from(ints));
+            } else if (v instanceof long[] longs) {
+                cicObject.putArray(k, CICArray.from(longs));
+            } else if (v instanceof double[] doubles) {
+                cicObject.putArray(k, CICArray.from(doubles));
             } else if (v.getClass().isArray()) {
-                cicObject.putArray(k, CICArray.from((Object[]) v));
+                throw new CICSdkException("Unsupported array component type: %s for key: %s".formatted(
+                        v.getClass().getComponentType(), k));
             } else if (v instanceof Collection<?> collection) {
                 cicObject.putArray(k, CICArray.from(collection.toArray()));
             } else {
@@ -128,6 +140,204 @@ public interface CICObject extends CICNode {
             }
         });
         return cicObject;
+    }
+
+    /**
+     * Returns a read-only view of the given object: mutating methods ({@code putXxx}) throw
+     * {@link UnsupportedOperationException}, and nested arrays/objects are themselves returned as read-only views.
+     *
+     * @since 1.1.0
+     */
+    static CICObject unmodifiable(CICObject object) {
+        return new CICObject() {
+
+            @Override
+            public boolean isEmpty() {
+                return object.isEmpty();
+            }
+
+            @Override
+            public Map<String, CICNode> getProperties() {
+                var properties = new LinkedHashMap<String, CICNode>();
+                object.getProperties().forEach((k, v) -> properties.put(k, CICNode.unmodifiable(v)));
+                return Collections.unmodifiableMap(properties);
+            }
+
+            @Override
+            public boolean getBoolean(String key, boolean defaultValue) {
+                return object.getBoolean(key, defaultValue);
+            }
+
+            @Override
+            public int getInt(String key, int defaultValue) {
+                return object.getInt(key, defaultValue);
+            }
+
+            @Override
+            public long getLong(String key, long defaultValue) {
+                return object.getLong(key, defaultValue);
+            }
+
+            @Override
+            public String getString(String key, String defaultValue) {
+                return object.getString(key, defaultValue);
+            }
+
+            @Override
+            public LocalDate getLocalDate(String key, LocalDate defaultValue) {
+                return object.getLocalDate(key, defaultValue);
+            }
+
+            @Override
+            public CICArray getArrayOrThrow(String key) {
+                return CICArray.unmodifiable(object.getArrayOrThrow(key));
+            }
+
+            @Override
+            public boolean getBooleanOrThrow(String key) {
+                return object.getBooleanOrThrow(key);
+            }
+
+            @Override
+            public int getIntOrThrow(String key) {
+                return object.getIntOrThrow(key);
+            }
+
+            @Override
+            public long getLongOrThrow(String key) {
+                return object.getLongOrThrow(key);
+            }
+
+            @Override
+            public CICObject getObjectOrThrow(String key) {
+                return CICObject.unmodifiable(object.getObjectOrThrow(key));
+            }
+
+            @Override
+            public String getStringOrThrow(String key) {
+                return object.getStringOrThrow(key);
+            }
+
+            @Override
+            public LocalDate getLocalDateOrThrow(String key) {
+                return object.getLocalDateOrThrow(key);
+            }
+
+            @Override
+            public Optional<CICObject> getOptionalObject(String key) {
+                return object.getOptionalObject(key).map(CICObject::unmodifiable);
+            }
+
+            @Override
+            public Optional<CICArray> getOptionalArray(String key) {
+                return object.getOptionalArray(key).map(CICArray::unmodifiable);
+            }
+
+            @Override
+            public Optional<String> getOptionalString(String key) {
+                return object.getOptionalString(key);
+            }
+
+            @Override
+            public String getStringOrNull(String key) {
+                return object.getStringOrNull(key);
+            }
+
+            @Override
+            public Integer getIntegerOrNull(String key) {
+                return object.getIntegerOrNull(key);
+            }
+
+            @Override
+            public Boolean getBooleanOrNull(String key) {
+                return object.getBooleanOrNull(key);
+            }
+
+            @Override
+            public Double getDoubleOrNull(String key) {
+                return object.getDoubleOrNull(key);
+            }
+
+            @Override
+            public Map<String, Object> toMap() {
+                return object.toMap();
+            }
+
+            @Override
+            public void putArray(String key, CICArray value) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void putBoolean(String key, boolean value) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void putInt(String key, int value) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void putLong(String key, long value) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void putNode(String key, CICNode value) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void putObject(String key, CICObject value) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void putString(String key, String value) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void putDouble(String key, double value) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void putLocalDate(String key, LocalDate value) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void putNull(String key) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public double getDouble(String key, double defaultValue) {
+                return object.getDouble(key, defaultValue);
+            }
+
+            @Override
+            public Object toJavaValue() {
+                return object.toJavaValue();
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                return object.equals(o);
+            }
+
+            @Override
+            public int hashCode() {
+                return object.hashCode();
+            }
+
+            @Override
+            public String toString() {
+                return object.toString();
+            }
+        };
     }
 
     static CICObject create() {
@@ -392,6 +602,24 @@ public interface CICObject extends CICNode {
             @Override
             public void putNull(String key) {
                 properties.put(key, new CICPrimitive.CICNull());
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (!(o instanceof CICObject other)) {
+                    return false;
+                }
+                return Objects.equals(properties, other.getProperties());
+            }
+
+            @Override
+            public int hashCode() {
+                return properties.hashCode();
+            }
+
+            @Override
+            public String toString() {
+                return properties.toString();
             }
         };
     }

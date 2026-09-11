@@ -21,8 +21,10 @@ package org.hyland.sdk.cic.ingest.object;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 import org.hyland.sdk.cic.http.client.util.StringUtils;
@@ -48,7 +50,7 @@ public final class IngestEvent {
         this.sourceId = builder.sourceId;
         this.objectId = StringUtils.requireNonBlank(builder.objectId, "objectId cannot be blank");
         this.date = Objects.requireNonNull(builder.date, "date cannot be null");
-        this.properties = Objects.requireNonNull(builder.propertiesBuilder.build(), "properties cannot be null");
+        this.properties = builder.propertiesBuilder.build();
     }
 
     public static Builder builder(Type type, String objectId) {
@@ -140,8 +142,24 @@ public final class IngestEvent {
             return this;
         }
 
+        /**
+         * @since 1.1.0
+         */
+        public Builder putNullProperty(String key) {
+            propertiesBuilder.putNull(key);
+            return this;
+        }
+
         public Builder putProperty(String key, String value) {
             propertiesBuilder.put(key, value);
+            return this;
+        }
+
+        /**
+         * @since 1.1.0
+         */
+        public Builder putProperty(String key, String[] values) {
+            propertiesBuilder.put(key, values);
             return this;
         }
 
@@ -150,8 +168,24 @@ public final class IngestEvent {
             return this;
         }
 
+        /**
+         * @since 1.1.0
+         */
+        public Builder putProperty(String key, int[] values) {
+            propertiesBuilder.put(key, values);
+            return this;
+        }
+
         public Builder putProperty(String key, long value) {
             propertiesBuilder.put(key, value);
+            return this;
+        }
+
+        /**
+         * @since 1.1.0
+         */
+        public Builder putProperty(String key, long[] values) {
+            propertiesBuilder.put(key, values);
             return this;
         }
 
@@ -160,23 +194,105 @@ public final class IngestEvent {
             return this;
         }
 
+        /**
+         * @since 1.1.0
+         */
+        public Builder putProperty(String key, double[] values) {
+            propertiesBuilder.put(key, values);
+            return this;
+        }
+
         public Builder putProperty(String key, boolean value) {
             propertiesBuilder.put(key, value);
             return this;
         }
 
+        /**
+         * @since 1.1.0
+         */
+        public Builder putProperty(String key, boolean[] values) {
+            propertiesBuilder.put(key, values);
+            return this;
+        }
+
+        /**
+         * @since 1.1.0
+         */
+        public Builder putProperty(String key, Instant value) {
+            propertiesBuilder.put(key, value);
+            return this;
+        }
+
+        /**
+         * @since 1.1.0
+         */
+        public Builder putProperty(String key, Instant[] values) {
+            propertiesBuilder.put(key, values);
+            return this;
+        }
+
+        /**
+         * @since 1.1.0
+         */
+        public Builder putProperty(String key, Map<String, ?> value) {
+            propertiesBuilder.put(key, value);
+            return this;
+        }
+
+        /**
+         * @since 1.1.0
+         */
+        public Builder putProperty(String key, Map<String, ?>[] values) {
+            propertiesBuilder.put(key, values);
+            return this;
+        }
+
+        /**
+         * @since 1.1.0
+         */
+        public Builder putProperty(String key, IngestEventProperty property) {
+            propertiesBuilder.put(key, property);
+            return this;
+        }
+
+        /**
+         * @implNote the resulting property always uses {@link IngestEventPropertyValue.Type#UNKNOWN}.
+         * @deprecated since 1.1.0, in favor of the other {@code putProperty} methods
+         */
+        @Deprecated(since = "1.1.0", forRemoval = true)
         public Builder putProperty(String key, PropertyArray value) {
             propertiesBuilder.put(key, value);
             return this;
         }
 
+        /**
+         * @deprecated since 1.1.0, in favor of {@link #putProperty(String, Map)}
+         */
+        @Deprecated(since = "1.1.0", forRemoval = true)
         public Builder putProperty(String key, IngestEventProperties value) {
             propertiesBuilder.put(key, value);
             return this;
         }
 
+        /**
+         * @deprecated since 1.1.0, in favor of {@link #putProperty(String, Map)}
+         */
+        @Deprecated(since = "1.1.0", forRemoval = true)
         public Builder putProperty(String key, Consumer<IngestEventProperties.Builder> propertiesConsumer) {
             propertiesBuilder.put(key, propertiesConsumer);
+            return this;
+        }
+
+        /**
+         * Replaces each property with the result of applying the given function.
+         * <p>
+         * If the function returns {@code null} for a given key, that property is removed entirely.
+         *
+         * @since 1.1.0
+         */
+        public Builder replaceProperties(
+                BiFunction<? super String, ? super IngestEventProperty, ? extends IngestEventProperty> function) {
+            propertiesBuilder.replaceAll(function);
             return this;
         }
 
