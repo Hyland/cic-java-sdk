@@ -8,10 +8,14 @@
 #      (auto-incremented patch + -SNAPSHOT) unless one is provided.
 #   2. Stamps RELEASE_VERSION across the root POM and all module POMs.
 #   3. Builds + publishes artifacts (incl. source/javadoc jars) to GitHub Packages.
-#   4. Commits (via the GitHub GraphQL API, so the commit is verified/signed),
-#      tags v<RELEASE_VERSION>, and pushes the tag.
-#   5. Stamps the next development version and pushes it directly to main
-#      (again via the GraphQL API, for a verified/signed commit).
+#   4. Commits the release version locally (GPG-signed via a bot key, reusing
+#      Alfresco/alfresco-build-tools' git-commit-changes action), tags
+#      v<RELEASE_VERSION>, and pushes the tag.
+#   5. Stamps the next development version as a second local commit, then
+#      pushes both commits to main in a single push (so the "Build and Test"
+#      workflow only runs once, against the final -SNAPSHOT state — pushing
+#      the release-version commit on its own would otherwise trigger a
+#      redundant/conflicting re-deploy of the already-published version).
 #
 ###############################################################################
 
@@ -95,12 +99,6 @@ jobs:
           java-version: 17
           cache: maven
 
-      - name: Configure Git identity
-        run: |
-          set -euo pipefail
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
       - name: Set release version
         run: |
           set -euo pipefail
@@ -128,56 +126,21 @@ jobs:
           mvn --batch-mode -nsu source:jar javadoc:jar deploy
 
       - name: Commit release version
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        id: commit-release
+        uses: Alfresco/alfresco-build-tools/.github/actions/git-commit-changes@a297ff6c5bf20c667047db658dd23f60241b270a # v18.28.0
+        with:
+          username: github-actions[bot]
+          email: github-actions[bot]@users.noreply.github.com
+          add-options: -A
+          commit-message: "chore(release): set version to ${{ env.RELEASE_VERSION }}"
+          skip-if-no-changes: "true"
+          gpg-private-key: ${{ secrets.RELEASE_GPG_PRIVATE_KEY }}
+          gpg-private-key-fingerprint: ${{ secrets.RELEASE_GPG_PRIVATE_KEY_FINGERPRINT }}
+
+      - name: Create tag
         run: |
           set -euo pipefail
-          if git diff --quiet; then
-            echo "No changes — POMs already at ${RELEASE_VERSION}."
-            exit 0
-          fi
-
-          # Commit via the GraphQL API (createCommitOnBranch) instead of a
-          # plain `git commit` + push: commits created this way are signed
-          # by GitHub itself, satisfying the repo's "Require signed commits"
-          # rule without needing to manage a bot GPG key.
-          HEAD_OID="$(git rev-parse HEAD)"
-          ADDITIONS="[]"
-          while IFS= read -r FILE; do
-            CONTENT_B64="$(base64 -w0 "${FILE}")"
-            ADDITIONS="$(jq -c --arg path "${FILE}" --arg contents "${CONTENT_B64}" \
-              '. + [{path: $path, contents: $contents}]' <<< "${ADDITIONS}")"
-          done < <(git diff --name-only --diff-filter=M)
-
-          PAYLOAD="$(jq -n \
-            --arg repo "${GITHUB_REPOSITORY}" \
-            --arg branch "main" \
-            --arg oid "${HEAD_OID}" \
-            --arg message "chore(release): set version to ${RELEASE_VERSION}" \
-            --argjson additions "${ADDITIONS}" \
-            '{query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid url } } }",
-              variables: {input: {branch: {repositoryNameWithOwner: $repo, branchName: $branch}, message: {headline: $message}, expectedHeadOid: $oid, fileChanges: {additions: $additions}}}}')"
-
-          RESPONSE="$(echo "${PAYLOAD}" | gh api graphql --input -)"
-          echo "${RESPONSE}" | jq .
-          NEW_OID="$(echo "${RESPONSE}" | jq -r '.data.createCommitOnBranch.commit.oid // empty')"
-          if [[ -z "${NEW_OID}" ]]; then
-            echo "::error::Failed to create verified commit for the release version bump."
-            exit 1
-          fi
-          echo "Created verified commit ${NEW_OID} on main."
-
-          # Sync the local checkout so subsequent steps (tagging, next dev
-          # version bump) build on top of the commit that now lives on main.
-          git fetch origin main
-          git reset --hard origin/main
-
-      - name: Create and push tag
-        run: |
-          set -euo pipefail
-          TAG="v${RELEASE_VERSION}"
-          git tag -a "${TAG}" -m "Release ${RELEASE_VERSION}"
-          git push origin "refs/tags/${TAG}"
+          git tag -a "v${RELEASE_VERSION}" -m "Release ${RELEASE_VERSION}"
 
       - name: Set next development version
         run: |
@@ -188,42 +151,24 @@ jobs:
             -DgenerateBackupPoms=false
 
       - name: Commit next development version
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        uses: Alfresco/alfresco-build-tools/.github/actions/git-commit-changes@a297ff6c5bf20c667047db658dd23f60241b270a # v18.28.0
+        with:
+          username: github-actions[bot]
+          email: github-actions[bot]@users.noreply.github.com
+          add-options: -A
+          commit-message: "chore(release): set next development version ${{ steps.dev-version.outputs.next_dev }}"
+          skip-if-no-changes: "true"
+          gpg-private-key: ${{ secrets.RELEASE_GPG_PRIVATE_KEY }}
+          gpg-private-key-fingerprint: ${{ secrets.RELEASE_GPG_PRIVATE_KEY_FINGERPRINT }}
+
+      - name: Push main and tag
         run: |
           set -euo pipefail
-          NEXT_DEV="${{ steps.dev-version.outputs.next_dev }}"
-
-          if git diff --quiet; then
-            echo "No changes — POMs already at ${NEXT_DEV}; nothing to push."
-            exit 0
-          fi
-
-          HEAD_OID="$(git rev-parse HEAD)"
-          ADDITIONS="[]"
-          while IFS= read -r FILE; do
-            CONTENT_B64="$(base64 -w0 "${FILE}")"
-            ADDITIONS="$(jq -c --arg path "${FILE}" --arg contents "${CONTENT_B64}" \
-              '. + [{path: $path, contents: $contents}]' <<< "${ADDITIONS}")"
-          done < <(git diff --name-only --diff-filter=M)
-
-          PAYLOAD="$(jq -n \
-            --arg repo "${GITHUB_REPOSITORY}" \
-            --arg branch "main" \
-            --arg oid "${HEAD_OID}" \
-            --arg message "chore(release): set next development version ${NEXT_DEV}" \
-            --argjson additions "${ADDITIONS}" \
-            '{query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid url } } }",
-              variables: {input: {branch: {repositoryNameWithOwner: $repo, branchName: $branch}, message: {headline: $message}, expectedHeadOid: $oid, fileChanges: {additions: $additions}}}}')"
-
-          RESPONSE="$(echo "${PAYLOAD}" | gh api graphql --input -)"
-          echo "${RESPONSE}" | jq .
-          NEW_OID="$(echo "${RESPONSE}" | jq -r '.data.createCommitOnBranch.commit.oid // empty')"
-          if [[ -z "${NEW_OID}" ]]; then
-            echo "::error::Failed to create verified commit for the next development version bump."
-            exit 1
-          fi
-          echo "Created verified commit ${NEW_OID} on main."
+          # Push both version-bump commits to main in a single push, so
+          # "Build and Test" (which triggers on push to main) only builds
+          # once, against the final -SNAPSHOT state.
+          git push origin HEAD:main
+          git push origin "refs/tags/v${RELEASE_VERSION}"
 
       - name: Output summary
         if: always()
