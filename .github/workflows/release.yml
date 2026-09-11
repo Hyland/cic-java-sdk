@@ -8,8 +8,10 @@
 #      (auto-incremented patch + -SNAPSHOT) unless one is provided.
 #   2. Stamps RELEASE_VERSION across the root POM and all module POMs.
 #   3. Builds + publishes artifacts (incl. source/javadoc jars) to GitHub Packages.
-#   4. Commits, tags v<RELEASE_VERSION>, and pushes the tag.
-#   5. Stamps the next development version on a branch and opens a PR to main.
+#   4. Commits (via the GitHub GraphQL API, so the commit is verified/signed),
+#      tags v<RELEASE_VERSION>, and pushes the tag.
+#   5. Stamps the next development version and pushes it directly to main
+#      (again via the GraphQL API, for a verified/signed commit).
 #
 ###############################################################################
 
@@ -31,7 +33,6 @@ on:
 permissions:
   contents: write        # commit version bumps and push tags to the repo
   packages: write        # publish artifacts to GitHub Packages
-  pull-requests: write   # open the next-development-version bump PR
 
 jobs:
   release:
@@ -126,15 +127,50 @@ jobs:
           set -euo pipefail
           mvn --batch-mode -nsu source:jar javadoc:jar deploy
 
-      - name: Commit release version
+      - name: Commit release version (verified, direct to main)
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          git add -A
-          if git diff --cached --quiet; then
+          if git diff --quiet; then
             echo "No changes — POMs already at ${RELEASE_VERSION}."
-          else
-            git commit -m "chore(release): set version to ${RELEASE_VERSION}"
+            exit 0
           fi
+
+          # Commit via the GraphQL API (createCommitOnBranch) instead of a
+          # plain `git commit` + push: commits created this way are signed
+          # by GitHub itself, satisfying the repo's "Require signed commits"
+          # rule without needing to manage a bot GPG key.
+          HEAD_OID="$(git rev-parse HEAD)"
+          ADDITIONS="[]"
+          while IFS= read -r FILE; do
+            CONTENT_B64="$(base64 -w0 "${FILE}")"
+            ADDITIONS="$(jq -c --arg path "${FILE}" --arg contents "${CONTENT_B64}" \
+              '. + [{path: $path, contents: $contents}]' <<< "${ADDITIONS}")"
+          done < <(git diff --name-only --diff-filter=M)
+
+          PAYLOAD="$(jq -n \
+            --arg repo "${GITHUB_REPOSITORY}" \
+            --arg branch "main" \
+            --arg oid "${HEAD_OID}" \
+            --arg message "chore(release): set version to ${RELEASE_VERSION}" \
+            --argjson additions "${ADDITIONS}" \
+            '{query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid url } } }",
+              variables: {input: {branch: {repositoryNameWithOwner: $repo, branchName: $branch}, message: {headline: $message}, expectedHeadOid: $oid, fileChanges: {additions: $additions}}}}')"
+
+          RESPONSE="$(echo "${PAYLOAD}" | gh api graphql --input -)"
+          echo "${RESPONSE}" | jq .
+          NEW_OID="$(echo "${RESPONSE}" | jq -r '.data.createCommitOnBranch.commit.oid // empty')"
+          if [[ -z "${NEW_OID}" ]]; then
+            echo "::error::Failed to create verified commit for the release version bump."
+            exit 1
+          fi
+          echo "Created verified commit ${NEW_OID} on main."
+
+          # Sync the local checkout so subsequent steps (tagging, next dev
+          # version bump) build on top of the commit that now lives on main.
+          git fetch origin main
+          git reset --hard origin/main
 
       - name: Create and push tag
         run: |
@@ -151,60 +187,43 @@ jobs:
             -DprocessAllModules=true \
             -DgenerateBackupPoms=false
 
-      - name: Commit and push next development version branch
-        id: dev-bump
-        run: |
-          set -euo pipefail
-          NEXT_DEV="${{ steps.dev-version.outputs.next_dev }}"
-          BRANCH="chore/next-dev-version-${NEXT_DEV}"
-          git switch -c "${BRANCH}"
-          git add -A
-          if git diff --cached --quiet; then
-            echo "No changes — POMs already at ${NEXT_DEV}; no PR needed."
-            echo "pr_needed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          git commit -m "chore(release): set next development version ${NEXT_DEV}"
-          git push --force-with-lease origin "${BRANCH}"
-          echo "pr_needed=true" >> "$GITHUB_OUTPUT"
-          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
-
-      - name: Open pull request for next development version
-        id: dev-pr
-        if: steps.dev-bump.outputs.pr_needed == 'true'
+      - name: Commit next development version (verified, direct to main)
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           NEXT_DEV="${{ steps.dev-version.outputs.next_dev }}"
-          BRANCH="${{ steps.dev-bump.outputs.branch }}"
 
-          EXISTING_PR=$(gh pr list --head "${BRANCH}" --base main --state open --json url --jq '.[0].url // empty')
-          if [[ -n "${EXISTING_PR}" ]]; then
-            echo "Reusing existing PR: ${EXISTING_PR}"
-            echo "pr_url=${EXISTING_PR}" >> "$GITHUB_OUTPUT"
+          if git diff --quiet; then
+            echo "No changes — POMs already at ${NEXT_DEV}; nothing to push."
             exit 0
           fi
 
-          PR_URL=$(gh pr create \
-            --base main \
-            --head "${BRANCH}" \
-            --title "chore(release): set next development version ${NEXT_DEV}" \
-            --body "$(cat <<EOF
-          ## Automated next-development-version bump
+          HEAD_OID="$(git rev-parse HEAD)"
+          ADDITIONS="[]"
+          while IFS= read -r FILE; do
+            CONTENT_B64="$(base64 -w0 "${FILE}")"
+            ADDITIONS="$(jq -c --arg path "${FILE}" --arg contents "${CONTENT_B64}" \
+              '. + [{path: $path, contents: $contents}]' <<< "${ADDITIONS}")"
+          done < <(git diff --name-only --diff-filter=M)
 
-          Opened by the **Release** workflow after publishing \`v${RELEASE_VERSION}\` to GitHub Packages.
+          PAYLOAD="$(jq -n \
+            --arg repo "${GITHUB_REPOSITORY}" \
+            --arg branch "main" \
+            --arg oid "${HEAD_OID}" \
+            --arg message "chore(release): set next development version ${NEXT_DEV}" \
+            --argjson additions "${ADDITIONS}" \
+            '{query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid url } } }",
+              variables: {input: {branch: {repositoryNameWithOwner: $repo, branchName: $branch}, message: {headline: $message}, expectedHeadOid: $oid, fileChanges: {additions: $additions}}}}')"
 
-          Bumps the project version to \`${NEXT_DEV}\` across the root POM and all module POMs.
-
-          **Safe to merge** once CI passes — this is a version-only change.
-
-          **IMPORTANT**
-          Merge using **Create a merge commit** (not Squash and merge).
-          EOF
-          )")
-          echo "Created PR: ${PR_URL}"
-          echo "pr_url=${PR_URL}" >> "$GITHUB_OUTPUT"
+          RESPONSE="$(echo "${PAYLOAD}" | gh api graphql --input -)"
+          echo "${RESPONSE}" | jq .
+          NEW_OID="$(echo "${RESPONSE}" | jq -r '.data.createCommitOnBranch.commit.oid // empty')"
+          if [[ -z "${NEW_OID}" ]]; then
+            echo "::error::Failed to create verified commit for the next development version bump."
+            exit 1
+          fi
+          echo "Created verified commit ${NEW_OID} on main."
 
       - name: Output summary
         if: always()
@@ -212,7 +231,6 @@ jobs:
           set -euo pipefail
           STATUS="${{ job.status }}"
           NEXT_DEV="${{ steps.dev-version.outputs.next_dev }}"
-          PR_URL="${{ steps.dev-pr.outputs.pr_url }}"
           {
             echo "### Release v${RELEASE_VERSION}"
             echo ""
@@ -222,13 +240,10 @@ jobs:
             echo "| **Git tag** | \`v${RELEASE_VERSION}\` |"
             echo "| **Next dev version** | \`${NEXT_DEV:-_(not computed)_}\` |"
             echo "| **Published to** | GitHub Packages |"
-            echo "| **Next dev version PR** | ${PR_URL:-_(none — no changes needed)_} |"
             echo "| **Result** | ${STATUS} |"
             echo ""
-            if [[ "${STATUS}" == "success" && -n "${PR_URL}" ]]; then
-              echo "**Next step:** review and merge the PR to update \`main\` to \`${NEXT_DEV}\`."
-            elif [[ "${STATUS}" == "success" ]]; then
-              echo "**Next step:** no version bump PR was needed."
+            if [[ "${STATUS}" == "success" ]]; then
+              echo "**Next step:** none — \`main\` has been updated to \`${NEXT_DEV}\` directly."
             else
               echo "**Next step:** fix the workflow failure and re-run the release (verify whether the tag exists before retrying)."
             fi
