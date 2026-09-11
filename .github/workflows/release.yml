@@ -127,7 +127,7 @@ jobs:
           set -euo pipefail
           mvn --batch-mode -nsu source:jar javadoc:jar deploy
 
-      - name: Commit release version (verified, direct to main)
+      - name: Commit release version
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
@@ -187,7 +187,7 @@ jobs:
             -DprocessAllModules=true \
             -DgenerateBackupPoms=false
 
-      - name: Commit next development version (verified, direct to main)
+      - name: Commit next development version
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
