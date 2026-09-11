@@ -117,12 +117,12 @@ public final class PropertyArray {
     /**
      * Best-effort reconstruction of a {@link PropertyArray} from the raw {@link CICArray} produced when one was passed
      * through the deprecated {@code put(String, PropertyArray)} overload (which converts it to a plain
-     * {@link IngestEventPropertyValue} at insertion time, losing its {@link PropertyArray} identity).
+     * {@link IngestEventPropertyValue} at insertion time, losing its {@link PropertyArray} identity). Used by
+     * {@link IngestEventProperties#toMap()} for backward compatibility.
      *
      * @return the reconstructed {@link PropertyArray}, or {@code null} if the array's elements don't match a single
      *         supported primitive type (e.g. mixed types, or nested objects), in which case there is no legacy
      *         equivalent to fall back to
-     * @implNote used by {@link IngestEventProperties#toMap()} for backward compatibility.
      */
     static PropertyArray tryFromCICArray(CICArray array) {
         var elements = array.getElements();

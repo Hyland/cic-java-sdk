@@ -256,7 +256,8 @@ public final class IngestEvent {
         }
 
         /**
-         * @implNote the resulting property always uses {@link IngestEventPropertyValue.Type#UNKNOWN}.
+         * The resulting property always uses {@link IngestEventPropertyValue.Type#UNKNOWN}.
+         *
          * @deprecated since 1.1.0, in favor of the other {@code putProperty} methods
          */
         @Deprecated(since = "1.1.0", forRemoval = true)

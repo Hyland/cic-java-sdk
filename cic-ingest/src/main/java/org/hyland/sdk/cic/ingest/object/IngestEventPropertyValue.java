@@ -140,16 +140,16 @@ public final class IngestEventPropertyValue implements IngestEventProperty {
     }
 
     /**
-     * @implNote the returned {@link CICArray}/{@link CICObject} values are read-only (see
-     *           {@link CICNode#unmodifiable(CICNode)}), so this property's state stays safe even if a caller casts and
-     *           attempts to mutate them.
+     * If the value is a {@link CICArray}/{@link CICObject}, the returned instance is read-only (see
+     * {@link CICNode#unmodifiable(CICNode)}), so this property's state stays safe even if a caller casts and attempts
+     * to mutate it.
      */
     public CICNode value() {
         return value;
     }
 
     /**
-     * @implNote see {@link #value()} regarding the read-only {@link CICArray}/{@link CICObject} values.
+     * See {@link #value()} regarding the read-only {@link CICArray}/{@link CICObject} values.
      */
     public Map<String, CICNode> extras() {
         return extras;
