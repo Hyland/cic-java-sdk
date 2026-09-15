@@ -162,7 +162,6 @@ jobs:
           set -euo pipefail
           STATUS="${{ job.status }}"
           NEXT_DEV="${{ steps.dev-version.outputs.next_dev }}"
-          PR_URL="${{ steps.dev-pr.outputs.pr_url }}"
           {
             echo "### Release v${RELEASE_VERSION}"
             echo ""
