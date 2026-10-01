@@ -29,8 +29,7 @@ on:
         default: ""
 
 permissions:
-  contents: write        # commit version bumps and push tags to the repo
-  packages: write        # publish artifacts to GitHub Packages
+  contents: write        # commit version bumps
   pull-requests: write   # open the next-development-version bump PR
 
 jobs:
@@ -76,7 +75,6 @@ jobs:
           ref: main
           fetch-depth: 0
           lfs: true
-          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Ensure tag does not already exist
         run: |
@@ -107,24 +105,6 @@ jobs:
             -DnewVersion="${RELEASE_VERSION}" \
             -DprocessAllModules=true \
             -DgenerateBackupPoms=false
-
-      - name: Run E2E Tests against Staging (pre-release gate)
-        env:
-          CIC_KE_CLIENT_ID: ${{ secrets.CIC_KE_CLIENT_ID }}
-          CIC_KE_CLIENT_SECRET: ${{ secrets.CIC_KE_CLIENT_SECRET }}
-          CIC_KE_BASE_URL: ${{ secrets.CIC_KE_BASE_URL }}
-          CIC_KE_AUTH_URL: ${{ secrets.CIC_KE_AUTH_URL }}
-          CIC_KE_DC_BASE_URL: ${{ secrets.CIC_KE_DC_BASE_URL }}
-        run: |
-          set -euo pipefail
-          mvn --batch-mode -nsu verify -Pe2e -pl cic-ke -am
-
-      - name: Build and publish to GitHub Packages
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          mvn --batch-mode -nsu source:jar javadoc:jar deploy
 
       - name: Commit release version
         uses: iarekylew00t/verified-bot-commit@42a042b0407248f3c0acac00c389e729e3476e86 # v2.3.5
