@@ -148,13 +148,17 @@ jobs:
             -DprocessAllModules=true \
             -DgenerateBackupPoms=false
 
-      - name: Commit and push next development version branch
-        id: dev-bump
-        uses: iarekylew00t/verified-bot-commit@42a042b0407248f3c0acac00c389e729e3476e86 # v2.3.5
+      - name: Create pull request for next development version
+        id: create-pr
+        uses: peter-evans/create-pull-request@d867d14e79ea1b314e13f7e8d504702e5a1d1e74 # v5.1.0
         with:
           commit-message: "chore(release): set next development version ${{ steps.dev-version.outputs.next_dev }}"
-          files: **/pom.xml
-          if-no-commit: info
+          title: "chore(release): set next development version ${{ steps.dev-version.outputs.next_dev }}"
+          body: |
+            Automatically created by the release workflow.
+            Updates development version to `${{ steps.dev-version.outputs.next_dev }}` after releasing v${{ inputs.RELEASE_VERSION }}.
+          branch: "release/${{ inputs.RELEASE_VERSION }}/dev-bump"
+          delete-branch: true
 
       - name: Output summary
         if: always()
@@ -162,6 +166,7 @@ jobs:
           set -euo pipefail
           STATUS="${{ job.status }}"
           NEXT_DEV="${{ steps.dev-version.outputs.next_dev }}"
+          PR_URL="${{ steps.create-pr.outputs.pull-request-url }}"
           {
             echo "### Release v${RELEASE_VERSION}"
             echo ""
