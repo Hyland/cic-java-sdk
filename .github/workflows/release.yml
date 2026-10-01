@@ -133,13 +133,6 @@ jobs:
           files: **/pom.xml
           if-no-commit: info
 
-      - name: Create and push tag
-        run: |
-          set -euo pipefail
-          TAG="v${RELEASE_VERSION}"
-          git tag -a "${TAG}" -m "Release ${RELEASE_VERSION}"
-          git push origin "refs/tags/${TAG}"
-
       - name: Set next development version
         run: |
           set -euo pipefail
@@ -173,17 +166,16 @@ jobs:
             echo "| | |"
             echo "|---|---|"
             echo "| **Released version** | \`${RELEASE_VERSION}\` |"
-            echo "| **Git tag** | \`v${RELEASE_VERSION}\` |"
             echo "| **Next dev version** | \`${NEXT_DEV:-_(not computed)_}\` |"
             echo "| **Published to** | GitHub Packages |"
-            echo "| **Next dev version PR** | ${PR_URL:-_(none — no changes needed)_} |"
+            echo "| **Release PR** | ${PR_URL:-_(none — no changes needed)_} |"
             echo "| **Result** | ${STATUS} |"
             echo ""
             if [[ "${STATUS}" == "success" && -n "${PR_URL}" ]]; then
-              echo "**Next step:** review and merge the PR to update \`main\` to \`${NEXT_DEV}\`."
+              echo "**Next step:** review and merge the PR. On merge, tag and GitHub Release will be created automatically."
             elif [[ "${STATUS}" == "success" ]]; then
               echo "**Next step:** no version bump PR was needed."
             else
-              echo "**Next step:** fix the workflow failure and re-run the release (verify whether the tag exists before retrying)."
+              echo "**Next step:** fix the workflow failure and re-run the release."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
