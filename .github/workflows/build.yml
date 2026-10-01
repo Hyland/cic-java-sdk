@@ -25,16 +25,13 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Step back to previous commit
-        run: git checkout HEAD~1
-
       - name: Check if this is a release commit
         id: gate
         run: |
           set -euo pipefail
 
-          # Get the commit message from main~1 (the release commit)
-          MSG=$(git log -1 --pretty=%B main~1)
+          # Get the previous commit message  (the release commit)
+          MSG=$(git log -1 --pretty=%B HEAD~1)
 
           # Check if commit message matches release pattern
           if [[ "$MSG" =~ ^chore\(release\):\ set\ version\ to ]]; then
