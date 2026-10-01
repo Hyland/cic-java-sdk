@@ -29,8 +29,7 @@ on:
         default: ""
 
 permissions:
-  contents: write        # commit version bumps and push tags to the repo
-  packages: write        # publish artifacts to GitHub Packages
+  contents: write        # commit version bumps
   pull-requests: write   # open the next-development-version bump PR
 
 jobs:
@@ -76,7 +75,6 @@ jobs:
           ref: main
           fetch-depth: 0
           lfs: true
-          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Ensure tag does not already exist
         run: |
@@ -108,40 +106,15 @@ jobs:
             -DprocessAllModules=true \
             -DgenerateBackupPoms=false
 
-      - name: Run E2E Tests against Staging (pre-release gate)
-        env:
-          CIC_KE_CLIENT_ID: ${{ secrets.CIC_KE_CLIENT_ID }}
-          CIC_KE_CLIENT_SECRET: ${{ secrets.CIC_KE_CLIENT_SECRET }}
-          CIC_KE_BASE_URL: ${{ secrets.CIC_KE_BASE_URL }}
-          CIC_KE_AUTH_URL: ${{ secrets.CIC_KE_AUTH_URL }}
-          CIC_KE_DC_BASE_URL: ${{ secrets.CIC_KE_DC_BASE_URL }}
-        run: |
-          set -euo pipefail
-          mvn --batch-mode -nsu verify -Pe2e -pl cic-ke -am
-
-      - name: Build and publish to GitHub Packages
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          mvn --batch-mode -nsu source:jar javadoc:jar deploy
-
       - name: Commit release version
-        run: |
-          set -euo pipefail
-          git add -A
-          if git diff --cached --quiet; then
-            echo "No changes — POMs already at ${RELEASE_VERSION}."
-          else
-            git commit -m "chore(release): set version to ${RELEASE_VERSION}"
-          fi
-
-      - name: Create and push tag
-        run: |
-          set -euo pipefail
-          TAG="v${RELEASE_VERSION}"
-          git tag -a "${TAG}" -m "Release ${RELEASE_VERSION}"
-          git push origin "refs/tags/${TAG}"
+        uses: iarekylew00t/verified-bot-commit@42a042b0407248f3c0acac00c389e729e3476e86 # v2.3.5
+        with:
+          commit-message: "chore(release): set version to ${RELEASE_VERSION}"
+          files: |
+            pom.xml
+            **/pom.xml
+          if-no-commit: "error"
+          branch: "release/${{ inputs.RELEASE_VERSION }}"
 
       - name: Set next development version
         run: |
@@ -151,60 +124,20 @@ jobs:
             -DprocessAllModules=true \
             -DgenerateBackupPoms=false
 
-      - name: Commit and push next development version branch
-        id: dev-bump
-        run: |
-          set -euo pipefail
-          NEXT_DEV="${{ steps.dev-version.outputs.next_dev }}"
-          BRANCH="chore/next-dev-version-${NEXT_DEV}"
-          git switch -c "${BRANCH}"
-          git add -A
-          if git diff --cached --quiet; then
-            echo "No changes — POMs already at ${NEXT_DEV}; no PR needed."
-            echo "pr_needed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          git commit -m "chore(release): set next development version ${NEXT_DEV}"
-          git push --force-with-lease origin "${BRANCH}"
-          echo "pr_needed=true" >> "$GITHUB_OUTPUT"
-          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
-
-      - name: Open pull request for next development version
-        id: dev-pr
-        if: steps.dev-bump.outputs.pr_needed == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          NEXT_DEV="${{ steps.dev-version.outputs.next_dev }}"
-          BRANCH="${{ steps.dev-bump.outputs.branch }}"
-
-          EXISTING_PR=$(gh pr list --head "${BRANCH}" --base main --state open --json url --jq '.[0].url // empty')
-          if [[ -n "${EXISTING_PR}" ]]; then
-            echo "Reusing existing PR: ${EXISTING_PR}"
-            echo "pr_url=${EXISTING_PR}" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          PR_URL=$(gh pr create \
-            --base main \
-            --head "${BRANCH}" \
-            --title "chore(release): set next development version ${NEXT_DEV}" \
-            --body "$(cat <<EOF
-          ## Automated next-development-version bump
-
-          Opened by the **Release** workflow after publishing \`v${RELEASE_VERSION}\` to GitHub Packages.
-
-          Bumps the project version to \`${NEXT_DEV}\` across the root POM and all module POMs.
-
-          **Safe to merge** once CI passes — this is a version-only change.
-
-          **IMPORTANT**
-          Merge using **Create a merge commit** (not Squash and merge).
-          EOF
-          )")
-          echo "Created PR: ${PR_URL}"
-          echo "pr_url=${PR_URL}" >> "$GITHUB_OUTPUT"
+      - name: Create pull request for next development version
+        id: create-pr
+        uses: peter-evans/create-pull-request@d867d14e79ea1b314e13f7e8d504702e5a1d1e74 # v5.1.0
+        with:
+          commit-message: "chore(release): set next development version ${{ steps.dev-version.outputs.next_dev }}"
+          title: "chore(release): set next development version ${{ steps.dev-version.outputs.next_dev }}"
+          body: |
+            Automatically created by the release workflow.
+            Updates development version to `${{ steps.dev-version.outputs.next_dev }}` after releasing v${{ inputs.RELEASE_VERSION }}.
+          branch: "release/${{ inputs.RELEASE_VERSION }}"
+          delete-branch: true
+          add-paths: |
+            pom.xml
+            **/pom.xml
 
       - name: Output summary
         if: always()
@@ -212,24 +145,23 @@ jobs:
           set -euo pipefail
           STATUS="${{ job.status }}"
           NEXT_DEV="${{ steps.dev-version.outputs.next_dev }}"
-          PR_URL="${{ steps.dev-pr.outputs.pr_url }}"
+          PR_URL="${{ steps.create-pr.outputs.pull-request-url }}"
           {
             echo "### Release v${RELEASE_VERSION}"
             echo ""
             echo "| | |"
             echo "|---|---|"
             echo "| **Released version** | \`${RELEASE_VERSION}\` |"
-            echo "| **Git tag** | \`v${RELEASE_VERSION}\` |"
             echo "| **Next dev version** | \`${NEXT_DEV:-_(not computed)_}\` |"
             echo "| **Published to** | GitHub Packages |"
-            echo "| **Next dev version PR** | ${PR_URL:-_(none — no changes needed)_} |"
+            echo "| **Release PR** | ${PR_URL:-_(none — no changes needed)_} |"
             echo "| **Result** | ${STATUS} |"
             echo ""
             if [[ "${STATUS}" == "success" && -n "${PR_URL}" ]]; then
-              echo "**Next step:** review and merge the PR to update \`main\` to \`${NEXT_DEV}\`."
+              echo "**Next step:** review and merge the PR. On merge, tag and GitHub Release will be created automatically."
             elif [[ "${STATUS}" == "success" ]]; then
               echo "**Next step:** no version bump PR was needed."
             else
-              echo "**Next step:** fix the workflow failure and re-run the release (verify whether the tag exists before retrying)."
+              echo "**Next step:** fix the workflow failure and re-run the release."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
