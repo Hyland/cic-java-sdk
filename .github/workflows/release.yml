@@ -130,8 +130,11 @@ jobs:
         uses: iarekylew00t/verified-bot-commit@42a042b0407248f3c0acac00c389e729e3476e86 # v2.3.5
         with:
           commit-message: "chore(release): set version to ${RELEASE_VERSION}"
-          files: **/pom.xml
-          if-no-commit: info
+          files: |
+            pom.xml
+            **/pom.xml
+          if-no-commit: "error"
+          branch: "release/${{ inputs.RELEASE_VERSION }}"
 
       - name: Set next development version
         run: |
@@ -150,8 +153,11 @@ jobs:
           body: |
             Automatically created by the release workflow.
             Updates development version to `${{ steps.dev-version.outputs.next_dev }}` after releasing v${{ inputs.RELEASE_VERSION }}.
-          branch: "release/${{ inputs.RELEASE_VERSION }}/dev-bump"
+          branch: "release/${{ inputs.RELEASE_VERSION }}"
           delete-branch: true
+          add-paths: |
+            pom.xml
+            **/pom.xml
 
       - name: Output summary
         if: always()
