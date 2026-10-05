@@ -1,0 +1,43 @@
+/*
+ * (C) Copyright 2026 Hyland (https://hyland.com/) and others.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * Contributors:
+ *     Kevin Leturc <kevin.leturc@hyland.com>
+ */
+package org.hyland.sdk.cic.governance.mapper;
+
+import org.hyland.sdk.cic.governance.object.ContentEvent;
+import org.hyland.sdk.cic.http.client.mapper.CICMapper;
+import org.hyland.sdk.cic.http.client.mapper.object.CICObject;
+
+/**
+ * @since 1.2.0
+ */
+class ContentEventMapper implements CICMapper<ContentEvent> {
+
+    private final ContentEventDataMapper dataMapper = new ContentEventDataMapper();
+
+    @Override
+    public CICObject toCICNode(ContentEvent event) {
+        var cicObject = CICObject.create();
+        cicObject.putString("specversion", event.specversion());
+        cicObject.putString("type", event.type().label());
+        cicObject.putString("dataSourceType", event.dataSourceType().label());
+        cicObject.putString("id", event.id());
+        cicObject.putString("time", event.time().toString());
+        cicObject.putObject("data", dataMapper.toCICNode(event.data()));
+        return cicObject;
+    }
+}

@@ -30,6 +30,7 @@
     <module>cic-qna</module>
     <module>cic-nucleus</module>
     <module>cic-ke</module>
+    <module>cic-governance</module>
   </modules>
 
   <scm>
@@ -96,6 +97,11 @@
       <dependency>
         <groupId>org.hyland.sdk</groupId>
         <artifactId>cic-ke</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.hyland.sdk</groupId>
+        <artifactId>cic-governance</artifactId>
         <version>${project.version}</version>
       </dependency>
       <!-- External dependencies - POM imports -->
